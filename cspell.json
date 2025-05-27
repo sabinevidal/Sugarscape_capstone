@@ -1,0 +1,25 @@
+{
+    "version": "0.2",
+    "ignorePaths": [],
+    "dictionaryDefinitions": [],
+    "dictionaries": [
+        "en-US",
+        "en-GB",
+        "bash",
+        "julia",
+        "css"
+    ],
+    "words": [
+        "abmexploration",
+        "abmobs",
+        "colsize",
+        "fontsize",
+        "heatarray",
+        "heatkwargs",
+        "sugarmap",
+        "xlabel",
+        "ylabel"
+    ],
+    "ignoreWords": [],
+    "import": []
+}

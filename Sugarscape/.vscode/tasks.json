@@ -1,0 +1,13 @@
+{
+    // Run Sugarscape model
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Sugarscape Model",
+            "type": "shell",
+            "command": "julia -e 'using Sugarscape; Sugarscape.run_sugarscape()'",
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}
