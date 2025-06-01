@@ -17,7 +17,10 @@ function sugarscape(;
     enable_pollution::Bool=false,
     pollution_production_rate::Float64=1.0, # α for pollution
     pollution_consumption_rate::Float64=1.0, # β for pollution
-    pollution_diffusion_interval::Int=10 # Dα time periods for diffusion
+    pollution_diffusion_interval::Int=10, # Dα time periods for diffusion
+    enable_reproduction::Bool=false, # Enable sexual reproduction
+    fertility_age_range::Tuple{Int,Int}=(18, 50), # Age range for fertility
+    initial_child_sugar::Int=6, # Sugar given to newborn children
 )
     # Convert sugar_caps output to Float64 and ensure _sugar_values is also Float64
     _sugar_capacities_int = sugar_caps(dims, sugar_peaks, max_sugar, 6) # Get as Int first
@@ -40,6 +43,7 @@ function sugarscape(;
         :deaths_age => 0,
         :total_lifespan_starvation => 0,
         :total_lifespan_age => 0,
+        :births => 0, # Track total births from reproduction
         :season_duration => season_duration,
         :winter_growth_divisor => winter_growth_divisor,
         :is_summer_top => true, # Initially summer in the top half
@@ -49,26 +53,34 @@ function sugarscape(;
         :production_rate => pollution_production_rate, # α
         :consumption_rate => pollution_consumption_rate, # β
         :pollution_diffusion_interval => pollution_diffusion_interval, # Dα
-        :current_pollution_diffusion_steps => 0
+        :current_pollution_diffusion_steps => 0,
+        :enable_reproduction => enable_reproduction,
+        :initial_child_sugar => initial_child_sugar,
+        :fertility_age_range => fertility_age_range,
     )
     model = StandardABM(
-        SugarSeeker, # Assumes SugarSeeker is available in this scope
+        SugarscapeAgent,
         space;
-        agent_step! = _agent_step!, # Renamed to avoid potential global scope issues
-        model_step! = _model_step!, # Renamed
+        (agent_step!)=_agent_step!, # Renamed to avoid potential global scope issues
+        (model_step!)=_model_step!, # Renamed
         scheduler=Schedulers.Randomly(),
         properties=properties,
         rng=MersenneTwister(seed)
     )
     for _ in 1:N
-        add_agent_single!(
-            model,
-            rand(abmrng(model), vision_dist[1]:vision_dist[2]),
-            rand(abmrng(model), metabolic_rate_dist[1]:metabolic_rate_dist[2]),
-            0,
-            rand(abmrng(model), max_age_dist[1]:max_age_dist[2]),
-            rand(abmrng(model), w0_dist[1]:w0_dist[2]),
-        )
+        # Create initial agents with proper initialization
+        vision = rand(abmrng(model), vision_dist[1]:vision_dist[2])
+        metabolism = rand(abmrng(model), metabolic_rate_dist[1]:metabolic_rate_dist[2])
+        age = 0
+        max_age = rand(abmrng(model), max_age_dist[1]:max_age_dist[2])
+        sugar = Float64(rand(abmrng(model), w0_dist[1]:w0_dist[2]))
+        sex = rand(abmrng(model), (:male, :female))
+        has_mated = false
+
+        # Find a random empty position explicitly
+        pos = random_empty(model)
+        # Use add_agent! with explicit position
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar)
     end
     return model
 end
@@ -93,12 +105,32 @@ function _model_step!(model) # Renamed
         end
     end
 
+    # Reproduction logic
+    if model.enable_reproduction
+        mating!(model)
+    end
+
     return
 end
 
 function _agent_step!(agent, model)
     move_and_collect!(agent, model)
-    replacement!(agent, model)
+    if !model.enable_reproduction
+        replacement!(agent, model)
+    else
+        # With reproduction enabled, only remove dead agents without replacement
+        if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
+            if agent.sugar <= 0
+                model.deaths_starvation += 1
+                model.total_lifespan_starvation += agent.age
+            end
+            if agent.age >= agent.max_age
+                model.deaths_age += 1
+                model.total_lifespan_age += agent.age
+            end
+            remove_agent!(agent, model)
+        end
+    end
 end
 
 """
@@ -153,13 +185,13 @@ function move_and_collect!(agent, model)
 
     move_agent!(agent, chosen_pos, model)
 
-    agent.wealth += (sugar_collected - agent.metabolic_rate)
+    agent.sugar += (sugar_collected - agent.metabolism)
     model.sugar_values[chosen_pos...] = 0
     agent.age += 1
 
     if model.enable_pollution
         # Pollution Formation
-        produced_pollution = model.production_rate * sugar_collected + model.consumption_rate * agent.metabolic_rate
+        produced_pollution = model.production_rate * sugar_collected + model.consumption_rate * agent.metabolism
         model.pollution[chosen_pos...] += produced_pollution
     end
 
@@ -176,32 +208,35 @@ Replacement (R[a,b]) Rule
 When an agent dies it is replaced by an agent of age 0 having random genetic position on the sugarscape. random initial endowment, and a maximum age randomly selected from the range [a,b]. (Epstein & Axtell, 1996, p 32-33)
 """
 function replacement!(agent, model)
-    if agent.wealth ≤ 0 || agent.age ≥ agent.max_age
+    if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
         died_by_starvation = false
         died_by_age = false
 
-        if agent.wealth <= 0
+        if agent.sugar <= 0
             model.deaths_starvation += 1
             model.total_lifespan_starvation += agent.age
             died_by_starvation = true
         end
         if agent.age >= agent.max_age
             model.deaths_age += 1 # This could double count if agent dies of both.
-                                  # If an agent dies of starvation at max_age, it's counted in both.
-                                  # This seems to be the original logic.
+            # If an agent dies of starvation at max_age, it's counted in both.
             model.total_lifespan_age += agent.age
             died_by_age = true
         end
 
         remove_agent!(agent, model)
 
-        add_agent_single!(
-            model,
-            rand(abmrng(model), model.vision_dist[1]:model.vision_dist[2]),
-            rand(abmrng(model), model.metabolic_rate_dist[1]:model.metabolic_rate_dist[2]),
-            0,
-            rand(abmrng(model), model.max_age_dist[1]:model.max_age_dist[2]),
-            rand(abmrng(model), model.w0_dist[1]:model.w0_dist[2])
-        )
+        # Create replacement agent with proper initialization
+        vision = rand(abmrng(model), model.vision_dist[1]:model.vision_dist[2])
+        metabolism = rand(abmrng(model), model.metabolic_rate_dist[1]:model.metabolic_rate_dist[2])
+        age = 0
+        max_age = rand(abmrng(model), model.max_age_dist[1]:model.max_age_dist[2])
+        sugar = Float64(rand(abmrng(model), model.w0_dist[1]:model.w0_dist[2]))
+        sex = rand(abmrng(model), (:male, :female))
+        has_mated = false
+
+        # Find a random empty position explicitly
+        pos = random_empty(model)
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar)
     end
 end

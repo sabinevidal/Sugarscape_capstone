@@ -48,7 +48,7 @@ function morans_i(model::StandardABM)
 
     for i in 1:n
         agent_i = agents_list[i]
-        deviation_i = agent_i.wealth - mean_wealth
+        deviation_i = agent_i.sugar - mean_wealth
         denominator += deviation_i^2
 
         for neighbor_pos in nearby_positions(agent_i.pos, model, 1)
@@ -59,7 +59,7 @@ function morans_i(model::StandardABM)
                     if haskey(agent_idx_map, neighbor_id)
                         j = agent_idx_map[neighbor_id]
                         agent_j = agents_list[j]
-                        deviation_j = agent_j.wealth - mean_wealth
+                        deviation_j = agent_j.sugar - mean_wealth
                         numerator += deviation_i * deviation_j # w_ij is 1
                         sum_weights += 1.0
                     end

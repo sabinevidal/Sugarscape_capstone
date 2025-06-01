@@ -1,9 +1,12 @@
 using Agents
 
-@agent struct SugarSeeker(GridAgent{2})
+@agent struct SugarscapeAgent(GridAgent{2})
     vision::Int
-    metabolic_rate::Int
+    metabolism::Int
+    sugar::Float64
     age::Int
     max_age::Int
-    wealth::Float64
+    sex::Symbol
+    has_mated::Bool
+    initial_sugar::Float64
 end

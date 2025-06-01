@@ -12,10 +12,15 @@
     "words": [
         "abmexploration",
         "abmobs",
+        "abmrng",
         "colsize",
         "fontsize",
+        "growback",
         "heatarray",
         "heatkwargs",
+        "mdata",
+        "Mersenne",
+        "nextid",
         "sugarmap",
         "xlabel",
         "ylabel"

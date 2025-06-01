@@ -23,8 +23,8 @@ end
 args = parse_args(s)
 
 # Define data collection
-adata = [:wealth, :age, :vision, :metabolic_rate, :max_age]
-mdata = [nagents, model -> Sugarscape.gini_coefficient([a.wealth for a in allagents(model)])]
+adata = [:sugar, :age, :vision, :metabolism, :max_age]
+mdata = [nagents, model -> Sugarscape.gini_coefficient([a.sugar for a in allagents(model)])]
 
 if args["gui"]
   # For GUI, data collection is handled by the visualization if needed,
