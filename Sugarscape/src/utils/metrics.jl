@@ -37,7 +37,10 @@ function morans_i(model::StandardABM)
     n = length(agents_list)
     n == 0 && return 0.0 # No agents, no segregation
 
-    wealths = [a.wealth for a in agents_list]
+    # `SugarscapeAgent` stores wealth in the `sugar` field. The previous
+    # implementation incorrectly referenced a non-existent `wealth` field,
+    # which resulted in a runtime error.
+    wealths = [a.sugar for a in agents_list]
     mean_wealth = sum(wealths) / n
 
     numerator = 0.0
