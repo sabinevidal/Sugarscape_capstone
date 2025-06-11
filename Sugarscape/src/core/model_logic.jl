@@ -57,6 +57,10 @@ function sugarscape(;
         :enable_reproduction => enable_reproduction,
         :initial_child_sugar => initial_child_sugar,
         :fertility_age_range => fertility_age_range,
+        # Inheritance tracking properties
+        :total_inheritances => 0,
+        :total_inheritance_value => 0.0,
+        :generational_wealth_transferred => 0.0,
     )
     model = StandardABM(
         SugarscapeAgent,
@@ -76,11 +80,13 @@ function sugarscape(;
         sugar = Float64(rand(abmrng(model), w0_dist[1]:w0_dist[2]))
         sex = rand(abmrng(model), (:male, :female))
         has_mated = false
+        children = Int[]
+        total_inheritance_received = 0.0
 
         # Find a random empty position explicitly
         pos = random_empty(model)
-        # Use add_agent! with explicit position
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar)
+        # Use add_agent! with explicit position and all fields
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received)
     end
     return model
 end
@@ -118,17 +124,17 @@ function _agent_step!(agent, model)
     if !model.enable_reproduction
         replacement!(agent, model)
     else
-        # With reproduction enabled, only remove dead agents without replacement
+        # With reproduction enabled, use centralized death! function for inheritance
         if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
-            if agent.sugar <= 0
-                model.deaths_starvation += 1
-                model.total_lifespan_starvation += agent.age
+            cause = if agent.sugar <= 0 && agent.age >= agent.max_age
+                # Could die from both - prioritize starvation for tracking
+                :starvation
+            elseif agent.sugar <= 0
+                :starvation
+            else
+                :age
             end
-            if agent.age >= agent.max_age
-                model.deaths_age += 1
-                model.total_lifespan_age += agent.age
-            end
-            remove_agent!(agent, model)
+            death!(agent, model, cause)
         end
     end
 end
@@ -209,24 +215,18 @@ When an agent dies it is replaced by an agent of age 0 having random genetic pos
 """
 function replacement!(agent, model)
     if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
-        died_by_starvation = false
-        died_by_age = false
-
-        if agent.sugar <= 0
-            model.deaths_starvation += 1
-            model.total_lifespan_starvation += agent.age
-            died_by_starvation = true
-        end
-        if agent.age >= agent.max_age
-            model.deaths_age += 1 # This could double count if agent dies of both.
-            # If an agent dies of starvation at max_age, it's counted in both.
-            model.total_lifespan_age += agent.age
-            died_by_age = true
+        # Use centralized death! function (inheritance won't apply since reproduction is disabled)
+        cause = if agent.sugar <= 0 && agent.age >= agent.max_age
+            :starvation
+        elseif agent.sugar <= 0
+            :starvation
+        else
+            :age
         end
 
-        remove_agent!(agent, model)
+        death!(agent, model, cause)
 
-        # Create replacement agent with proper initialization
+        # Create replacement agent with proper initialization including inheritance fields
         vision = rand(abmrng(model), model.vision_dist[1]:model.vision_dist[2])
         metabolism = rand(abmrng(model), model.metabolic_rate_dist[1]:model.metabolic_rate_dist[2])
         age = 0
@@ -234,9 +234,11 @@ function replacement!(agent, model)
         sugar = Float64(rand(abmrng(model), model.w0_dist[1]:model.w0_dist[2]))
         sex = rand(abmrng(model), (:male, :female))
         has_mated = false
+        children = Int[]  # Empty children list
+        total_inheritance_received = 0.0
 
         # Find a random empty position explicitly
         pos = random_empty(model)
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar)
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received)
     end
 end

@@ -20,7 +20,11 @@ function mating!(model)
         child_pos = rand(abmrng(model), free_cells)
 
         # Create child using add_agent! directly - this handles ID assignment automatically
-        create_child(agent, partner, child_pos, model)
+        child_id = create_child(agent, partner, child_pos, model)
+
+        # Add child ID to both parents' children lists
+        push!(agent.children, child_id)
+        push!(partner.children, child_id)
 
         # Mark both as having mated
         agent.has_mated = true
@@ -52,11 +56,13 @@ function create_child(parent1, parent2, pos, model)
   max_age = rand(abmrng(model), (parent1.max_age, parent2.max_age))
   sex = rand(abmrng(model), (:male, :female))
 
-  # Use add_agent! directly - this automatically handles ID assignment
-  add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar)
+  # Create child with inheritance tracking fields
+  child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0)
 
   # Track birth in model statistics
   model.births += 1
+
+  return child.id  # Return child ID for parent tracking
 end
 
 function is_fertile(agent, model)

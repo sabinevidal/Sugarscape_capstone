@@ -9,4 +9,6 @@ using Agents
     sex::Symbol
     has_mated::Bool
     initial_sugar::Float64
+    children::Vector{Int}  # IDs of child agents
+    total_inheritance_received::Float64  # Track total inheritance received
 end
