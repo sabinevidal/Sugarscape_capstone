@@ -21,6 +21,11 @@ function sugarscape(;
     enable_reproduction::Bool=false, # Enable sexual reproduction
     fertility_age_range::Tuple{Int,Int}=(18, 50), # Age range for fertility
     initial_child_sugar::Int=6, # Sugar given to newborn children
+    enable_culture::Bool=false,  # Enable cultural transmission
+    culture_tag_length::Int=11,  # Length of cultural bitstring
+    culture_copy_prob::Float64=1 / 11,  # Probability of copying cultural trait
+    enable_combat::Bool=false,  # Enable combat rule
+    combat_limit::Int=50,  # Maximum sugar that can be stolen per attack
 )
     # Convert sugar_caps output to Float64 and ensure _sugar_values is also Float64
     _sugar_capacities_int = sugar_caps(dims, sugar_peaks, max_sugar, 6) # Get as Int first
@@ -61,6 +66,14 @@ function sugarscape(;
         :total_inheritances => 0,
         :total_inheritance_value => 0.0,
         :generational_wealth_transferred => 0.0,
+        :enable_culture => enable_culture,
+        :culture_tag_length => culture_tag_length,
+        :culture_copy_prob => culture_copy_prob,
+        # Combat rule properties
+        :enable_combat => enable_combat,  # Enable/disable combat
+        :combat_limit => combat_limit,      # Maximum sugar that can be stolen per attack
+        :combat_kills => 0,       # Track combat deaths
+        :combat_sugar_stolen => 0.0,  # Track total sugar stolen through combat
     )
     model = StandardABM(
         SugarscapeAgent,
@@ -82,11 +95,12 @@ function sugarscape(;
         has_mated = false
         children = Int[]
         total_inheritance_received = 0.0
+        culture = enable_culture ? initialize_culture(culture_tag_length, model) : BitVector()
 
         # Find a random empty position explicitly
         pos = random_empty(model)
         # Use add_agent! with explicit position and all fields
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received)
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received, culture)
     end
     return model
 end
@@ -114,6 +128,16 @@ function _model_step!(model) # Renamed
     # Reproduction logic
     if model.enable_reproduction
         mating!(model)
+    end
+
+    # Combat logic - happens before regular movement to avoid conflicts
+    if model.enable_combat
+        combat!(model)
+    end
+
+    # Culture transmission logic
+    if model.enable_culture
+        culture_spread!(model)
     end
 
     return
@@ -236,9 +260,10 @@ function replacement!(agent, model)
         has_mated = false
         children = Int[]  # Empty children list
         total_inheritance_received = 0.0
+        culture = model.enable_culture ? initialize_culture(model.culture_tag_length, model) : BitVector()
 
         # Find a random empty position explicitly
         pos = random_empty(model)
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received)
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received, culture)
     end
 end

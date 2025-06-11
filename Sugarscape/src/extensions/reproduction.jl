@@ -56,8 +56,15 @@ function create_child(parent1, parent2, pos, model)
   max_age = rand(abmrng(model), (parent1.max_age, parent2.max_age))
   sex = rand(abmrng(model), (:male, :female))
 
+  # Cultural inheritance through crossover
+  culture = if model.enable_culture
+    crossover_culture(parent1.culture, parent2.culture, model)
+  else
+    BitVector()
+  end
+
   # Create child with inheritance tracking fields
-  child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0)
+  child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture)
 
   # Track birth in model statistics
   model.births += 1

@@ -1,0 +1,205 @@
+# model_logic.jl
+# function sugarscape()
+#  culture_length::Int=11, # Length of culture bit string
+
+
+# properties:  :culture_length => culture_length,
+
+# for _ in 1:N
+#  culture = BitVector(rand(abmrng(model), Bool, culture_length))
+
+# Create replacement agent with proper initialization
+# culture = BitVector(rand(abmrng(model), Bool, model.culture_length))
+
+# reproduction.jl
+#  function create_child()
+#  culture = crossover(parent1.culture, parent2.culture, model)
+
+# agents.jl
+# @agent struct SugarscapeAgent(GridAgent{2})
+#   culture::BitVector  # Cultural attributes as bit string
+# end
+
+"""
+Culture (K) Rule Implementation
+Each agent has a cultural tag that spreads through interaction with neighbors.
+"""
+
+"""
+Cultural transmission rule: agents copy cultural traits from neighbors with small probability.
+For each agent:
+1. Select one random neighbor
+2. For each bit position, if values differ, copy neighbor's value with probability p
+"""
+function culture_spread!(model)
+  for agent in allagents(model)
+    neighbors = nearby_agents(agent, model, 1)
+    isempty(neighbors) && continue
+
+    # Pick a random neighbor
+    other = rand(abmrng(model), neighbors)
+    tag_length = length(agent.culture)
+    prob = model.culture_copy_prob
+
+    # Compare and possibly copy each bit
+    for i in 1:tag_length
+      if agent.culture[i] != other.culture[i] && rand(abmrng(model)) < prob
+        agent.culture[i] = other.culture[i]
+      end
+    end
+  end
+end
+
+"""
+Initialize random cultural tag for an agent.
+"""
+function initialize_culture(tag_length::Int, model)
+  return BitVector(rand(abmrng(model), Bool, tag_length))
+end
+
+"""
+Crossover function for cultural inheritance.
+For each bit position, randomly chooses from one of the two parents with 50% probability.
+"""
+function crossover_culture(c1::BitVector, c2::BitVector, model)::BitVector
+  length(c1) != length(c2) && error("Cultural tags must have the same length")
+  return BitVector([rand(abmrng(model), Bool) ? c1[i] : c2[i] for i in 1:length(c1)])
+end
+
+"""
+Calculate Shannon entropy of cultural diversity in the population.
+Higher entropy indicates more cultural diversity.
+"""
+function cultural_entropy(model)
+  if nagents(model) == 0
+    return 0.0
+  end
+
+  tag_length = length(first(allagents(model)).culture)
+  bit_frequencies = zeros(tag_length)
+
+  # Count frequency of 1s at each bit position
+  for agent in allagents(model)
+    for i in 1:tag_length
+      if agent.culture[i]
+        bit_frequencies[i] += 1
+      end
+    end
+  end
+
+  # Normalize to probabilities
+  bit_frequencies ./= nagents(model)
+
+  # Calculate entropy
+  entropy = 0.0
+  for freq in bit_frequencies
+    if freq > 0 && freq < 1
+      entropy -= freq * log2(freq) + (1 - freq) * log2(1 - freq)
+    end
+  end
+
+  return entropy / tag_length  # Average entropy per bit
+end
+
+"""
+Count number of unique cultural types in the population.
+"""
+function unique_cultures(model)
+  if nagents(model) == 0
+    return 0
+  end
+
+  culture_set = Set{BitVector}()
+  for agent in allagents(model)
+    push!(culture_set, copy(agent.culture))
+  end
+
+  return length(culture_set)
+end
+
+"""
+Calculate mean Hamming distance between all pairs of agents.
+Higher values indicate more cultural diversity.
+"""
+function mean_hamming_distance(model)
+  agents = collect(allagents(model))
+  n = length(agents)
+
+  if n < 2
+    return 0.0
+  end
+
+  total_distance = 0.0
+  pairs = 0
+
+  for i in 1:n
+    for j in (i+1):n
+      distance = sum(agents[i].culture .⊻ agents[j].culture)  # XOR gives Hamming distance
+      total_distance += distance
+      pairs += 1
+    end
+  end
+
+  return total_distance / pairs
+end
+
+"""
+Identify cultural islands: contiguous regions of agents with similar cultural tags.
+Returns a dictionary mapping culture types to their spatial clustering coefficient.
+"""
+function cultural_islands(model, similarity_threshold=0.8)
+  if nagents(model) == 0
+    return Dict{BitVector,Float64}()
+  end
+
+  islands = Dict{BitVector,Vector{Tuple{Int,Int}}}()
+
+  # Group agents by similar culture
+  for agent in allagents(model)
+    culture_found = false
+    agent_culture = copy(agent.culture)
+
+    for (existing_culture, positions) in islands
+      # Calculate similarity (proportion of matching bits)
+      similarity = 1.0 - sum(agent_culture .⊻ existing_culture) / length(agent_culture)
+
+      if similarity >= similarity_threshold
+        push!(positions, agent.pos)
+        culture_found = true
+        break
+      end
+    end
+
+    if !culture_found
+      islands[agent_culture] = [agent.pos]
+    end
+  end
+
+  # Calculate clustering coefficient for each culture group
+  clustering_coeffs = Dict{BitVector,Float64}()
+
+  for (culture, positions) in islands
+    if length(positions) < 2
+      clustering_coeffs[culture] = 0.0
+      continue
+    end
+
+    # Calculate average distance between positions of same culture
+    total_distance = 0.0
+    pairs = 0
+
+    for i in 1:length(positions)
+      for j in (i+1):length(positions)
+        distance = sqrt(sum((positions[i][k] - positions[j][k])^2 for k in 1:2))
+        total_distance += distance
+        pairs += 1
+      end
+    end
+
+    avg_distance = total_distance / pairs
+    # Convert distance to clustering coefficient (inverse relationship)
+    clustering_coeffs[culture] = 1.0 / (1.0 + avg_distance)
+  end
+
+  return clustering_coeffs
+end
