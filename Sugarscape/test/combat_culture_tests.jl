@@ -12,7 +12,7 @@ function add_custom_agent!(model, pos; sugar, vision=3, metabolism=1, culture_bi
   children = Int[]
   total_inheritance_received = 0.0
   culture = BitVector(culture_bits)
-  add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received, culture)
+  add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(48))
 end
 
 @testset "Combat Rule C-α" begin

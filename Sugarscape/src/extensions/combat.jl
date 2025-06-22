@@ -187,7 +187,7 @@ end
     cultural_conflict_intensity(model)
 
 Measure the intensity of cultural conflict by calculating the proportion
-of culturally different neighboring pairs relative to all neighboring pairs.
+of culturally different neighbouring pairs relative to all neighbouring pairs.
 Higher values indicate more cultural fragmentation and potential for conflict.
 """
 function cultural_conflict_intensity(model)
@@ -199,10 +199,10 @@ function cultural_conflict_intensity(model)
   different_pairs = 0
 
   for agent in allagents(model)
-    neighbors = nearby_agents(agent, model, 1)
-    for neighbor in neighbors
+    neighbours = nearby_agents(agent, model, 1)
+    for neighbour in neighbours
       total_pairs += 1
-      if culturally_different(agent, neighbor)
+      if culturally_different(agent, neighbour)
         different_pairs += 1
       end
     end
@@ -215,7 +215,7 @@ end
     wealth_based_dominance(model)
 
 Calculate the correlation between agent wealth and their spatial dominance
-(number of weaker neighbors they could potentially attack).
+(number of weaker neighbours they could potentially attack).
 """
 function wealth_based_dominance(model)
   if nagents(model) < 2
@@ -225,24 +225,24 @@ function wealth_based_dominance(model)
   wealth_dominance_pairs = []
 
   for agent in allagents(model)
-    weaker_neighbors = 0
-    total_neighbors = 0
+    weaker_neighbours = 0
+    total_neighbours = 0
 
-    # Count neighbors within vision that could be attacked
+    # Count neighbours within vision that could be attacked
     for pos in visible_positions(agent, model)
       agents_at_pos = get_agents_at_position(model, pos)
       if length(agents_at_pos) == 1
-        neighbor = first(agents_at_pos)
-        if neighbor.id != agent.id
-          total_neighbors += 1
-          if neighbor.sugar < agent.sugar && culturally_different(agent, neighbor)
-            weaker_neighbors += 1
+        neighbour = first(agents_at_pos)
+        if neighbour.id != agent.id
+          total_neighbours += 1
+          if neighbour.sugar < agent.sugar && culturally_different(agent, neighbour)
+            weaker_neighbours += 1
           end
         end
       end
     end
 
-    dominance = total_neighbors > 0 ? weaker_neighbors / total_neighbors : 0.0
+    dominance = total_neighbours > 0 ? weaker_neighbours / total_neighbours : 0.0
     push!(wealth_dominance_pairs, (agent.sugar, dominance))
   end
 

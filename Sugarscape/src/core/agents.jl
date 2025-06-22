@@ -12,4 +12,8 @@ using Agents
     children::Vector{Int}  # IDs of child agents
     total_inheritance_received::Float64  # Track total inheritance received
     culture::BitVector  # Cultural tag
+    loans::Vector{Tuple{Int,Int,Float64,Int}} = Tuple{Int,Int,Float64,Int}[]   # empty
+    diseases::Vector{BitVector} = BitVector[]       # empty
+    # Initialise with an empty immunity vector; correct length supplied at agent creation.
+    immunity::BitVector = falses(0)
 end

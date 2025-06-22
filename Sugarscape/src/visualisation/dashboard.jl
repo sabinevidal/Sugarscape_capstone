@@ -27,6 +27,8 @@ function create_dashboard()
     enable_culture=false,
     enable_combat=false,
     enable_pollution=false,
+    enable_credit=false,
+    enable_disease=false,
     seed=42
   )
 
@@ -36,6 +38,8 @@ function create_dashboard()
     :enable_culture => [false, true],
     :enable_combat => [false, true],
     :enable_pollution => [false, true],
+    :enable_credit => [false, true],
+    :enable_disease => [false, true],
     :growth_rate => 0.5:0.1:2.0,
     :season_duration => 10:5:50,
     :combat_limit => 10:10:100,
@@ -51,6 +55,7 @@ function create_dashboard()
   male(a) = a.sex == :male
   female(a) = a.sex == :female
   mated(a) = a.has_mated
+  infected(a) = length(a.diseases) > 0
 
   adata = [
     (wealthy, count),
@@ -60,10 +65,22 @@ function create_dashboard()
     (young, count),
     (male, count),
     (female, count),
-    (mated, count)
+    (mated, count),
+    (infected, count)
   ]
 
   # Define model data to collect
+  function total_principal(model)
+    total = 0.0
+    for a in allagents(model)
+      for t in a.loans
+        total += t[3]
+      end
+    end
+    return total
+  end
+  disease_prev(model) = nagents(model) == 0 ? 0.0 : count(a -> length(a.diseases) > 0, allagents(model)) / nagents(model)
+
   mdata = [
     nagents,
     :deaths_starvation,
@@ -74,7 +91,9 @@ function create_dashboard()
     model -> gini_coefficient([a.sugar for a in allagents(model)]),
     model -> mean([a.sugar for a in allagents(model)]),
     model -> sum(model.sugar_values),
-    model -> model.enable_culture ? (hasmethod(cultural_entropy, (typeof(model),)) ? cultural_entropy(model) : 0.0) : 0.0
+    model -> model.enable_culture ? (hasmethod(cultural_entropy, (typeof(model),)) ? cultural_entropy(model) : 0.0) : 0.0,
+    total_principal,
+    disease_prev
   ]
 
   # Agent visualization functions
@@ -108,10 +127,11 @@ function create_dashboard()
     adata=adata,
     mdata=mdata,
     alabels=["Wealthy Agents", "Medium Wealth", "Poor Agents", "Elderly",
-      "Young", "Males", "Females", "Mated"],
+      "Young", "Males", "Females", "Mated", "Infected"],
     mlabels=["Agents", "Starvation Deaths", "Age Deaths", "Births",
       "Combat Kills", "Sugar Stolen", "Gini Coefficient",
-      "Mean Sugar", "Total Sugar", "Cultural Entropy"],
+      "Mean Sugar", "Total Sugar", "Cultural Entropy",
+      "Loans Outstanding", "Disease Prevalence"],
     agent_color=agent_color,
     agent_size=agent_size,
     heatarray=sugarmap,
@@ -227,6 +247,15 @@ function create_dashboard()
       timestamp = Dates.format(Dates.now(), "yyyymmdd_HHMMSS")
       model = abmobs.model[]
       agent_list = collect(allagents(model))
+      loans_given_total(a) = sum((t[3] for t in a.loans if t[1] == a.id); init=0.0)
+      loans_received_total(a) = sum((t[3] for t in a.loans if t[2] == a.id); init=0.0)
+      loans_given_count(a) = count(t -> t[1] == a.id, a.loans)
+      loans_received_count(a) = count(t -> t[2] == a.id, a.loans)
+      net_credit(a) = loans_given_total(a) - loans_received_total(a)
+      next_due(a, step) = begin
+        dues = [t[4] for t in a.loans if t[2] == a.id]
+        isempty(dues) ? missing : minimum(dues)
+      end
 
       # Create DataFrame with individual agent data
       agent_df = DataFrame(
@@ -243,7 +272,13 @@ function create_dashboard()
         has_mated=[a.has_mated for a in agent_list],
         initial_sugar=[a.initial_sugar for a in agent_list],
         total_inheritance_received=[a.total_inheritance_received for a in agent_list],
-        culture=[length(a.culture) > 0 ? join(Int.(a.culture), "") : "" for a in agent_list]
+        culture=[length(a.culture) > 0 ? join(Int.(a.culture), "") : "" for a in agent_list],
+        loans_given_cnt=[loans_given_count(a) for a in agent_list],
+        loans_given_tot=[loans_given_total(a) for a in agent_list],
+        loans_recv_cnt=[loans_received_count(a) for a in agent_list],
+        loans_recv_tot=[loans_received_total(a) for a in agent_list],
+        net_credit_pos=[net_credit(a) for a in agent_list],
+        next_loan_due=[next_due(a, current_step[]) for a in agent_list],
       )
 
       filename = joinpath(results_dir, "sugarscape_agents_$(timestamp)_step_$(current_step[]).csv")
@@ -277,6 +312,8 @@ function create_dashboard()
       "Culture: $(model.enable_culture ? "✓" : "✗")",
       "Combat: $(model.enable_combat ? "✓" : "✗")",
       "Pollution: $(model.enable_pollution ? "✓" : "✗")",
+      "Credit: $(model.enable_credit ? "✓" : "✗")",
+      "Disease: $(model.enable_disease ? "✓" : "✗")",
       "",
       "Growth Rate: $(model.growth_rate)",
       "Season Duration: $(model.season_duration)",

@@ -1,23 +1,23 @@
 @inline function distances(pos, sugar_peaks)
-  all_dists = zeros(Int, length(sugar_peaks))
-  for (ind, peak) in enumerate(sugar_peaks)
-      d = round(Int, sqrt(sum((pos .- peak) .^ 2)))
-      all_dists[ind] = d
-  end
-  return minimum(all_dists)
+    all_dists = zeros(Int, length(sugar_peaks))
+    for (ind, peak) in enumerate(sugar_peaks)
+        d = round(Int, sqrt(sum((pos .- peak) .^ 2)))
+        all_dists[ind] = d
+    end
+    return minimum(all_dists)
 end
 
 @inline function sugar_caps(dims, sugar_peaks, max_sugar, dia=4)
-  sugar_capacities = zeros(Int, dims)
-  for i in 1:dims[1], j in 1:dims[2]
-      sugar_capacities[i, j] = distances((i, j), sugar_peaks)
-  end
-  for i in 1:dims[1]
-      for j in 1:dims[2]
-          sugar_capacities[i, j] = max(0, max_sugar - (sugar_capacities[i, j] ÷ dia))
-      end
-  end
-  return sugar_capacities
+    sugar_capacities = zeros(Int, dims)
+    for i in 1:dims[1], j in 1:dims[2]
+        sugar_capacities[i, j] = distances((i, j), sugar_peaks)
+    end
+    for i in 1:dims[1]
+        for j in 1:dims[2]
+            sugar_capacities[i, j] = max(0, max_sugar - (sugar_capacities[i, j] ÷ dia))
+        end
+    end
+    return sugar_capacities
 end
 
 """
@@ -25,18 +25,18 @@ Sugarscape Growback (Gα) Rule
 At each lattice position, sugar grows  back at a rate of a units per time interval up to the capacity at that position. (Epstein & Axtell, 1996)
 """
 function growback!(model)
-  ## At each position, sugar grows back at a rate of α units
-  ## per time-step up to the cell's capacity c.
-  @inbounds for pos_tuple in positions(model)
-      if model.sugar_values[pos_tuple...] < model.sugar_capacities[pos_tuple...]
-          model.sugar_values[pos_tuple...] += model.growth_rate
-          # Ensure sugar does not exceed capacity
-          if model.sugar_values[pos_tuple...] > model.sugar_capacities[pos_tuple...]
-              model.sugar_values[pos_tuple...] = model.sugar_capacities[pos_tuple...]
-          end
-      end
-  end
-  return
+    ## At each position, sugar grows back at a rate of α units
+    ## per time-step up to the cell's capacity c.
+    @inbounds for pos_tuple in positions(model)
+        if model.sugar_values[pos_tuple...] < model.sugar_capacities[pos_tuple...]
+            model.sugar_values[pos_tuple...] += model.growth_rate
+            # Ensure sugar does not exceed capacity
+            if model.sugar_values[pos_tuple...] > model.sugar_capacities[pos_tuple...]
+                model.sugar_values[pos_tuple...] = model.sugar_capacities[pos_tuple...]
+            end
+        end
+    end
+    return
 end
 
 """
@@ -47,33 +47,33 @@ For each site, if the season is summer then sugar grows back at a rate of 'α' (
 if the season is winter then the growback rate is 'α / ~' (model.growth_rate / model.winter_growth_divisor) units per time interval.
 """
 function seasonal_growback!(model)
-  grid_height = size(model.sugar_capacities, 2) # Assuming dims are (width, height) for model.sugar_capacities
-  mid_point = grid_height ÷ 2
+    grid_height = size(model.sugar_capacities, 2) # Assuming dims are (width, height) for model.sugar_capacities
+    mid_point = grid_height ÷ 2
 
-  @inbounds for pos_tuple in positions(model)
-    pos_y = pos_tuple[2] # y-coordinate determines top/bottom half
+    @inbounds for pos_tuple in positions(model)
+        pos_y = pos_tuple[2] # y-coordinate determines top/bottom half
 
-    # Assuming origin (1,1) is top-left, so smaller y is "top"
-    # If origin (1,1) is bottom-left, this condition needs to be pos_y > mid_point
-    in_top_half = pos_y <= mid_point
+        # Assuming origin (1,1) is top-left, so smaller y is "top"
+        # If origin (1,1) is bottom-left, this condition needs to be pos_y > mid_point
+        in_top_half = pos_y <= mid_point
 
-    is_summer_season_for_cell = (model.is_summer_top && in_top_half) || (!model.is_summer_top && !in_top_half)
+        is_summer_season_for_cell = (model.is_summer_top && in_top_half) || (!model.is_summer_top && !in_top_half)
 
-    current_growth_rate = if is_summer_season_for_cell
-        model.growth_rate
-    else
-        model.growth_rate / model.winter_growth_divisor
+        current_growth_rate = if is_summer_season_for_cell
+            model.growth_rate
+        else
+            model.growth_rate / model.winter_growth_divisor
+        end
+
+        # Ensure growth rate results in an integer if sugar_values is Int, or allow float.
+        # For now, direct division is used. If growth_rate is Int, integer division will truncate.
+
+        if model.sugar_values[pos_tuple...] < model.sugar_capacities[pos_tuple...]
+            potential_sugar = model.sugar_values[pos_tuple...] + current_growth_rate
+            model.sugar_values[pos_tuple...] = min(potential_sugar, model.sugar_capacities[pos_tuple...])
+        end
     end
-
-    # Ensure growth rate results in an integer if sugar_values is Int, or allow float.
-    # For now, direct division is used. If growth_rate is Int, integer division will truncate.
-
-    if model.sugar_values[pos_tuple...] < model.sugar_capacities[pos_tuple...]
-        potential_sugar = model.sugar_values[pos_tuple...] + current_growth_rate
-        model.sugar_values[pos_tuple...] = min(potential_sugar, model.sugar_capacities[pos_tuple...])
-    end
-  end
-  return
+    return
 end
 
 """
@@ -99,7 +99,7 @@ function diffuse_pollution!(model)
             # Agents.jl's positions(model) gives tuples, so we construct them for neighbor checks.
 
             potential_neighbors = [
-                (x-1, y), (x+1, y), (x, y-1), (x, y+1)
+                (x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)
             ]
 
             for neighbor_pos_tuple in potential_neighbors

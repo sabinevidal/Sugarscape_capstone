@@ -3,6 +3,7 @@ using Agents, Random, Distributions
 "Create a sugarscape ABM"
 function sugarscape(;
     dims=(50, 50),
+    gridspace_metric::Symbol=:manhattan,
     sugar_peaks=((10, 40), (40, 10)),
     growth_rate=1,
     N=250,
@@ -20,19 +21,34 @@ function sugarscape(;
     pollution_diffusion_interval::Int=10, # Dα time periods for diffusion
     enable_reproduction::Bool=false, # Enable sexual reproduction
     fertility_age_range::Tuple{Int,Int}=(18, 50), # Age range for fertility
+    male_fertility_start::Int=12,
+    male_fertility_end::Int=50,
+    female_fertility_start::Int=12,
+    female_fertility_end::Int=40,
     initial_child_sugar::Int=6, # Sugar given to newborn children
     enable_culture::Bool=false,  # Enable cultural transmission
     culture_tag_length::Int=11,  # Length of cultural bitstring
     culture_copy_prob::Float64=1 / 11,  # Probability of copying cultural trait
     enable_combat::Bool=false,  # Enable combat rule
     combat_limit::Int=50,  # Maximum sugar that can be stolen per attack
+    enable_disease::Bool=false,
+    disease_transmission_rate::Float64=0.1,
+    disease_immunity_length::Int=32,
+    disease_infection_probability::Float64=0.1,
+    disease_recovery_probability::Float64=0.1,
+    disease_mortality_probability::Float64=0.1,
+    disease_mutation_probability::Float64=0.1,
+    enable_credit::Bool=false,
+    interest_rate::Float64=0.10,
+    duration::Int=10,
+    child_amount::Int=25,
 )
     # Convert sugar_caps output to Float64 and ensure _sugar_values is also Float64
     _sugar_capacities_int = sugar_caps(dims, sugar_peaks, max_sugar, 6) # Get as Int first
     _sugar_capacities = Float64.(_sugar_capacities_int) # Convert to Float64
     _sugar_values = deepcopy(_sugar_capacities) # Now _sugar_values is also Float64
     _pollution_values = fill(0.0, dims) # Initialize pollution grid with floats
-    space = GridSpaceSingle(dims)
+    space = GridSpaceSingle(dims, metric=gridspace_metric)
 
     properties = Dict(
         :growth_rate => growth_rate,
@@ -62,6 +78,10 @@ function sugarscape(;
         :enable_reproduction => enable_reproduction,
         :initial_child_sugar => initial_child_sugar,
         :fertility_age_range => fertility_age_range,
+        :male_fertility_start => male_fertility_start,
+        :male_fertility_end => male_fertility_end,
+        :female_fertility_start => female_fertility_start,
+        :female_fertility_end => female_fertility_end,
         # Inheritance tracking properties
         :total_inheritances => 0,
         :total_inheritance_value => 0.0,
@@ -75,6 +95,19 @@ function sugarscape(;
         :combat_kills => 0,       # Track combat deaths
         :combat_sugar_stolen => 0.0,  # Track total sugar stolen through combat
         :agents_moved_combat => Set{Int}(),  # Track agents that moved in combat each tick
+        # Disease properties
+        :enable_disease => enable_disease,
+        :disease_transmission_rate => disease_transmission_rate,
+        :disease_immunity_length => disease_immunity_length,
+        :disease_infection_probability => disease_infection_probability,
+        :disease_recovery_probability => disease_recovery_probability,
+        :disease_mortality_probability => disease_mortality_probability,
+        :disease_mutation_probability => disease_mutation_probability,
+        # Credit properties
+        :enable_credit => enable_credit,
+        :interest_rate => interest_rate,
+        :duration => duration,
+        :child_amount => child_amount,
     )
     model = StandardABM(
         SugarscapeAgent,
@@ -101,7 +134,7 @@ function sugarscape(;
         # Find a random empty position explicitly
         pos = random_empty(model)
         # Use add_agent! with explicit position and all fields
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received, culture)
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(disease_immunity_length))
     end
     return model
 end
@@ -146,6 +179,19 @@ function _model_step!(model) # Renamed
     # Culture transmission logic
     if model.enable_culture
         culture_spread!(model)
+    end
+
+    # Disease logic
+    if model.enable_disease
+        disease_transmission!(model)
+        immune_response!(model)
+    end
+
+    # Credit logic
+    if model.enable_credit
+        tick = abmtime(model)               # current discrete time
+        pay_loans!(model, tick)
+        make_loans!(model, tick)
     end
 
     return
@@ -304,6 +350,6 @@ function replacement!(agent, model)
 
         # Find a random empty position explicitly
         pos = random_empty(model)
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received, culture)
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(disease_immunity_length))
     end
 end

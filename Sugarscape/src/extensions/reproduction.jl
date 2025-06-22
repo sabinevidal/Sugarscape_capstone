@@ -56,7 +56,7 @@ function create_child(parent1, parent2, pos, model)
   culture = crossover_culture(parent1.culture, parent2.culture, model)
 
   # Create child with inheritance tracking fields
-  child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture)
+  child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
 
   # Track birth in model statistics
   model.births += 1

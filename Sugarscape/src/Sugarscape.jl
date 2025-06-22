@@ -3,14 +3,22 @@ module Sugarscape
 using Agents, Random, CairoMakie, Observables, Statistics, Distributions
 
 # Core model components
+include("core/constants.jl")
 include("core/agents.jl")
 include("core/environment.jl")
+
+# Extensions that add functions used inside model logic
+include("extensions/credit.jl")
+include("extensions/disease.jl")
+include("extensions/reproduction.jl")
+include("extensions/culture.jl")
+include("extensions/combat.jl")
+include("extensions/inheritance.jl")
 
 # Order of includes matters if files depend on each other.
 include("utils/metrics.jl")
 
-# core/model_logic.jl depends on core/agents.jl and core/environment.jl (for types and functions)
-# and utils/metrics.jl if any metrics are used within model logic directly (not the case here)
+# core/model_logic.jl depends on core/agents.jl, environment & the extensions above
 include("core/model_logic.jl")
 
 # visualisation/plotting.jl depends on core/model_logic.jl (for sugarscape constructor)
@@ -22,12 +30,6 @@ include("visualisation/interactive.jl")
 
 # visualisation/dashboard.jl provides debugging dashboard functionality
 include("visualisation/dashboard.jl")
-
-# Extensions
-include("extensions/reproduction.jl")
-include("extensions/culture.jl")
-include("extensions/combat.jl")
-include("extensions/inheritance.jl")
 
 # Public API
 export SugarscapeAgent
@@ -53,5 +55,11 @@ export combat!, combat_death_rate, average_combat_reward, cultural_conflict_inte
 
 # Export inheritance functions
 export distribute_inheritance, get_inheritance_metrics, calculate_inheritance_concentration
+
+# Export disease functions
+export disease_transmission!, immune_response!
+
+# Export credit functions
+export make_loans!, pay_loans!
 
 end # module Sugarscape

@@ -1,0 +1,223 @@
+{
+  "rules": [
+    {
+      "id": "TICK",
+      "name": "tick",
+      "stage": "pre_step",
+      "description": "At the start of each turn: step +=1, age +=1, sugar -= metabolism for every living agent.",
+      "key_constants": [],
+      "reads_state": ["population", "age", "metabolism", "agentSugar"],
+      "writes_state": ["step", "age", "agentSugar"],
+      "must_run_before": ["grow_back"],
+      "must_run_after": []
+    },
+    {
+      "id": "G",
+      "name": "growback",
+      "stage": "environment",
+      "description": "Add SUGARGROWTH units of sugar to every cell, capping at maxSugar.",
+      "key_constants": ["growth_rate"],
+      "reads_state": ["sugar", "maxSugar"],
+      "writes_state": ["sugar"],
+      "must_run_before": ["movement_block"],
+      "must_run_after": ["tick"]
+    },
+    {
+      "id": "SG",
+      "name": "seasonal_growback",
+      "stage": "environment",
+      "description": "Summer/winter growback: every SEASONLENGTH turns the top/bottom halves swap rates; winter rate = SUGARGROWTH / WINTERRATE.",
+      "key_constants": ["growth_rate", "winter_growth_divisor", "season_duration"],
+      "reads_state": ["sugar", "maxSugar", "step"],
+      "writes_state": ["sugar"],
+      "conflicts_with": ["growback"],
+      "must_run_before": ["movement_block"],
+      "must_run_after": ["tick"]
+    },
+    {
+      "id": "M_BASIC",
+      "name": "movement",
+      "stage": "movement_block",
+      "description": "Agents pick the nearest empty site within vision that maximises sugar, then harvest that sugar.",
+      "key_constants": ["vision_dist"],
+      "reads_state": ["sugar", "position", "vision", "agentSugar"],
+      "writes_state": ["position", "sugar", "agentSugar"],
+      "depends_on": [],
+      "conflicts_with": ["movement_pollution", "combat"],
+      "must_run_before": ["pollution_formation"],
+      "must_run_after": ["grow_back"]
+    },
+    {
+      "id": "M_POLLUTION",
+      "name": "movement_pollution",
+      "stage": "movement_block",
+      "description": "Same as movement but ranks cells by sugar / (1+pollution).",
+      "key_constants": ["vision_dist"],
+      "reads_state": ["sugar", "pollution", "position", "vision", "agentSugar"],
+      "writes_state": ["position", "sugar", "agentSugar"],
+      "conflicts_with": ["movement", "combat"],
+      "depends_on": ["pollution_formation"],
+      "must_run_before": ["pollution_formation"],
+      "must_run_after": ["grow_back"]
+    },
+    {
+      "id": "P_FORM",
+      "name": "pollution_formation",
+      "stage": "movement_block",
+      "description": "When an agent harvests s sugar and metabolises m, the cell gains PRODUCTION*s + CONSUMPTION*m pollution.",
+      "key_constants": ["pollution_production_rate", "pollution_consumption_rate"],
+      "reads_state": ["sugar", "metabolism"],
+      "writes_state": ["pollution"],
+      "depends_on": ["movement_pollution", "movement"],
+      "must_run_after": ["movement_block"]
+    },
+    {
+      "id": "P_DIFF",
+      "name": "pollution_diffusion",
+      "stage": "environment_end",
+      "description": "Every POLLUTIONRATE steps replace a cell's pollution with the mean of its von-Neumann neighbours.",
+      "key_constants": ["pollution_diffusion_interval"],
+      "reads_state": ["pollution", "step"],
+      "writes_state": ["pollution"],
+      "depends_on": ["pollution_formation"],
+      "must_run_before": [],
+      "must_run_after": ["movement_block"]
+    },
+    {
+      "id": "I",
+      "name": "inheritance",
+      "stage": "life_cycle",
+      "description": "Wealth of agents scheduled to die is divided equally among their living children; loans of deceased lenders are reassigned to those children.",
+      "key_constants": [],
+      "reads_state": ["agentSugar", "children", "loanBook", "age", "maxAge"],
+      "writes_state": ["agentSugar", "loanBook"],
+      "must_run_before": ["death_replacement", "reproduction"],
+      "must_run_after": []
+    },
+    {
+      "id": "DEATH_REPL",
+      "name": "death_replacement",
+      "stage": "life_cycle",
+      "description": "Remove agents with age==maxAge or sugar==0; optionally create replacement agents with random traits and STARTSUGARMIN–MAX sugar.",
+      "key_constants": ["w0_dist"],
+      "reads_state": ["age", "maxAge", "agentSugar"],
+      "writes_state": ["population", "position", "agentSugar", "loanBook"],
+      "must_run_before": ["reproduction"],
+      "must_run_after": ["inheritance"]
+    },
+    {
+      "id": "S",
+      "name": "reproduction",
+      "stage": "life_cycle",
+      "description": "Adjacent fertile male and female create an offspring in an empty neighbouring cell if both hold ≥ their initial sugar.",
+      "key_constants": ["female_fertility_start", "female_fertility_end", "male_fertility_start", "male_fertility_end", "child_amount"],
+      "reads_state": ["sex", "age", "position", "agentSugar", "initialSugar"],
+      "writes_state": ["population", "position", "agentSugar", "age", "sex"],
+      "depends_on": ["death_replacement"],
+      "must_run_before": ["culture"],
+      "must_run_after": ["death_replacement"]
+    },
+    {
+      "id": "K",
+      "name": "culture",
+      "stage": "social_transmission",
+      "description": "Each agent lets every von-Neumann neighbour flip one random bit of its CULTURECOUNT-length tag toward that neighbour's value.",
+      "key_constants": ["culture_tag_length"],
+      "reads_state": ["agentCulture", "position"],
+      "writes_state": ["agentCulture"],
+      "must_run_before": ["combat"],
+      "must_run_after": ["movement_block"]
+    },
+    {
+      "id": "C",
+      "name": "combat",
+      "stage": "movement_block",
+      "description": "Agents may move onto and kill poorer agents of a different tribe within vision; victor collects site sugar + min(COMBATLIMIT, victim wealth).",
+      "key_constants": ["combat_limit"],
+      "reads_state": ["agentSugar", "agentCulture", "position", "vision", "sugar"],
+      "writes_state": ["population", "position", "agentSugar", "sugar", "loanBook"],
+      "depends_on": ["culture"],
+      "conflicts_with": ["movement", "movement_pollution"],
+      "must_run_before": ["pollution_formation"],
+      "must_run_after": ["grow_back"]
+    },
+    {
+      "id": "PAY_LOANS",
+      "name": "pay_loans",
+      "stage": "credit_block",
+      "description": "For each loan due this step: if borrower can pay, transfer principal+interest; else borrower pays half wealth and a new loan is written for the remainder.",
+      "key_constants": ["interest_rate", "duration"],
+      "reads_state": ["loanBook", "agentSugar", "step"],
+      "writes_state": ["loanBook", "agentSugar"],
+      "must_run_before": ["make_loans"],
+      "must_run_after": ["life_cycle_block"]
+    },
+    {
+      "id": "MAKE_LOANS",
+      "name": "make_loans",
+      "stage": "credit_block",
+      "description": "Neighbouring lender–borrower pairs create new loans under the Credit rule: amount ≤ lender limit and needed by borrower to reach CHILDAMT.",
+      "key_constants": ["interest_rate", "duration", "child_amount"],
+      "reads_state": ["position", "agentSugar", "sex", "age", "loanBook"],
+      "writes_state": ["loanBook", "agentSugar"],
+      "depends_on": ["pay_loans"],
+      "must_run_before": [],
+      "must_run_after": ["pay_loans"]
+    },
+    {
+      "id": "E_TX",
+      "name": "disease_transmission",
+      "stage": "health_block",
+      "description": "Each agent randomly selects one carried disease and transmits it to every neighbour.",
+      "key_constants": [],
+      "reads_state": ["diseases", "position"],
+      "writes_state": ["diseases"],
+      "must_run_before": ["immune_response"],
+      "must_run_after": ["social_transmission_block"]
+    },
+    {
+      "id": "E_IMMUNE",
+      "name": "immune_response",
+      "stage": "health_block",
+      "description": "For each non-immunised disease the agent flips one bit toward it in the immunity string and pays +1 sugar metabolism penalty.",
+      "key_constants": [],
+      "reads_state": ["diseases", "agentImmunity", "agentSugar"],
+      "writes_state": ["agentImmunity", "agentSugar"],
+      "must_run_before": [],
+      "must_run_after": ["disease_transmission"]
+    }
+  ],
+  "global_order": [
+    "tick",
+    "grow_back_or_seasonal_growback",
+    "movement_block",
+    "pollution_formation",
+    "life_cycle_block",
+    "social_transmission_block",
+    "credit_block",
+    "health_block",
+    "pollution_diffusion"
+  ],
+  "constraints": [
+    {
+      "if_rules_enabled": ["P_FORM", "P_DIFF"],
+      "then": { "movement_block": "M_POLLUTION" }
+    },
+    {
+      "if_rules_enabled": ["C"],
+      "then": { "movement_block": "C" }
+    },
+    {
+      "rule": "C",
+      "requires": ["agentCulture"]
+    },
+    {
+      "rule": "S",
+      "requires_parent_resource_thresholds": ["child_amount"]
+    },
+    {
+      "rule": "I",
+      "alters": ["loanBook"]
+    }
+  ]
+}
