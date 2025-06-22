@@ -34,11 +34,6 @@ function mating!(model)
       end
     end
   end
-
-  # Reset mating status
-  for agent in allagents(model)
-    agent.has_mated = false
-  end
 end
 
 function create_child(parent1, parent2, pos, model)
@@ -56,12 +51,9 @@ function create_child(parent1, parent2, pos, model)
   max_age = rand(abmrng(model), (parent1.max_age, parent2.max_age))
   sex = rand(abmrng(model), (:male, :female))
 
-  # Cultural inheritance through crossover
-  culture = if model.enable_culture
-    crossover_culture(parent1.culture, parent2.culture, model)
-  else
-    BitVector()
-  end
+  # Cultural inheritance always uses crossover so that tag length remains
+  # consistent irrespective of whether the K-rule is active.
+  culture = crossover_culture(parent1.culture, parent2.culture, model)
 
   # Create child with inheritance tracking fields
   child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture)

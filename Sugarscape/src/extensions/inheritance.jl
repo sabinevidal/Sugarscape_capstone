@@ -19,7 +19,9 @@ function distribute_inheritance(agent, model)
   end
 
   # Find living children (filter out dead agent IDs)
-  living_children = filter(child_id -> haskey(model.agents, child_id), agent.children)
+  # Using `hasid` from Agents.jl avoids direct access to internal fields like `model.agents`,
+  # which are intentionally hidden by Agents.jl's custom `getproperty` overload.
+  living_children = filter(child_id -> hasid(model, child_id), agent.children)
 
   if !isempty(living_children)
     # Use floor division as specified
@@ -42,31 +44,6 @@ function distribute_inheritance(agent, model)
   end
 
   # If no living children, wealth is lost from the system
-end
-
-"""
-    death!(agent, model, cause::Symbol=:unknown)
-
-Centralized function to handle agent death.
-Applies inheritance if reproduction is enabled, then removes the agent.
-"""
-function death!(agent, model, cause::Symbol=:unknown)
-  # Apply inheritance only if reproduction is enabled
-  if model.enable_reproduction
-    distribute_inheritance(agent, model)
-  end
-
-  # Track death statistics
-  if cause == :starvation
-    model.deaths_starvation += 1
-    model.total_lifespan_starvation += agent.age
-  elseif cause == :age
-    model.deaths_age += 1
-    model.total_lifespan_age += agent.age
-  end
-
-  # Remove agent from the system
-  remove_agent!(agent, model)
 end
 
 """

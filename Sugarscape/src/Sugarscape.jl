@@ -20,10 +20,14 @@ include("visualisation/plotting.jl")
 # visualisation/interactive.jl depends on the core model and provides interactive dashboard functionality
 include("visualisation/interactive.jl")
 
+# visualisation/dashboard.jl provides debugging dashboard functionality
+include("visualisation/dashboard.jl")
+
 # Extensions
 include("extensions/reproduction.jl")
 include("extensions/culture.jl")
 include("extensions/combat.jl")
+include("extensions/inheritance.jl")
 
 # Public API
 export SugarscapeAgent
@@ -33,10 +37,10 @@ export gini_coefficient, morans_i
 
 # Export visualization and recording functions
 export run_sugarscape_visualization
-export record_sugarscape_animation
 export record_wealth_hist_animation
 export create_custom_dashboard
 export create_reproduction_dashboard
+export create_dashboard
 
 # Export reproduction functions
 export mating!, is_fertile
@@ -46,5 +50,8 @@ export culture_spread!, cultural_entropy, unique_cultures, mean_hamming_distance
 
 # Export combat functions
 export combat!, combat_death_rate, average_combat_reward, cultural_conflict_intensity, wealth_based_dominance
+
+# Export inheritance functions
+export distribute_inheritance, get_inheritance_metrics, calculate_inheritance_concentration
 
 end # module Sugarscape

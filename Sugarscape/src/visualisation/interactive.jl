@@ -10,52 +10,6 @@ using DataFrames: nrow, ncol, names
 
 agent_s_interactive(a) = 8
 
-# --- INTERACTIVE APPLICATION SETUP ---
-function create_interactive_app()
-  initial_pollution_enabled_numeric = 0
-
-  # Parameters for sliders (ranges for the GUI)
-  model_params = Dict(
-    :enable_pollution => (false, true),
-  )
-
-  # Create an initial model instance using default/initial parameters
-  initial_model = Sugarscape.sugarscape(;
-    enable_pollution=Bool(initial_pollution_enabled_numeric) # Use initial for now
-  )
-
-  # Function to get sugar values for heatmap
-  sugarmap(model) = model.sugar_values
-
-  # Keywords for the heatmap
-  max_initial_sugar_capacity = 0.0
-  if !isempty(initial_model.sugar_capacities)
-    max_initial_sugar_capacity = maximum(initial_model.sugar_capacities)
-  end
-  heatkwargs = (
-    colormap=:viridis,
-    colorrange=(0.0, max_initial_sugar_capacity > 0 ? max_initial_sugar_capacity : 4.0)
-  )
-
-  mdata = [nagents, model -> Sugarscape.gini_coefficient([a.sugar for a in allagents(model)])]
-
-  fig, abmobs = abmexploration(
-    initial_model;
-    (agent_step!)=Sugarscape._agent_step!,
-    (model_step!)=Sugarscape._model_step!,
-    mdata=mdata,
-    params=model_params,
-    agent_size=agent_s_interactive,
-    heatarray=sugarmap,
-    heatkwargs=heatkwargs,
-    figure=(; size=(900, 750)),
-  )
-
-  return fig, abmobs
-end
-
-
-
 """
     create_custom_dashboard(; model_kwargs...)
 

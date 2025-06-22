@@ -74,6 +74,7 @@ function sugarscape(;
         :combat_limit => combat_limit,      # Maximum sugar that can be stolen per attack
         :combat_kills => 0,       # Track combat deaths
         :combat_sugar_stolen => 0.0,  # Track total sugar stolen through combat
+        :agents_moved_combat => Set{Int}(),  # Track agents that moved in combat each tick
     )
     model = StandardABM(
         SugarscapeAgent,
@@ -95,7 +96,7 @@ function sugarscape(;
         has_mated = false
         children = Int[]
         total_inheritance_received = 0.0
-        culture = enable_culture ? initialize_culture(culture_tag_length, model) : BitVector()
+        culture = initialize_culture(culture_tag_length, model)
 
         # Find a random empty position explicitly
         pos = random_empty(model)
@@ -125,8 +126,15 @@ function _model_step!(model) # Renamed
         end
     end
 
+    # Reset per-tick combat movement registry (used to avoid double moves)
+    model.agents_moved_combat = Set{Int}()
+
     # Reproduction logic
     if model.enable_reproduction
+        # Reset mating status flags from the previous tick so we can observe which agents mate this step during data export.
+        for a in allagents(model)
+            a.has_mated = false
+        end
         mating!(model)
     end
 
@@ -144,15 +152,19 @@ function _model_step!(model) # Renamed
 end
 
 function _agent_step!(agent, model)
-    move_and_collect!(agent, model)
+    # Skip the Movement (M) rule if the agent already moved in the combat phase
+    # As "the combat rule is really an extension of the movement rule" (Kehoe, 2016, p.37 )
+    if !(model.enable_combat && (agent.id in model.agents_moved_combat))
+        move_and_collect!(agent, model)
+    end
+
     if !model.enable_reproduction
         replacement!(agent, model)
     else
         # With reproduction enabled, use centralized death! function for inheritance
         if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
             cause = if agent.sugar <= 0 && agent.age >= agent.max_age
-                # Could die from both - prioritize starvation for tracking
-                :starvation
+                :starvation  # prioritise starvation for stats when both apply
             elseif agent.sugar <= 0
                 :starvation
             else
@@ -228,6 +240,34 @@ function move_and_collect!(agent, model)
     return
 end
 
+"""
+    death!(agent, model, cause::Symbol=:unknown)
+
+Centralized function to handle agent death.
+Applies inheritance if reproduction is enabled, then removes the agent.
+"""
+function death!(agent, model, cause::Symbol=:unknown)
+    # Apply inheritance only if reproduction is enabled
+    if model.enable_reproduction
+        distribute_inheritance(agent, model)
+    end
+
+    # Track death statistics
+    if cause == :starvation
+        model.deaths_starvation += 1
+        model.total_lifespan_starvation += agent.age
+    elseif cause == :age
+        model.deaths_age += 1
+        model.total_lifespan_age += agent.age
+    elseif cause == :combat
+        # Combat deaths are already tracked in model.combat_kills
+        # No need to add to starvation or age deaths
+    end
+
+    # Remove agent from the system
+    remove_agent!(agent, model)
+end
+
 # Helper function to calculate Euclidean distance between two positions
 function euclidean_distance(pos1, pos2)
     return sqrt(sum((pos1[i] - pos2[i])^2 for i in 1:length(pos1)))
@@ -260,7 +300,7 @@ function replacement!(agent, model)
         has_mated = false
         children = Int[]  # Empty children list
         total_inheritance_received = 0.0
-        culture = model.enable_culture ? initialize_culture(model.culture_tag_length, model) : BitVector()
+        culture = initialize_culture(model.culture_tag_length, model)
 
         # Find a random empty position explicitly
         pos = random_empty(model)

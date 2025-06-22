@@ -28,23 +28,30 @@ Each agent has a cultural tag that spreads through interaction with neighbors.
 """
 Cultural transmission rule: agents copy cultural traits from neighbors with small probability.
 For each agent:
-1. Select one random neighbor
-2. For each bit position, if values differ, copy neighbor's value with probability p
+1. Select a neighboring agent at random;
+2. Select a tag randomly;
+3. If the neighbor agrees with the agent at that tag position, no change is made;
+4. if they disagree, the neighbor’s tag is flipped to agree with the agent’s tag;
+5. Repeat for all neighbors.
+(Kehoe, 2016, p.35)
 """
 function culture_spread!(model)
   for agent in allagents(model)
-    neighbors = nearby_agents(agent, model, 1)
+    neighbors = collect(nearby_agents(agent, model, 1))  # radius 1 (von Neumann)
     isempty(neighbors) && continue
 
-    # Pick a random neighbor
-    other = rand(abmrng(model), neighbors)
-    tag_length = length(agent.culture)
-    prob = model.culture_copy_prob
+    for neighbor in neighbors
+      tag_len = length(agent.culture)
+      tag_len == 0 && continue  # allow empty tags to pass silently
 
-    # Compare and possibly copy each bit
-    for i in 1:tag_length
-      if agent.culture[i] != other.culture[i] && rand(abmrng(model)) < prob
-        agent.culture[i] = other.culture[i]
+      # All culture strings are assumed equal length by the model design
+      @assert tag_len == length(neighbor.culture) "Cultural tags must have uniform length across agents"
+
+      idx = rand(abmrng(model), 1:tag_len)  # pick random tag index
+
+      # Rule K-2: flip neighbour’s randomly chosen bit so it matches the focal agent
+      if neighbor.culture[idx] != agent.culture[idx]
+        neighbor.culture[idx] = agent.culture[idx]
       end
     end
   end
@@ -75,12 +82,17 @@ function cultural_entropy(model)
     return 0.0
   end
 
-  tag_length = length(first(allagents(model)).culture)
+  # Determine the maximum tag length among all agents
+  tag_length = maximum(length(a.culture) for a in allagents(model))
+
+  # If no one has a tag, entropy is zero
+  tag_length == 0 && return 0.0
+
   bit_frequencies = zeros(tag_length)
 
-  # Count frequency of 1s at each bit position
+  # Count frequency of 1s at each bit position, guarding against shorter tags
   for agent in allagents(model)
-    for i in 1:tag_length
+    for i in 1:min(tag_length, length(agent.culture))
       if agent.culture[i]
         bit_frequencies[i] += 1
       end
@@ -111,7 +123,7 @@ function unique_cultures(model)
 
   culture_set = Set{BitVector}()
   for agent in allagents(model)
-    push!(culture_set, copy(agent.culture))
+    push!(culture_set, Tuple(agent.culture))
   end
 
   return length(culture_set)
@@ -134,7 +146,12 @@ function mean_hamming_distance(model)
 
   for i in 1:n
     for j in (i+1):n
-      distance = sum(agents[i].culture .⊻ agents[j].culture)  # XOR gives Hamming distance
+      # Use the length common to both tags to avoid BoundsError
+      tag_length = min(length(agents[i].culture), length(agents[j].culture))
+      if tag_length == 0
+        continue
+      end
+      distance = sum(agents[i].culture[1:tag_length] .⊻ agents[j].culture[1:tag_length])  # XOR gives Hamming distance
       total_distance += distance
       pairs += 1
     end
@@ -202,4 +219,34 @@ function cultural_islands(model, similarity_threshold=0.8)
   end
 
   return clustering_coeffs
+end
+
+# === Tribe & Cultural difference helpers (Rule K-3) ===
+"""
+    tribe(agent) -> Symbol
+
+Return `:blue` when the number of zeros in the cultural bit-string exceeds the
+number of ones, otherwise return `:red` (Rule K-3).
+"""
+function tribe(agent)::Symbol
+  ones = count(==(true), agent.culture)
+  zeros = length(agent.culture) - ones
+  return zeros > ones ? :blue : :red
+end
+
+"""
+    same_tribe(a, b) -> Bool
+
+True when both agents belong to the same tribe (Rule K-3).
+"""
+same_tribe(a, b) = tribe(a) == tribe(b)
+
+"""
+    culturally_different(agent1, agent2) -> Bool
+
+Agents are culturally different when their tribes differ.  This definition is
+used by the Combat extension (Rule C-α 2) and various analytics utilities.
+"""
+function culturally_different(agent1, agent2)
+  return !same_tribe(agent1, agent2)
 end

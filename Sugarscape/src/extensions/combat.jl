@@ -25,8 +25,10 @@ function visible_positions(agent, model)
       pos = (agent.pos[1] + distance * direction[1],
         agent.pos[2] + distance * direction[2])
 
-      # Handle boundaries (GridSpaceSingle)
-      if all(1 .<= pos .<= size(model.space))
+      # Handle boundaries (GridSpaceSingle) – access the internal `:space` field
+      # via `getfield` to bypass `getproperty`, which would otherwise look into
+      # the `properties` Dict and raise a `KeyError` for `:space`.
+      if all(1 .<= pos .<= size(getfield(model, :space)))
         push!(positions, pos)
       end
     end
@@ -40,17 +42,26 @@ end
 Get all agents at a specific position. Returns a vector of agents.
 """
 function get_agents_at_position(model, pos)
-  return collect(agents_in_position(pos, model))  # Use Agents.jl built-in
+  # `agents_in_position` is not defined for `GridSpaceSingle`. Instead, we
+  # simply filter the existing agents. Because `GridSpaceSingle` guarantees at
+  # most one agent per cell, this comprehension is cheap.
+  return [agent for agent in allagents(model) if agent.pos == pos]
 end
 
 """
-    culturally_different(agent1, agent2)
+    exposed_to_retaliation(attacker, target_pos, model) -> Bool
 
-Check if two agents have different cultural tags.
-Returns true if their culture BitVectors are different.
+Return `true` when *any* stronger enemy (different tribe) can see `target_pos`
+within their own vision (Combat Rule C-α 4).
 """
-function culturally_different(agent1, agent2)
-  return agent1.culture != agent2.culture
+function exposed_to_retaliation(model; attacker, target_pos, future=attacker.sugar)
+  for other in allagents(model)
+    other.id == attacker.id && continue           # skip self
+    culturally_different(attacker, other) || continue
+    other.sugar > future || continue              # stronger *after* we cash in
+    target_pos in visible_positions(other, model) && return true
+  end
+  return false
 end
 
 """
@@ -66,54 +77,88 @@ Combat conditions:
 - Reward = min(target.sugar, combat_limit)
 """
 function combat!(model)
-  # Skip if combat is disabled
+  # Skip if combat disabled
   !model.enable_combat && return
 
-  # Get agents in random order to avoid bias
+  # Process agents in random order (Combat Rule preamble)
   agents_list = collect(allagents(model))
   shuffle!(abmrng(model), agents_list)
 
   for attacker in agents_list
-    # Skip if attacker was killed earlier in this combat step
-    !(attacker.id in keys(model.agents)) && continue
+    # If the attacker has been removed earlier in this combat step (e.g. it
+    # was killed by a different agent) we skip it.
+    attacker in allagents(model) || continue
 
-    candidates = []
+    candidates = Vector{Tuple{Tuple{Int,Int},Union{SugarscapeAgent,Nothing},Float64,Float64}}()
+    # (position, occupant_or_nothing, reward, distance)
 
-    # Scan all visible positions for potential targets
     for pos in visible_positions(attacker, model)
-      agents_at_pos = get_agents_at_position(model, pos)
+      occupants = get_agents_at_position(model, pos)
+      occupant = isempty(occupants) ? nothing : first(occupants)
 
-      # Only consider positions with exactly one agent (the potential target)
-      if length(agents_at_pos) == 1
-        target = first(agents_at_pos)
-
-        # Check all combat conditions
-        if target.id != attacker.id &&                    # Not self
-           target.sugar < attacker.sugar &&              # Target is weaker
-           culturally_different(attacker, target)        # Culturally different
-
-          reward = min(target.sugar, model.combat_limit)
-          push!(candidates, (pos, target, reward))
-        end
+      # === Rule C-α 2: Discard illegal sites ===
+      if occupant !== nothing
+        # Same tribe → discard
+        same_tribe(attacker, occupant) && continue
+        # Target wealth ≥ attacker wealth → discard
+        occupant.sugar >= attacker.sugar && continue
       end
+
+      # === Rule C-α 3: Compute reward ===
+      site_sugar = model.sugar_values[pos...]
+      occupant_sugar_component = occupant === nothing ? 0.0 : min(occupant.sugar, model.combat_limit)
+      reward = site_sugar + occupant_sugar_component
+      reward == 0.0 && continue  # This site cannot yield anything
+
+      # === Rule C-α 4: Retaliation check ===
+      potential_future_wealth = attacker.sugar + reward
+      exposed_to_retaliation(model; attacker, target_pos=pos, future=potential_future_wealth) && continue
+
+      distance = euclidean_distance(attacker.pos, pos)
+      push!(candidates, (pos, occupant, reward, distance))
     end
 
-    # Execute attack if valid targets exist
-    if !isempty(candidates)
-      # Select target with maximum reward (break ties randomly)
-      max_reward = maximum(c -> c[3], candidates)
-      best_candidates = filter(c -> c[3] == max_reward, candidates)
-      best_pos, victim, stolen = rand(abmrng(model), best_candidates)
+    isempty(candidates) && continue  # No legal targets
 
-      # Execute combat
-      attacker.sugar += stolen
-      remove_agent!(victim, model)
-      move_agent!(attacker, best_pos, model)
+    # === Rule C-α 5: Choose among maximal reward sites ===
+    max_reward = maximum(c[3] for c in candidates)
+    best_reward_sites = filter(c -> c[3] == max_reward, candidates)
 
-      # Update combat statistics
+    # Nearest distance first, then random tie-break
+    min_distance = minimum(c[4] for c in best_reward_sites)
+    nearest_sites = filter(c -> c[4] == min_distance, best_reward_sites)
+    chosen = rand(abmrng(model), nearest_sites)
+    target_pos, victim, _, _ = chosen
+
+    # === Rule C-α 6&7: Execute combat ===
+    site_sugar = model.sugar_values[target_pos...]
+    stolen = victim === nothing ? 0.0 : min(victim.sugar, model.combat_limit)
+    collected = site_sugar + stolen
+
+    if victim !== nothing
+      death!(victim, model, :combat)
       model.combat_kills += 1
-      model.combat_sugar_stolen += stolen
     end
+
+    # Move attacker to the target square and update state
+    move_agent!(attacker, target_pos, model)
+    attacker.sugar += collected - attacker.metabolism  # collect & metabolise
+    attacker.age += 1  # movement increments age just like M-rule
+
+    # Pollution production (reuse M-rule logic)
+    if model.enable_pollution
+      produced_pollution = model.production_rate * site_sugar + model.consumption_rate * attacker.metabolism
+      model.pollution[target_pos...] += produced_pollution
+    end
+
+    # Clear the sugar from the site (Rule C-α 6)
+    model.sugar_values[target_pos...] = 0.0
+
+    # Statistics
+    model.combat_sugar_stolen += stolen
+
+    # Mark attacker so that the M-rule is skipped later this tick (C-α 5)
+    push!(model.agents_moved_combat, attacker.id)
   end
 end
 
