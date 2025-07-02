@@ -82,50 +82,23 @@ Each 'model.pollution_diffusion_interval' time periods and at each site,
 compute the pollution flux - the average pollution level over all von Neumann neighboring sites.
 Each site's flux becomes its new pollution level.
 """
-function diffuse_pollution!(model)
-    dims = size(model.pollution)
-    new_pollution = deepcopy(model.pollution) # To store new values temporarily
+function pollution_diffusion!(model)
+    new_pollution = similar(model.pollution)   # allocate array with same type & size
 
-    for x in 1:dims[1]
-        for y in 1:dims[2]
-            current_pos = (x, y)
-            neighbor_pollution_sum = 0.0
-            num_neighbors = 0
-
-            # Get Von Neumann neighbors
-            # Using nearby_positions with radius 1 and manhattan metric implicitly gives Von Neumann for GridSpace
-            # However, a more direct implementation might be clearer or more efficient if nearby_positions is complex.
-            # For now, let's manually iterate to be explicit about Von Neumann.
-            # Agents.jl's positions(model) gives tuples, so we construct them for neighbor checks.
-
-            potential_neighbors = [
-                (x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)
-            ]
-
-            for neighbor_pos_tuple in potential_neighbors
-                # Check bounds for non-periodic grids.
-                # If your grid is periodic, this check is handled by GridSpace utilities, but here we are direct.
-                # Assuming model.space handles periodicity if needed, or we implement it.
-                # For simplicity, this assumes a non-periodic grid or that out-of-bounds access is handled by model.pollution access (e.g. if it's padded or Agents.jl handles it)
-                # A robust way is to use `nearby_positions` from Agents.jl for a specific position and metric.
-                # Let's use a simpler, direct check for Von Neumann, assuming non-periodic for this manual iteration.
-
-                nx, ny = neighbor_pos_tuple
-                if 1 <= nx <= dims[1] && 1 <= ny <= dims[2]
-                    neighbor_pollution_sum += model.pollution[nx, ny]
-                    num_neighbors += 1
-                end
+    @inbounds for pos in positions(model)      # iterate over every lattice cell
+        neighbours = nearby_positions(pos, model, 1)  # Von Neumann neighbourhood (radius 1, manhattan metric inherited from space)
+        if isempty(neighbours)
+            new_pollution[pos...] = model.pollution[pos...]   # edge-case, e.g. 1×1 grid
+        else
+            total = zero(eltype(model.pollution))
+            @inbounds for npos in neighbours
+                total += model.pollution[npos...]
             end
-
-            if num_neighbors > 0
-                new_pollution[x, y] = neighbor_pollution_sum / num_neighbors
-            else
-                new_pollution[x, y] = model.pollution[x, y] # Should not happen in a connected grid unless it's a 1x1 grid.
-            end
+            new_pollution[pos...] = total / length(neighbours)
         end
     end
 
-    # Update the model's pollution grid
-    model.pollution .= new_pollution # In-place update of the entire grid
+    # Commit the diffusion step in-place
+    model.pollution .= new_pollution
     return
 end

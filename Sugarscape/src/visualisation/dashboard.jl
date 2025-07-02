@@ -54,7 +54,7 @@ function create_dashboard()
   young(a) = a.age < 20
   male(a) = a.sex == :male
   female(a) = a.sex == :female
-  mated(a) = a.has_mated
+  reproduced(a) = a.has_reproduced
   infected(a) = length(a.diseases) > 0
 
   adata = [
@@ -65,7 +65,7 @@ function create_dashboard()
     (young, count),
     (male, count),
     (female, count),
-    (mated, count),
+    (reproduced, count),
     (infected, count)
   ]
 
@@ -127,7 +127,7 @@ function create_dashboard()
     adata=adata,
     mdata=mdata,
     alabels=["Wealthy Agents", "Medium Wealth", "Poor Agents", "Elderly",
-      "Young", "Males", "Females", "Mated", "Infected"],
+      "Young", "Males", "Females", "Reproduced", "Infected"],
     mlabels=["Agents", "Starvation Deaths", "Age Deaths", "Births",
       "Combat Kills", "Sugar Stolen", "Gini Coefficient",
       "Mean Sugar", "Total Sugar", "Cultural Entropy",
@@ -180,7 +180,7 @@ function create_dashboard()
         agent.age,
         agent.max_age,
         agent.sex,
-        agent.has_mated,
+        agent.has_reproduced,
         round(agent.initial_sugar, digits=2),
         round(agent.total_inheritance_received, digits=2),
         length(agent.culture) > 0 ? join(Int.(agent.culture), "") : "N/A"
@@ -192,7 +192,7 @@ function create_dashboard()
       "Step: $(current_step[])",
       "Total Agents: $(length(agent_list))",
       "",
-      "ID | Pos      | Vis | Met | Sugar  | Age | MaxAge | Sex    | Mated | InitSug | Inherit | Culture"
+      "ID | Pos      | Vis | Met | Sugar  | Age | MaxAge | Sex    | Reproduced | InitSug | Inherit | Culture"
     ]
 
     for agent_data in agents_data
@@ -269,7 +269,7 @@ function create_dashboard()
         age=[a.age for a in agent_list],
         max_age=[a.max_age for a in agent_list],
         sex=[a.sex for a in agent_list],
-        has_mated=[a.has_mated for a in agent_list],
+        has_reproduced=[a.has_reproduced for a in agent_list],
         initial_sugar=[a.initial_sugar for a in agent_list],
         total_inheritance_received=[a.total_inheritance_received for a in agent_list],
         culture=[length(a.culture) > 0 ? join(Int.(a.culture), "") : "" for a in agent_list],

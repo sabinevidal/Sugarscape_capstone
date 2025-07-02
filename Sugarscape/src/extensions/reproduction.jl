@@ -1,8 +1,8 @@
-function mating!(model)
+function reproduction!(model)
   agents = collect(allagents(model))
   shuffle!(abmrng(model), agents)  # for fairness
   for agent in agents
-    agent.has_mated && continue  # already mated
+    agent.has_reproduced && continue  # already reproduced
 
     is_fertile(agent, model) || continue
 
@@ -10,7 +10,7 @@ function mating!(model)
     for partner in neighbors
       if partner.id != agent.id &&
          is_fertile(partner, model) &&
-         !partner.has_mated &&
+         !partner.has_reproduced &&
          agent.sex != partner.sex
 
         free_cells = collect(empty_nearby_positions(agent, model))
@@ -26,9 +26,9 @@ function mating!(model)
         push!(agent.children, child_id)
         push!(partner.children, child_id)
 
-        # Mark both as having mated
-        agent.has_mated = true
-        partner.has_mated = true
+        # Mark both as having reproduced
+        agent.has_reproduced = true
+        partner.has_reproduced = true
 
         break  # only one partner per tick
       end

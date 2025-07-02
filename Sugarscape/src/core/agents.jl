@@ -7,13 +7,12 @@ using Agents
     age::Int
     max_age::Int
     sex::Symbol
-    has_mated::Bool
+    has_reproduced::Bool
     initial_sugar::Float64
     children::Vector{Int}  # IDs of child agents
     total_inheritance_received::Float64  # Track total inheritance received
     culture::BitVector  # Cultural tag
     loans::Vector{Tuple{Int,Int,Float64,Int}} = Tuple{Int,Int,Float64,Int}[]   # empty
     diseases::Vector{BitVector} = BitVector[]       # empty
-    # Initialise with an empty immunity vector; correct length supplied at agent creation.
-    immunity::BitVector = falses(0)
+    immunity::BitVector = falses(0)  # empty
 end

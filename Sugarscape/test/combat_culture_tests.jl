@@ -8,11 +8,11 @@ function add_custom_agent!(model, pos; sugar, vision=3, metabolism=1, culture_bi
   age = 0
   max_age = 100
   sex = :male
-  has_mated = false
+  has_reproduced = false
   children = Int[]
   total_inheritance_received = 0.0
   culture = BitVector(culture_bits)
-  add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(48))
+  add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(48))
 end
 
 @testset "Combat Rule C-α" begin

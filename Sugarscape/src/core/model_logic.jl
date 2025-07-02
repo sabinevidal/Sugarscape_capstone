@@ -6,7 +6,7 @@ function sugarscape(;
     gridspace_metric::Symbol=:manhattan,
     sugar_peaks=((10, 40), (40, 10)),
     growth_rate=1,
-    N=250,
+    N=100,
     w0_dist=(5, 25),
     metabolic_rate_dist=(1, 4),
     vision_dist=(1, 6),
@@ -15,6 +15,7 @@ function sugarscape(;
     seed=42,
     season_duration::Int=20, # Y time periods for season length
     winter_growth_divisor::Int=4, # Growth rate is growth_rate / winter_growth_divisor in winter
+    enable_seasonality::Bool=true, # Toggle seasonal growback on/off
     enable_pollution::Bool=false,
     pollution_production_rate::Float64=1.0, # α for pollution
     pollution_consumption_rate::Float64=1.0, # β for pollution
@@ -69,6 +70,7 @@ function sugarscape(;
         :winter_growth_divisor => winter_growth_divisor,
         :is_summer_top => true, # Initially summer in the top half
         :current_season_steps => 0,
+        :enable_seasonality => enable_seasonality,
         :enable_pollution => enable_pollution,
         :pollution => _pollution_values,
         :production_rate => pollution_production_rate, # α
@@ -126,7 +128,7 @@ function sugarscape(;
         max_age = rand(abmrng(model), max_age_dist[1]:max_age_dist[2])
         sugar = Float64(rand(abmrng(model), w0_dist[1]:w0_dist[2]))
         sex = rand(abmrng(model), (:male, :female))
-        has_mated = false
+        has_reproduced = false
         children = Int[]
         total_inheritance_received = 0.0
         culture = initialize_culture(culture_tag_length, model)
@@ -134,46 +136,50 @@ function sugarscape(;
         # Find a random empty position explicitly
         pos = random_empty(model)
         # Use add_agent! with explicit position and all fields
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(disease_immunity_length))
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(disease_immunity_length))
     end
     return model
 end
 
-function _model_step!(model) # Renamed
-    # growback!(model) # Call the function from environment.jl
-    seasonal_growback!(model) # Call the new seasonal growback function
+function _model_step!(model)
+    # Apply growback according to seasonality setting
+    if model.enable_seasonality
+        seasonal_growback!(model) # Seasonal growback
 
-    # Season flipping logic
-    model.current_season_steps += 1
-    if model.current_season_steps >= model.season_duration
-        model.is_summer_top = !model.is_summer_top
-        model.current_season_steps = 0
-    end
-
-    # Pollution diffusion logic
-    if model.enable_pollution
-        model.current_pollution_diffusion_steps += 1
-        if model.current_pollution_diffusion_steps >= model.pollution_diffusion_interval
-            diffuse_pollution!(model)
-            model.current_pollution_diffusion_steps = 0
+        # Season flipping logic
+        model.current_season_steps += 1
+        if model.current_season_steps >= model.season_duration
+            model.is_summer_top = !model.is_summer_top
+            model.current_season_steps = 0
         end
+    else
+        growback!(model) # Standard (non-seasonal) growback
     end
 
     # Reset per-tick combat movement registry (used to avoid double moves)
     model.agents_moved_combat = Set{Int}()
 
-    # Reproduction logic
-    if model.enable_reproduction
-        # Reset mating status flags from the previous tick so we can observe which agents mate this step during data export.
-        for a in allagents(model)
-            a.has_mated = false
-        end
-        mating!(model)
-    end
-
     # Combat logic - happens before regular movement to avoid conflicts
     if model.enable_combat
         combat!(model)
+    end
+
+    # Pollution diffusion logic (executed after movement/combat but before life-cycle actions)
+    if model.enable_pollution
+        model.current_pollution_diffusion_steps += 1
+        if model.current_pollution_diffusion_steps >= model.pollution_diffusion_interval
+            pollution_diffusion!(model)
+            model.current_pollution_diffusion_steps = 0
+        end
+    end
+
+    # Life-cycle: Reproduction (after movement/combat & diffusion)
+    if model.enable_reproduction
+        # Reset reproduction status flags from the previous tick so we can observe which agents reproduce this step during data export.
+        for a in allagents(model)
+            a.has_reproduced = false
+        end
+        reproduction!(model)
     end
 
     # Culture transmission logic
@@ -181,17 +187,17 @@ function _model_step!(model) # Renamed
         culture_spread!(model)
     end
 
-    # Disease logic
-    if model.enable_disease
-        disease_transmission!(model)
-        immune_response!(model)
-    end
-
-    # Credit logic
+    # Credit logic (PayLoans → MakeLoans) – runs before disease module
     if model.enable_credit
         tick = abmtime(model)               # current discrete time
         pay_loans!(model, tick)
         make_loans!(model, tick)
+    end
+
+    # Disease logic
+    if model.enable_disease
+        disease_transmission!(model)
+        immune_response!(model)
     end
 
     return
@@ -201,11 +207,11 @@ function _agent_step!(agent, model)
     # Skip the Movement (M) rule if the agent already moved in the combat phase
     # As "the combat rule is really an extension of the movement rule" (Kehoe, 2016, p.37 )
     if !(model.enable_combat && (agent.id in model.agents_moved_combat))
-        move_and_collect!(agent, model)
+        movement!(agent, model)
     end
 
     if !model.enable_reproduction
-        replacement!(agent, model)
+        death_replacement!(agent, model)
     else
         # With reproduction enabled, use centralized death! function for inheritance
         if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
@@ -235,7 +241,7 @@ end
 # Movement (M) Rule
 Look out as far as vision permits in the four principal lattice directions and identify the unoccupied site(s) having the most sugar; If the greatest sugar value appears on multiple sites then select the nearest one; Move to this site; Collect all the sugar at this new position.
 """
-function move_and_collect!(agent, model)
+function movement!(agent, model)
     # Start with current position as default
     current_pos_welfare = model.enable_pollution ? welfare(agent.pos, model) : model.sugar_values[agent.pos...]
     best_positions = [(agent.pos, current_pos_welfare, 0)] # (position, welfare_or_sugar, distance)
@@ -323,7 +329,7 @@ end
 Replacement (R[a,b]) Rule
 When an agent dies it is replaced by an agent of age 0 having random genetic position on the sugarscape. random initial endowment, and a maximum age randomly selected from the range [a,b]. (Epstein & Axtell, 1996, p 32-33)
 """
-function replacement!(agent, model)
+function death_replacement!(agent, model)
     if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
         # Use centralized death! function (inheritance won't apply since reproduction is disabled)
         cause = if agent.sugar <= 0 && agent.age >= agent.max_age
@@ -343,13 +349,13 @@ function replacement!(agent, model)
         max_age = rand(abmrng(model), model.max_age_dist[1]:model.max_age_dist[2])
         sugar = Float64(rand(abmrng(model), model.w0_dist[1]:model.w0_dist[2]))
         sex = rand(abmrng(model), (:male, :female))
-        has_mated = false
+        has_reproduced = false
         children = Int[]  # Empty children list
         total_inheritance_received = 0.0
         culture = initialize_culture(model.culture_tag_length, model)
 
         # Find a random empty position explicitly
         pos = random_empty(model)
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_mated, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(disease_immunity_length))
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(disease_immunity_length))
     end
 end

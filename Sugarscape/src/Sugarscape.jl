@@ -3,7 +3,6 @@ module Sugarscape
 using Agents, Random, CairoMakie, Observables, Statistics, Distributions
 
 # Core model components
-include("core/constants.jl")
 include("core/agents.jl")
 include("core/environment.jl")
 
@@ -45,7 +44,7 @@ export create_reproduction_dashboard
 export create_dashboard
 
 # Export reproduction functions
-export mating!, is_fertile
+export reproduction!, is_fertile
 
 # Export culture functions
 export culture_spread!, cultural_entropy, unique_cultures, mean_hamming_distance, cultural_islands
