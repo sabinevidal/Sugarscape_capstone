@@ -1,36 +1,40 @@
 function reproduction!(model)
   agents = collect(allagents(model))
   shuffle!(abmrng(model), agents)  # for fairness
-  for agent in agents
-    agent.has_reproduced && continue  # already reproduced
 
+  for agent in agents
+    agent.has_reproduced && continue
     is_fertile(agent, model) || continue
 
-    neighbors = nearby_agents(agent, model, 1)  # Von Neumann or Moore neighborhood
+    # LLM gating
+    should_act(agent, model, Val(:reproduce)) || continue
+
+    # First, try LLM-specified partner if any
+    partner_id = get_decision(agent, model).reproduce_with
+    if partner_id !== nothing && hasid(model, partner_id)
+      partner = model[partner_id]
+      if partner.id != agent.id &&
+         is_fertile(partner, model) &&
+         !partner.has_reproduced &&
+         agent.sex != partner.sex &&
+         should_act(partner, model, Val(:reproduce))
+
+        attempt_reproduction!(agent, partner, model)
+        continue  # agent finished
+      end
+    end
+
+    # Fallback to original neighbour scanning logic
+    neighbors = nearby_agents(agent, model, 1)
     for partner in neighbors
       if partner.id != agent.id &&
          is_fertile(partner, model) &&
          !partner.has_reproduced &&
-         agent.sex != partner.sex
+         agent.sex != partner.sex &&
+         should_act(partner, model, Val(:reproduce))
 
-        free_cells = collect(empty_nearby_positions(agent, model))
-        isempty(free_cells) && continue
-
-        # Choose one empty spot for child
-        child_pos = rand(abmrng(model), free_cells)
-
-        # Create child using add_agent! directly - this handles ID assignment automatically
-        child_id = create_child(agent, partner, child_pos, model)
-
-        # Add child ID to both parents' children lists
-        push!(agent.children, child_id)
-        push!(partner.children, child_id)
-
-        # Mark both as having reproduced
-        agent.has_reproduced = true
-        partner.has_reproduced = true
-
-        break  # only one partner per tick
+        attempt_reproduction!(agent, partner, model)
+        break
       end
     end
   end
@@ -87,4 +91,26 @@ function crossover(parent1_bits::BitVector, parent2_bits::BitVector, model)
   end
 
   return child_bits
+end
+
+"""
+    attempt_reproduction!(agent, partner, model)
+Core reproduction logic extracted so other modules (e.g. LLM-driven partner
+selection) can trigger the same behaviour without duplicating code.
+Returns the child ID on success, or `nothing` if no free cell was available.
+"""
+function attempt_reproduction!(agent, partner, model)
+  free_cells = collect(empty_nearby_positions(agent, model))
+  isempty(free_cells) && return nothing
+
+  child_pos = rand(abmrng(model), free_cells)
+  child_id = create_child(agent, partner, child_pos, model)
+
+  push!(agent.children, child_id)
+  push!(partner.children, child_id)
+
+  agent.has_reproduced = true
+  partner.has_reproduced = true
+
+  return child_id
 end

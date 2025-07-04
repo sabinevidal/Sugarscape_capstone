@@ -20,6 +20,10 @@ include("utils/metrics.jl")
 # core/model_logic.jl depends on core/agents.jl, environment & the extensions above
 include("core/model_logic.jl")
 
+# LLM integration utilities (populate_llm_decisions!)
+include("utils/llm_integration.jl")
+using .SugarscapeLLM: populate_llm_decisions!
+
 # visualisation/plotting.jl depends on core/model_logic.jl (for sugarscape constructor)
 # and utils/metrics.jl (for gini_coefficient)
 include("visualisation/plotting.jl")

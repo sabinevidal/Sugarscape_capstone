@@ -34,9 +34,30 @@ amt_req(a::SugarscapeAgent, model) = max(model.child_amount - a.sugar, 0)
 # ---------- loan origination ----------
 function make_loans!(model, step)
   for lender in allagents(model)
+    # LLM gating
+    should_act(lender, model, Val(:credit)) || continue
     avail = amt_avail(lender, model)
     avail == 0 && continue
+    # If LLM specified a partner, try them first
+    partner_id = get_decision(lender, model).credit_partner
+    if partner_id !== nothing && hasid(model, partner_id)
+      nbr = model[partner_id]
+      if nbr.pos in nearby_positions(lender, model, 1) && should_act(nbr, model, Val(:credit))
+        need = amt_req(nbr, model)
+        need == 0 && continue
+        amt = min(avail, need)
+        if amt > 0
+          push!(lender.loans, (lender.id, nbr.id, amt, step + model.duration))
+          push!(nbr.loans, (lender.id, nbr.id, amt, step + model.duration))
+          lender.sugar -= amt
+          nbr.sugar += amt
+          continue  # lender done for this tick
+        end
+      end
+    end
+
     for nbr in nearby_agents(lender, model, 1)   # von-Neumann neighbours
+      should_act(nbr, model, Val(:credit)) || continue
       need = amt_req(nbr, model)
       need == 0 && continue
       amt = min(avail, need)

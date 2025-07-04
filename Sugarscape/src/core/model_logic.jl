@@ -1,5 +1,62 @@
 using Agents, Random, Distributions
 
+# -----------------------------------------------------------------------------
+# LLM integration – Phase 1 core types & helpers (currently dormant)
+# -----------------------------------------------------------------------------
+
+const LLMDecision = NamedTuple{(
+        :move, :move_coords, :combat, :combat_target,
+        :credit, :credit_partner, :reproduce, :reproduce_with
+    ),Tuple{Bool,Union{Nothing,Tuple{Int,Int}},Bool,Union{Nothing,Int},
+        Bool,Union{Nothing,Int},Bool,Union{Nothing,Int}}}
+
+"""
+    should_act(agent, model, rule::Symbol) -> Bool
+Return `true` if the agent should carry out rule `R` in the current tick,
+according to the cached LLM decisions stored in `model.llm_decisions`.
+When LLM support is disabled or no decision entry exists for the agent we fall
+back to the default rule behaviour (`true`).
+When `use_llm_decisions=true` but no decision exists for the agent, an error is raised.
+"""
+function should_act(agent, model, ::Val{R}) where {R}
+    !model.use_llm_decisions && return true
+    if !haskey(model.llm_decisions, agent.id)
+        error("Agent $(agent.id) missing LLM decision when use_llm_decisions=true")
+    end
+    return getfield(model.llm_decisions[agent.id], R)
+end
+
+"""
+    get_decision(agent, model) -> LLMDecision
+Retrieve the cached `LLMDecision` for `agent`. When `use_llm_decisions=true` but no decision exists, an error is raised.
+"""
+function get_decision(agent, model)
+    if !haskey(model.llm_decisions, agent.id)
+        error("Agent $(agent.id) missing LLM decision when use_llm_decisions=true")
+    end
+    return model.llm_decisions[agent.id]
+end
+
+"""
+    idle!(agent, model)
+Perform a metabolism/ageing step when the agent elects not to move.
+This mirrors the side-effects of `movement!` but without changing position.
+"""
+function idle!(agent, model)
+    sugar_collected = model.sugar_values[agent.pos...]
+    agent.sugar += sugar_collected
+    model.sugar_values[agent.pos...] = 0
+
+    agent.sugar -= agent.metabolism
+    agent.age += 1
+
+    if model.enable_pollution
+        produced_pollution = model.production_rate * sugar_collected +
+                             model.consumption_rate * agent.metabolism
+        model.pollution[agent.pos...] += produced_pollution
+    end
+end
+
 "Create a sugarscape ABM"
 function sugarscape(;
     dims=(50, 50),
@@ -110,6 +167,13 @@ function sugarscape(;
         :interest_rate => interest_rate,
         :duration => duration,
         :child_amount => child_amount,
+        # ========== LLM integration (phase-1 core props) ==========
+        :use_llm_decisions => false,
+        :llm_decisions => Dict{Int,LLMDecision}(),
+        :llm_api_key => "",
+        :llm_model => "gpt-4",
+        :llm_temperature => 0.0,
+        :llm_max_tokens => 1000,
     )
     model = StandardABM(
         SugarscapeAgent,
@@ -136,12 +200,17 @@ function sugarscape(;
         # Find a random empty position explicitly
         pos = random_empty(model)
         # Use add_agent! with explicit position and all fields
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(disease_immunity_length))
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
     end
     return model
 end
 
 function _model_step!(model)
+    # If LLM decision-making is enabled, populate the cache for this tick
+    if model.use_llm_decisions
+        populate_llm_decisions!(model)
+    end
+
     # Apply growback according to seasonality setting
     if model.enable_seasonality
         seasonal_growback!(model) # Seasonal growback
@@ -207,7 +276,18 @@ function _agent_step!(agent, model)
     # Skip the Movement (M) rule if the agent already moved in the combat phase
     # As "the combat rule is really an extension of the movement rule" (Kehoe, 2016, p.37 )
     if !(model.enable_combat && (agent.id in model.agents_moved_combat))
-        movement!(agent, model)
+        # LLM-gated movement rule
+        if should_act(agent, model, Val(:move))
+            target = get_decision(agent, model).move_coords
+            if target === nothing
+                movement!(agent, model)
+            else
+                try_llm_move!(agent, model, target)
+            end
+        else
+            # Agent deliberately stays put but still metabolises and ages
+            idle!(agent, model)
+        end
     end
 
     if !model.enable_reproduction
@@ -356,6 +436,51 @@ function death_replacement!(agent, model)
 
         # Find a random empty position explicitly
         pos = random_empty(model)
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(disease_immunity_length))
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
+    end
+end
+
+# -----------------------------------------------------------------------------
+# Movement helpers used by the forthcoming LLM integration
+# -----------------------------------------------------------------------------
+
+"""
+    _do_move!(agent, model, target_pos)
+Low-level movement routine extracted from `movement!` so that both vanilla and
+LLM-directed moves share identical side-effects (sugar collection, ageing,
+optional pollution formation).
+"""
+function _do_move!(agent, model, target_pos)
+    sugar_collected = model.sugar_values[target_pos...]
+    move_agent!(agent, target_pos, model)
+    agent.sugar += (sugar_collected - agent.metabolism)
+    model.sugar_values[target_pos...] = 0
+    agent.age += 1
+
+    if model.enable_pollution
+        produced_pollution = model.production_rate * sugar_collected +
+                             model.consumption_rate * agent.metabolism
+        model.pollution[target_pos...] += produced_pollution
+    end
+end
+
+"""
+    try_llm_move!(agent, model, target_pos)
+Attempts to move an agent to an LLM-specified position. If the position is
+invalid (occupied, outside vision, or off-grid) the function gracefully falls
+back to the standard `movement!` rule.
+"""
+function try_llm_move!(agent, model, target_pos)
+    # ensure target_pos is a Tuple{Int,Int}
+    !(target_pos isa Tuple{Int,Int}) && return movement!(agent, model)
+
+    # must be empty and within vison and inside bounds
+    if isempty(target_pos, model) &&
+       euclidean_distance(agent.pos, target_pos) <= agent.vision &&
+       all(1 .<= target_pos .<= size(getfield(model, :space)))
+
+        _do_move!(agent, model, target_pos)
+    else
+        movement!(agent, model)
     end
 end
