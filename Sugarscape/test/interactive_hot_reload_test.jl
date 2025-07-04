@@ -109,7 +109,7 @@ println("5. ✓ File restoration works")
 
 println("\n=== Development Workflow ===")
 println("For interactive development:")
-println("1. Start the development dashboard: julia --project=. scripts/dev_dashboard.jl")
+println("1. Start the development dashboard: julia --project=. scripts/ai_dashboard.jl")
 println("2. Edit src/utils/llm_integration.jl in your preferred editor")
 println("3. Save the file")
 println("4. Click 'Reset' in the dashboard (or wait for auto-detection)")

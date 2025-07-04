@@ -1,12 +1,46 @@
 #!/usr/bin/env julia
 
-println("Loading Sugarscape Dashboard...")
+"""
+Sugarscape Unified Dashboard Launcher
+=====================================
+
+Single entry point for all Sugarscape dashboard types.
+Usage:
+  julia run_dashboard.jl [dashboard_type]
+
+Where dashboard_type can be:
+  - main (default): Comprehensive interactive dashboard
+  - custom: Basic metrics with custom plots
+  - reproduction: Population dynamics focused
+"""
+
+# Parse command line arguments
+dashboard_type = length(ARGS) >= 1 ? ARGS[1] : "main"
+
+if dashboard_type ∉ ["main", "custom", "reproduction"]
+  println("Error: Invalid dashboard type '$(dashboard_type)'")
+  println("Valid options: main, custom, reproduction")
+  exit(1)
+end
+
+println("Loading Sugarscape $(titlecase(dashboard_type)) Dashboard...")
 
 # Get the project root directory
 project_root = dirname(dirname(@__DIR__)) # This should be Sugarscape_capstone
 sugarscape_module_dir = joinpath(project_root, "Sugarscape", "src")
-dashboard_file = joinpath(project_root, "Sugarscape", "src", "visualisation", "dashboard.jl")
 
+# Determine which dashboard file to load
+if dashboard_type == "main"
+  dashboard_file = joinpath(project_root, "Sugarscape", "src", "visualisation", "dashboard.jl")
+  create_function_name = "create_dashboard"
+else
+  dashboard_file = joinpath(project_root, "Sugarscape", "src", "visualisation", "interactive.jl")
+  if dashboard_type == "custom"
+    create_function_name = "create_custom_dashboard"
+  elseif dashboard_type == "reproduction"
+    create_function_name = "create_reproduction_dashboard"
+  end
+end
 
 # Validate paths exist
 if !isdir(sugarscape_module_dir)
@@ -14,23 +48,29 @@ if !isdir(sugarscape_module_dir)
 end
 
 if !isfile(dashboard_file)
-  error("Could not find dashboard.jl: $(dashboard_file). Ensure script is run from project root or paths are correct.")
+  error("Could not find dashboard file: $(dashboard_file). Ensure script is run from project root or paths are correct.")
 end
 
 # Add to load path and include
 push!(LOAD_PATH, sugarscape_module_dir)
 include(dashboard_file)
 
-println("Creating interactive dashboard...")
+println("Creating $(dashboard_type) interactive dashboard...")
 
-# Create and display the dashboard
-fig, abmobs = Sugarscape.create_dashboard()
+# Create and display the dashboard using the appropriate function
+if dashboard_type == "main"
+  fig, abmobs = Sugarscape.create_dashboard()
+elseif dashboard_type == "custom"
+  fig, abmobs = Sugarscape.create_custom_dashboard()
+elseif dashboard_type == "reproduction"
+  fig, abmobs = Sugarscape.create_reproduction_dashboard()
+end
 
 # Display both the figure and the ABM object
 display(fig)
 display(abmobs)
 
-println("Interactive dashboard window displayed.")
+println("Interactive $(dashboard_type) dashboard window displayed.")
 println("Use the controls to step through the simulation or run it continuously.")
 println("Press Ctrl+C to exit.")
 

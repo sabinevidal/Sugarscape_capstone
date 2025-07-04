@@ -30,7 +30,7 @@ function create_custom_dashboard()
     :enable_pollution => (false, true),
   )
 
-  model = Sugarscape.sugarscape(; enable_pollution=Bool(initial_pollution_enabled_numeric))
+  model = Sugarscape.sugarscape(; enable_pollution=Bool(initial_pollution_enabled_numeric), use_llm_decisions=false)
 
   # Set up data collection for the ABMObservable
   # For adata, we collect aggregated statistics (following Agents.jl patterns)
@@ -193,6 +193,7 @@ function create_reproduction_dashboard()
     fertility_age_range=(15, 50),
     initial_child_sugar=8,
     N=200,
+    use_llm_decisions=false,
   )
 
   # Set up data collection for the ABMObservable

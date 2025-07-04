@@ -31,9 +31,9 @@ function check_environment()
   required_files = [
     "src/Sugarscape.jl",
     "src/utils/llm_integration.jl",
-    "scripts/dev_llm_prompt.jl",
-    "scripts/dev_dashboard.jl",
-    "scripts/dev_performance_test.jl",
+    "scripts/ai_prompt.jl",
+    "scripts/ai_dashboard.jl",
+    "scripts/ai_performance_test.jl",
     ".env.example"
   ]
 
@@ -67,17 +67,17 @@ end
 function show_menu()
   println("🚀 Available Development Tools:")
   println()
-  println("1. 🧪 CLI Testing Harness")
+  println("1. 🧪 AI Prompt Testing Harness")
   println("   Test individual agent prompts with detailed output")
-  println("   → julia --project=. scripts/dev_llm_prompt.jl")
+  println("   → julia --project=. scripts/ai_prompt.jl")
   println()
-  println("2. 📊 Development Dashboard")
+  println("2. 📊 AI Dashboard")
   println("   Interactive dashboard with LLM integration and hot-reloading")
-  println("   → julia --project=. scripts/dev_dashboard.jl")
+  println("   → julia --project=. scripts/ai_dashboard.jl")
   println()
-  println("3. ⚡ Performance Benchmarks")
+  println("3. ⚡ AI Performance Benchmarks")
   println("   Comprehensive performance testing and analysis")
-  println("   → julia --project=. scripts/dev_performance_test.jl")
+  println("   → julia --project=. scripts/ai_performance_test.jl")
   println()
   println("4. 📚 Documentation")
   println("   Development guide and best practices")
@@ -145,7 +145,7 @@ function launch_cli_tester()
   end
 
   # Load and run the CLI tester
-  include("dev_llm_prompt.jl")
+  include("ai_prompt.jl")
 end
 
 function launch_dashboard()
@@ -157,7 +157,7 @@ function launch_dashboard()
   end
 
   # Load and run the dashboard
-  include("dev_dashboard.jl")
+  include("ai_dashboard.jl")
 end
 
 function launch_benchmarks()
@@ -169,7 +169,7 @@ function launch_benchmarks()
   end
 
   # Load and run the benchmarks
-  include("dev_performance_test.jl")
+  include("ai_performance_test.jl")
 end
 
 function show_documentation()

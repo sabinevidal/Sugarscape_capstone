@@ -12,14 +12,14 @@ const LLMDecision = NamedTuple{(
 
 """
     should_act(agent, model, rule::Symbol) -> Bool
-Return `true` if the agent should carry out rule `R` in the current tick,
-according to the cached LLM decisions stored in `model.llm_decisions`.
-When LLM support is disabled or no decision entry exists for the agent we fall
-back to the default rule behaviour (`true`).
+Return `true` if the agent should use LLM logic for rule `R` in the current tick.
+Returns `false` when LLM support is disabled or when LLM decides the agent should not act.
 When `use_llm_decisions=true` but no decision exists for the agent, an error is raised.
 """
 function should_act(agent, model, ::Val{R}) where {R}
-    !model.use_llm_decisions && return true
+    # If LLM is disabled, return false (use regular logic)
+    !model.use_llm_decisions && return false
+    # If LLM is enabled, check for cached decision
     if !haskey(model.llm_decisions, agent.id)
         error("Agent $(agent.id) missing LLM decision when use_llm_decisions=true")
     end
@@ -100,6 +100,12 @@ function sugarscape(;
     interest_rate::Float64=0.10,
     duration::Int=10,
     child_amount::Int=25,
+    # LLM Integration Parameters
+    use_llm_decisions::Bool=false,
+    llm_api_key::String="",
+    llm_model::String="gpt-4",
+    llm_temperature::Float64=0.0,
+    llm_max_tokens::Int=1000,
 )
     # Convert sugar_caps output to Float64 and ensure _sugar_values is also Float64
     _sugar_capacities_int = sugar_caps(dims, sugar_peaks, max_sugar, 6) # Get as Int first
@@ -168,12 +174,12 @@ function sugarscape(;
         :duration => duration,
         :child_amount => child_amount,
         # ========== LLM integration (phase-1 core props) ==========
-        :use_llm_decisions => false,
+        :use_llm_decisions => use_llm_decisions,
         :llm_decisions => Dict{Int,LLMDecision}(),
-        :llm_api_key => "",
-        :llm_model => "gpt-4",
-        :llm_temperature => 0.0,
-        :llm_max_tokens => 1000,
+        :llm_api_key => llm_api_key,
+        :llm_model => llm_model,
+        :llm_temperature => llm_temperature,
+        :llm_max_tokens => llm_max_tokens,
     )
     model = StandardABM(
         SugarscapeAgent,
@@ -276,8 +282,9 @@ function _agent_step!(agent, model)
     # Skip the Movement (M) rule if the agent already moved in the combat phase
     # As "the combat rule is really an extension of the movement rule" (Kehoe, 2016, p.37 )
     if !(model.enable_combat && (agent.id in model.agents_moved_combat))
-        # LLM-gated movement rule
+        # Movement logic with centralized LLM guard
         if should_act(agent, model, Val(:move))
+            # LLM is enabled and says to move - use LLM coordinates if available
             target = get_decision(agent, model).move_coords
             if target === nothing
                 movement!(agent, model)
@@ -285,8 +292,14 @@ function _agent_step!(agent, model)
                 try_llm_move!(agent, model, target)
             end
         else
-            # Agent deliberately stays put but still metabolises and ages
-            idle!(agent, model)
+            # Either LLM is disabled OR LLM says don't move
+            if model.use_llm_decisions
+                # LLM is enabled but says don't move - agent stays put
+                idle!(agent, model)
+            else
+                # LLM is disabled - use regular movement logic
+                movement!(agent, model)
+            end
         end
     end
 

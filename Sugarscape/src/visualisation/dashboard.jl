@@ -29,6 +29,7 @@ function create_dashboard()
     enable_pollution=false,
     enable_credit=false,
     enable_disease=false,
+    use_llm_decisions=false,
     seed=42
   )
 
