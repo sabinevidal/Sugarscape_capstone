@@ -348,36 +348,24 @@ function launch_llm_prompt_tester()
   end
 
   try
-    # Get the correct paths - we're running from Sugarscape directory
-    sugarscape_module_dir = joinpath(pwd(), "src")
-    testing_file = joinpath(pwd(), "src", "visualisation", "testing.jl")
+    # Path to the dedicated launcher script (same directory as this file)
+    tester_script = joinpath(dirname(@__FILE__), "run_llm_prompt_tester.jl")
 
-    # Validate paths exist
-    if !isdir(sugarscape_module_dir)
-      error("Could not find Sugarscape module directory: $(sugarscape_module_dir)")
+    if !isfile(tester_script)
+      error("Could not find run_llm_prompt_tester.jl: $(tester_script)")
     end
 
-    if !isfile(testing_file)
-      error("Could not find testing.jl: $(testing_file)")
+    # Execute the script and capture its return value
+    original_args = copy(ARGS)
+    empty!(ARGS)           # The tester script does not expect any CLI arguments
+    try
+      ctx_resp_decision = include(tester_script)
+    finally
+      empty!(ARGS)
+      append!(ARGS, original_args)
     end
 
-    # Add to load path and include (following run_dashboard.jl pattern)
-    if !(sugarscape_module_dir in LOAD_PATH)
-      push!(LOAD_PATH, sugarscape_module_dir)
-    end
-    include(testing_file)
-
-    println("Features:")
-    println("  - Single-agent model (1 agent, 5x5 grid)")
-    println("  - Deterministic LLM settings (temperature=0.0)")
-    println("  - Detailed API response analysis")
-    println("  - Strict vs safe parsing comparison")
-    println("  - Error handling demonstration")
-    println()
-
-    # Run the interactive test
-    ctx, resp, decision = Sugarscape.run_llm_prompt_test_interactive()
-    return ctx, resp, decision
+    return ctx_resp_decision
   catch e
     println("❌ Error launching LLM prompt tester:")
     println("Error: $(e)")
@@ -397,7 +385,7 @@ function launch_llm_benchmark()
   try
     # Get the correct paths - we're running from Sugarscape directory
     sugarscape_module_dir = joinpath(pwd(), "src")
-    performance_test_file = joinpath(pwd(), "src", "visualisation", "performance_test.jl")
+    performance_test_file = joinpath(pwd(), "src", "visualisation", "performance.jl")
 
     # Validate paths exist
     if !isdir(sugarscape_module_dir)
@@ -405,7 +393,7 @@ function launch_llm_benchmark()
     end
 
     if !isfile(performance_test_file)
-      error("Could not find performance_test.jl: $(performance_test_file)")
+      error("Could not find performance.jl: $(performance_test_file)")
     end
 
     # Add to load path and include (following run_dashboard.jl pattern)
@@ -415,7 +403,7 @@ function launch_llm_benchmark()
     include(performance_test_file)
 
     println("Starting comprehensive LLM performance testing...")
-    results, fig = Sugarscape.run_performance_test_interactive()
+    results, fig = run_performance_test_interactive()
 
     display(fig)
 

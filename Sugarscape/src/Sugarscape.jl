@@ -34,6 +34,15 @@ include("visualisation/interactive.jl")
 # visualisation/dashboard.jl provides debugging dashboard functionality
 include("visualisation/dashboard.jl")
 
+# Testing utilities for LLM integration
+include("visualisation/testing.jl")
+
+# Performance testing utilities
+include("visualisation/performance.jl")
+
+# AI dashboards
+include("visualisation/ai_dashboards.jl")
+
 # Public API
 export SugarscapeAgent
 export sugarscape
@@ -64,5 +73,15 @@ export disease_transmission!, immune_response!
 
 # Export credit functions
 export make_loans!, pay_loans!
+
+# Export testing functions
+export test_single_agent_llm_prompt, run_llm_prompt_test_interactive
+export test_single_agent_prompt
+
+# Export performance testing functions
+export run_performance_test_interactive
+
+# Export AI dashboard functions
+export create_ai_dashboard
 
 end # module Sugarscape

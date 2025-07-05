@@ -1,7 +1,7 @@
 using Agents, Random, Distributions
 
 # -----------------------------------------------------------------------------
-# LLM integration – Phase 1 core types & helpers (currently dormant)
+# LLM integration
 # -----------------------------------------------------------------------------
 
 const LLMDecision = NamedTuple{(
