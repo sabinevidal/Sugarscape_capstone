@@ -1,15 +1,14 @@
 module SugarscapeLLM
 
 ###############################################################################
-# Phase-2 LLM integration scaffold                                           #
+# LLM integration scaffold                                                   #
 #                                                                            #
 # This file provides non-intrusive helper utilities for retrieving decisions #
 # from an OpenAI-compatible endpoint and caching them on the Sugarscape      #
-# `model`.  At this stage the rest of the ABM does not yet consume those     #
-# decisions – that is introduced in Phase 3.                                 #
+# `model`.                                                                   #
 ###############################################################################
 
-using HTTP, JSON, Logging
+using HTTP, JSON, Logging, OpenAI
 using ..Agents: nearby_positions, nearby_agents, allagents, isempty
 
 # Parent module alias for convenience
@@ -117,7 +116,7 @@ You are an AI controlling agents in a Sugarscape simulation. For each agent, dec
 4. REPRODUCE: Choose whether to reproduce with a neighbour (if enabled)
 
 Return a JSON array where each element has the form
-{
+agent_id: {
   \"move\": boolean,
   \"move_coords\": [x,y] | null,
   \"combat\": boolean,
@@ -131,61 +130,30 @@ Return a JSON array where each element has the form
 
   user_prompt = "Agent contexts:\n" * JSON.json(contexts)
 
-  body = Dict(
-    "model" => model.llm_model,
-    "messages" => [
+  # Call the OpenAI Chat Completion endpoint via OpenAI.jl helper
+  resp = OpenAI.create_chat(
+    model.llm_api_key,
+    model.llm_model,
+    [
       Dict("role" => "system", "content" => system_prompt),
       Dict("role" => "user", "content" => user_prompt),
-    ],
-    "temperature" => model.llm_temperature,
-    "max_tokens" => model.llm_max_tokens,
+    ];
+    temperature=model.llm_temperature,
   )
+  # `resp.response` already contains the parsed JSON returned by the API
+  j = resp.response
 
-  headers = [
-    "Authorization" => "Bearer $(model.llm_api_key)",
-    "Content-Type" => "application/json",
-  ]
-
-  local resp
-  try
-    resp = HTTP.post("https://api.openai.com/v1/chat/completions", headers, JSON.json(body))
-  catch err
-    if isa(err, HTTP.StatusError)
-      response_body = String(err.response.body)
-      throw(LLMAPIError("OpenAI API HTTP error: $(err.status) - $(err.message)",
-        err.status, response_body))
-    elseif isa(err, HTTP.ConnectError)
-      throw(LLMAPIError("Failed to connect to OpenAI API: $(err)", nothing, nothing))
-    elseif isa(err, HTTP.TimeoutError)
-      throw(LLMAPIError("OpenAI API request timed out: $(err)", nothing, nothing))
-    else
-      throw(LLMAPIError("Unexpected HTTP error during OpenAI call: $(err)", nothing, nothing))
-    end
-  end
-
-  if resp.status != 200
-    response_body = String(resp.body)
-    throw(LLMAPIError("OpenAI API call failed with status $(resp.status)",
-      resp.status, response_body))
-  end
-
-  local j
-  try
-    j = JSON.parse(String(resp.body))
-  catch err
-    throw(LLMAPIError("Failed to parse OpenAI API response as JSON: $(err)",
-      resp.status, String(resp.body)))
-  end
+  println(j)
 
   # Validate response structure
   if !haskey(j, "choices") || isempty(j["choices"])
     throw(LLMAPIError("OpenAI API response missing 'choices' field or choices empty",
-      resp.status, String(resp.body)))
+      nothing, String(j)))
   end
 
   if !haskey(j["choices"][1], "message") || !haskey(j["choices"][1]["message"], "content")
     throw(LLMAPIError("OpenAI API response missing message content",
-      resp.status, String(resp.body)))
+      nothing, String(j)))
   end
 
   content = j["choices"][1]["message"]["content"]
@@ -247,8 +215,20 @@ All required boolean fields must be present and valid.
 Missing fields or invalid types will throw LLMSchemaError or LLMValidationError.
 """
 function _strict_parse_decision(obj, agent_id)
-  # Validate object is a dictionary
-  if !isa(obj, Dict)
+  # Accept two formats:
+  # 1. Direct decision dict {"move"=>…, …}
+  # 2. Wrapper dict {"<agent_id>" => { …decision… }} as occasionally returned
+  #    by LLMs following an alternative schema.
+
+  # Ensure we are looking at the actual decision dictionary
+  if isa(obj, Dict)
+    if length(obj) == 1
+      inner_key, inner_val = first(obj)
+      if inner_key == string(agent_id) && isa(inner_val, Dict)
+        obj = inner_val  # unwrap the decision
+      end
+    end
+  else
     throw(LLMSchemaError("Decision object is not a dictionary", agent_id, obj))
   end
 
@@ -356,6 +336,8 @@ function populate_llm_decisions!(model)
 
   # Build contexts
   contexts = [build_agent_context(a, model) for a in allagents(model)]
+
+  println("contexts: $(contexts)")
 
   if isempty(contexts)
     throw(LLMValidationError("No agents found to generate decisions for", "", nothing, nothing))

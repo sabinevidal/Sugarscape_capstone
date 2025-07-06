@@ -2,7 +2,7 @@
 
 julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "2f86769de690246dd2f6cc3cbe1f288664ba9bc3"
+project_hash = "6e5f2ed6c6b4399d09e49cca28dfaf9be8dfb58b"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -412,6 +412,12 @@ version = "0.25.120"
 git-tree-sha1 = "7442a5dfe1ebb773c29cc2962a8980f47221d76c"
 uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 version = "0.9.5"
+
+[[deps.DotEnv]]
+deps = ["PrecompileTools"]
+git-tree-sha1 = "92e88cb68a5b10545234f46dfaeb2fa8a8a50c45"
+uuid = "4dc1fcf4-5e3b-5448-94ab-0c38ec0385c1"
+version = "1.0.0"
 
 [[deps.Downloads]]
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
@@ -1273,7 +1279,9 @@ version = "1.7.1"
 
 [[deps.OpenAI]]
 deps = ["Dates", "HTTP", "JSON3"]
-git-tree-sha1 = "d69de972e2c9140a42afc83a9e3331826d73e27e"
+git-tree-sha1 = "c98f24388c05d4a46f2ba4e55605fcedcf6fc7c8"
+repo-rev = "main"
+repo-url = "https://github.com/JuliaML/OpenAI.jl.git"
 uuid = "e9f21f70-7185-4079-aca2-91159181367c"
 version = "0.10.1"
 

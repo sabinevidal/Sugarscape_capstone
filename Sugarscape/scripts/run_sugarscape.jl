@@ -1,5 +1,21 @@
 #!/usr/bin/env julia
 
+# -----------------------------------------------------------------------------
+# Command-line flags                                                            #
+# -----------------------------------------------------------------------------
+# The launcher now supports an optional `--ai` (or `-a`) switch that forces the
+# simulation to use the LLM-enabled model logic.  Internally we set the
+# `SUGARSCAPE_USE_LLM` environment variable so the unified `Sugarscape.sugarscape`
+# constructor picks the correct backend.  The flag is removed from `ARGS` to
+# avoid interfering with existing menu handling later in the script.
+use_ai_flag = any(arg -> arg in ["--ai", "-a"], ARGS)
+if use_ai_flag
+  ENV["SUGARSCAPE_USE_LLM"] = "true"
+  # Strip the flag from ARGS so downstream logic remains unchanged.
+  filter!(arg -> !(arg in ["--ai", "-a"]), ARGS)
+  println("🤖 AI mode enabled – LLM decisions will be used where supported.")
+end
+
 """
 Sugarscape Unified Launcher
 ===========================

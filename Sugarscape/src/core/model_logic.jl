@@ -1,4 +1,6 @@
 using Agents, Random, Distributions
+using DotEnv
+DotEnv.load!()
 
 # -----------------------------------------------------------------------------
 # LLM integration
@@ -102,8 +104,8 @@ function sugarscape(;
     child_amount::Int=25,
     # LLM Integration Parameters
     use_llm_decisions::Bool=false,
-    llm_api_key::String="",
-    llm_model::String="gpt-4",
+    llm_api_key::AbstractString=get(ENV, "OPENAI_API_KEY", ""),
+    llm_model::String=get(ENV, "LLM_MODEL", "gpt-4.1-nano"),
     llm_temperature::Float64=0.0,
     llm_max_tokens::Int=1000,
 )
@@ -208,13 +210,38 @@ function sugarscape(;
         # Use add_agent! with explicit position and all fields
         add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, sugar, children, total_inheritance_received, culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
     end
+
+    # -------------------------------------------------------------------
+    # Pre-populate LLM decisions so that tick-0 agent steps already have
+    # valid cached actions.  This prevents the "missing LLM decision" error
+    # that surfaced when the scheduler executes all `agent_step!` calls
+    # before running `_model_step!` in the first iteration.
+    # -------------------------------------------------------------------
+    if use_llm_decisions
+        try
+            populate_llm_decisions!(model)
+            @info "Initial LLM decisions populated for $(length(model.llm_decisions)) agents"
+        catch e
+            # Fail fast when strict mode is enabled.
+            if isa(e, Exception)
+                rethrow()
+            end
+        end
+    end
+
     return model
 end
 
 function _model_step!(model)
+    # DEBUG: log entry into model step
+    println("DEBUG _model_step!: tick=$(abmtime(model)), llm_decisions_count=$(length(model.llm_decisions))")
     # If LLM decision-making is enabled, populate the cache for this tick
+
+    println("model: $(model)")
     if model.use_llm_decisions
         populate_llm_decisions!(model)
+        # DEBUG: log after populating decisions
+        println("DEBUG _model_step!: after populate decisions, count=$(length(model.llm_decisions))")
     end
 
     # Apply growback according to seasonality setting
@@ -279,6 +306,8 @@ function _model_step!(model)
 end
 
 function _agent_step!(agent, model)
+    # DEBUG: log entry into agent step – do this first to observe ordering relative to _model_step!
+    println("DEBUG _agent_step!: tick=$(abmtime(model)), agent=$(agent.id), decision_available=$(haskey(model.llm_decisions, agent.id)), decision=$(get_decision(agent, model))")
     # Skip the Movement (M) rule if the agent already moved in the combat phase
     # As "the combat rule is really an extension of the movement rule" (Kehoe, 2016, p.37 )
     if !(model.enable_combat && (agent.id in model.agents_moved_combat))

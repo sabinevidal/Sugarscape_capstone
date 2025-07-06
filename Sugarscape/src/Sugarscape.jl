@@ -17,8 +17,40 @@ include("extensions/inheritance.jl")
 # Order of includes matters if files depend on each other.
 include("utils/metrics.jl")
 
-# core/model_logic.jl depends on core/agents.jl, environment & the extensions above
-include("core/model_logic.jl")
+# ---------------------------------------------------------------------------
+#  New split model logic: shared utilities + core rules + LLM-enabled logic  #
+# ---------------------------------------------------------------------------
+
+# Shared helper functions (welfare, movement!, death!, …)
+include("core/shared.jl")
+
+# Pure rule-based implementation (no LLM)
+include("core/model_logic_core.jl")
+
+# LLM-aware implementation that builds on the shared helpers
+include("llm/model_logic_llm.jl")
+
+"""
+    sugarscape(; kwargs...) → StandardABM
+
+Unified constructor that dispatches to the pure rule-based implementation or
+the LLM-aware implementation depending on the `use_llm_decisions` keyword (or
+the `SUGARSCAPE_USE_LLM` environment variable).  All other keyword arguments
+are forwarded unchanged to the selected backend.
+"""
+function sugarscape(; kwargs...)
+  # Determine whether to use the LLM backend.
+  env_override = get(ENV, "SUGARSCAPE_USE_LLM", "false") == "true"
+  use_llm = haskey(kwargs, :use_llm_decisions) ? kwargs[:use_llm_decisions] : env_override
+
+  if use_llm
+    return sugarscape_llm(; kwargs...)
+  else
+    # Remove possible LLM-specific kwargs to avoid MethodErrors
+    clean_kwargs = filter(p -> p.first != :use_llm_decisions, collect(kwargs))
+    return sugarscape_core(; clean_kwargs...)
+  end
+end
 
 # LLM integration utilities (populate_llm_decisions!)
 include("utils/llm_integration.jl")

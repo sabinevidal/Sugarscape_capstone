@@ -85,8 +85,10 @@ function combat!(model)
   shuffle!(abmrng(model), agents_list)
 
   for attacker in agents_list
-    # LLM gating: skip if attacker not allowed to act
-    should_act(attacker, model, Val(:combat)) || continue
+    # LLM gating only when enabled; otherwise always allow
+    if model.use_llm_decisions
+      should_act(attacker, model, Val(:combat)) || continue
+    end
 
     # If the attacker has been removed earlier in this combat step (e.g. it
     # was killed by a different agent) we skip it.
@@ -99,11 +101,13 @@ function combat!(model)
       occupants = get_agents_at_position(model, pos)
       occupant = isempty(occupants) ? nothing : first(occupants)
 
-      # If an explicit LLM target is provided, enforce it
-      llm_target = get_decision(attacker, model).combat_target
-      if llm_target !== nothing
-        if occupant === nothing || occupant.id != llm_target
-          continue  # skip positions that are not the desired target
+      if model.use_llm_decisions
+        # If an explicit LLM target is provided, enforce it
+        llm_target = get_decision(attacker, model).combat_target
+        if llm_target !== nothing
+          if occupant === nothing || occupant.id != llm_target
+            continue  # skip positions that are not the desired target
+          end
         end
       end
 

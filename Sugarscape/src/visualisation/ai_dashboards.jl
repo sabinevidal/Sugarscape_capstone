@@ -8,6 +8,8 @@
 
 using GLMakie
 using Agents
+using DotEnv
+DotEnv.load!()
 
 """
     create_ai_dashboard(; kwargs...)
@@ -26,12 +28,12 @@ function create_ai_dashboard(;
   llm_api_key::AbstractString=get(ENV, "OPENAI_API_KEY", ""),
   llm_temperature::Float64=0.2,
   # Model size & composition
-  N::Int=50,
-  dims::Tuple{Int,Int}=(30, 30),
+  N::Int=5,
+  dims::Tuple{Int,Int}=(15, 15),
   # Rule toggles
-  enable_combat::Bool=true,
-  enable_reproduction::Bool=true,
-  enable_credit::Bool=true,
+  enable_combat::Bool=false,
+  enable_reproduction::Bool=false,
+  enable_credit::Bool=false,
   enable_culture::Bool=false,
   seed::Int=42
 )
@@ -44,6 +46,7 @@ function create_ai_dashboard(;
     llm_temperature=llm_temperature,
     N=N,
     dims=dims,
+    sugar_peaks=((8, 8), (12, 10)),
     enable_combat=enable_combat,
     enable_reproduction=enable_reproduction,
     enable_credit=enable_credit,
@@ -171,6 +174,60 @@ here so that all AI-centric helpers live in one place.
 Any keyword arguments are forwarded to the underlying model constructor via
 `model_kwargs`.
 """
-function test_single_agent_prompt(; model_kwargs...)
-  return test_single_agent_llm_prompt(; model_kwargs...)
+function test_single_agent_prompt()
+  println("=== Single Agent LLM Prompt Test ===")
+
+  # Create minimal model
+  m = Sugarscape.sugarscape(
+    use_llm_decisions=true,
+    llm_api_key=get(ENV, "OPENAI_API_KEY", ""),
+    N=2,
+    dims=(10, 10),
+    # Ensure sugar exists on the tiny 5×5 landscape by placing the peak well inside the bounds
+    sugar_peaks=((3, 3),),
+    llm_temperature=0.0,  # Deterministic for testing
+    enable_combat=false,
+    enable_reproduction=false,
+    enable_credit=false,
+    enable_culture=false,
+    seed=42
+  )
+
+  ag = first(Sugarscape.allagents(m))
+
+  # Build context
+  ctx = Sugarscape.SugarscapeLLM.build_agent_context(ag, m)
+
+  println("\n--- AGENT CONTEXT ---")
+  println(JSON.json(ctx, 2))
+
+  # Make API call
+  println("\n--- API CALL ---")
+  local resp, decision  # Declare variables in outer scope
+  try
+    resp = Sugarscape.SugarscapeLLM.call_openai_api(ctx, m)
+
+    println("\n--- RAW RESPONSE ---")
+    println(JSON.json(resp, 2))
+
+    # Parse and validate with strict parsing
+    println("\n--- STRICT PARSING ---")
+    decision = Sugarscape.SugarscapeLLM._strict_parse_decision(resp, ag.id)
+    println("✅ Successfully parsed: ", decision)
+
+    # Also show safe parsing for comparison
+    println("\n--- SAFE PARSING (for comparison) ---")
+    safe_decision = Sugarscape.SugarscapeLLM._safe_parse_decision(resp)
+    println("Safe version: ", safe_decision)
+
+  catch e
+    println("\n--- ERROR OCCURRED ---")
+    formatted_error = Sugarscape.SugarscapeLLM.format_llm_error(e)
+    println("❌ ", formatted_error)
+    println("\nThis demonstrates strict error handling when use_llm_decisions=true")
+    println("The system fails fast rather than using fallback values.")
+    return nothing, nothing, nothing
+  end
+
+  return ctx, resp, decision
 end

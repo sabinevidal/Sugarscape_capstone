@@ -6,32 +6,35 @@ function reproduction!(model)
     agent.has_reproduced && continue
     is_fertile(agent, model) || continue
 
-    # LLM gating
-    should_act(agent, model, Val(:reproduce)) || continue
+    if model.use_llm_decisions
+      # LLM gating
+      should_act(agent, model, Val(:reproduce)) || continue
 
-    # First, try LLM-specified partner if any
-    partner_id = get_decision(agent, model).reproduce_with
-    if partner_id !== nothing && hasid(model, partner_id)
-      partner = model[partner_id]
-      if partner.id != agent.id &&
-         is_fertile(partner, model) &&
-         !partner.has_reproduced &&
-         agent.sex != partner.sex &&
-         should_act(partner, model, Val(:reproduce))
+      # First, try LLM-specified partner if any
+      partner_id = get_decision(agent, model).reproduce_with
+      if partner_id !== nothing && hasid(model, partner_id)
+        partner = model[partner_id]
+        if partner.id != agent.id &&
+           is_fertile(partner, model) &&
+           !partner.has_reproduced &&
+           agent.sex != partner.sex &&
+           should_act(partner, model, Val(:reproduce))
 
-        attempt_reproduction!(agent, partner, model)
-        continue  # agent finished
+          attempt_reproduction!(agent, partner, model)
+          continue  # agent finished
+        end
       end
     end
 
-    # Fallback to original neighbour scanning logic
+    # Original neighbour scanning logic (always executed; partners must pass
+    # should_act only when LLM is enabled)
     neighbors = nearby_agents(agent, model, 1)
     for partner in neighbors
       if partner.id != agent.id &&
          is_fertile(partner, model) &&
          !partner.has_reproduced &&
          agent.sex != partner.sex &&
-         should_act(partner, model, Val(:reproduce))
+         (!model.use_llm_decisions || should_act(partner, model, Val(:reproduce)))
 
         attempt_reproduction!(agent, partner, model)
         break
