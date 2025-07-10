@@ -30,6 +30,9 @@ include("core/model_logic_core.jl")
 # LLM-aware implementation that builds on the shared helpers
 include("llm/model_logic_llm.jl")
 
+# LLM prompts and schemas
+include("llm/prompts_and_schemas.jl")
+
 """
     sugarscape(; kwargs...) → StandardABM
 
@@ -56,7 +59,7 @@ end
 include("utils/llm_integration.jl")
 using .SugarscapeLLM: populate_llm_decisions!
 
-# visualisation/plotting.jl depends on core/model_logic.jl (for sugarscape constructor)
+# visualisation/plotting.jl depends on the unified sugarscape constructor
 # and utils/metrics.jl (for gini_coefficient)
 include("visualisation/plotting.jl")
 
@@ -106,6 +109,10 @@ export disease_transmission!, immune_response!
 # Export credit functions
 export make_loans!, pay_loans!
 
+# Export LLM integration functions
+export get_decision, try_llm_move!
+export LLMDecision
+
 # Export testing functions
 export test_single_agent_llm_prompt, run_llm_prompt_test_interactive
 export test_single_agent_prompt
@@ -115,5 +122,11 @@ export run_performance_test_interactive
 
 # Export AI dashboard functions
 export create_ai_dashboard
+
+# Export culture testing functions
+export tribe
+
+# Export disease testing functions (private function but used in tests)
+export _subseq
 
 end # module Sugarscape

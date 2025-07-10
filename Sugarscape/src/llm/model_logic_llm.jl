@@ -5,9 +5,9 @@ DotEnv.load!()
 # LLM-enabled Sugarscape model logic                                          #
 # =============================================================================
 
-# NOTE: This file is largely based on `core/model_logic.jl` but retains all
-# LLM-specific guards and helpers.  Generic rule helpers that now live in
-# `shared.jl` have been commented out to prevent method re-definitions.
+# NOTE: This file contains the LLM-enabled implementation of the Sugarscape model.
+# It builds on the shared utilities in `shared.jl` and provides LLM-specific
+# guards and helpers for agent decision-making.
 
 # -----------------------------------------------------------------------------
 # LLM integration types & helpers (kept verbatim)                              |

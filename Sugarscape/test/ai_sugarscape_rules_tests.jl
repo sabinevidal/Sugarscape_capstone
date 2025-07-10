@@ -4,6 +4,7 @@ using Sugarscape
 using Agents
 using Sugarscape.SugarscapeLLM: populate_llm_decisions!
 using DotEnv
+using Logging
 DotEnv.load!()
 
 ################################################################################
@@ -15,6 +16,26 @@ DotEnv.load!()
 # `populate_llm_decisions!`.  Make sure the `OPENAI_API_KEY` environment
 # variable is set before running `Pkg.test()`.
 # ---------------------------------------------------------------------------
+
+"""
+    log_test_step(step_name, condition, expected=nothing, actual=nothing)
+
+Log the result of a test step with clear pass/fail indication.
+"""
+function log_test_step(step_name, condition, expected=nothing, actual=nothing)
+  if condition
+    @info "✅ $step_name"
+    if expected !== nothing && actual !== nothing
+      @info "   Expected: $expected, Got: $actual"
+    end
+  else
+    @error "❌ $step_name"
+    if expected !== nothing && actual !== nothing
+      @error "   Expected: $expected, Got: $actual"
+    end
+  end
+  return condition
+end
 
 """
     add_custom_agent!(model, pos; kwargs...)
@@ -64,12 +85,16 @@ end
 ################################################################################
 
 @testset "Movement Rule (M)" begin
+  @info "🏃 Starting Movement Rule tests..."
+
   # Seed for deterministic behaviour across all tests in this set
   rng_seed = 0x20240622
 
   ##########################################################################
   # 1. Moves to the max-sugar site within vision
   ##########################################################################
+  @info "Testing: Agent moves to max-sugar site within vision"
+
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     growth_rate=0,                      # disable growback
     vision_dist=(2, 2),                 # deterministic vision
@@ -92,13 +117,15 @@ end
   dec = Sugarscape.get_decision(agent, model)
   Sugarscape.try_llm_move!(agent, model, dec.move_coords)
 
-  @test agent.pos == (3, 5)                     # moved to max-sugar site
-  @test agent.sugar == 10.0                     # collected all sugar
-  @test model.sugar_values[3, 5] == 0.0         # site depleted
+  @test log_test_step("Agent moved to max-sugar site", agent.pos == (3, 5), (3, 5), agent.pos)
+  @test log_test_step("Agent collected all sugar", agent.sugar == 10.0, 10.0, agent.sugar)
+  @test log_test_step("Sugar site depleted", model.sugar_values[3, 5] == 0.0, 0.0, model.sugar_values[3, 5])
 
   ##########################################################################
   # 2. Tie-breaking by distance (prefer nearer of equal sugar)
   ##########################################################################
+  @info "Testing: Tie-breaking by distance preference"
+
   model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
     growth_rate=0, vision_dist=(3, 3), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
   model.sugar_values .= 0.0
@@ -115,11 +142,13 @@ end
   dec = Sugarscape.get_decision(agent, model)
   Sugarscape.try_llm_move!(agent, model, dec.move_coords)
 
-  @test agent.pos == (5, 4)                     # chose closer site
+  @test log_test_step("Agent chose closer site for tie-breaking", agent.pos == (5, 4), (5, 4), agent.pos)
 
   ##########################################################################
   # 3. Tie-breaking by random choice among equal sugar & equal distance
   ##########################################################################
+  @info "Testing: Random tie-breaking for equal sugar and distance"
+
   model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
     growth_rate=0, vision_dist=(2, 2), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
   model.sugar_values .= 0.0
@@ -137,11 +166,13 @@ end
 
   # With fixed seed, the RNG should make the choice deterministic. Expected outcome
   expected_pos = (4, 6)   # empirically true for rng_seed above; update if implementation changes
-  @test agent.pos == expected_pos
+  @test log_test_step("Agent made deterministic random choice", agent.pos == expected_pos, expected_pos, agent.pos)
 
   ##########################################################################
   # 4. No move if all neighbouring sites are occupied (must stay put)
   ##########################################################################
+  @info "Testing: No movement when all neighbours are occupied"
+
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
   model.sugar_values .= 0.0
@@ -162,12 +193,67 @@ end
   dec = Sugarscape.get_decision(focal, model)
   Sugarscape.try_llm_move!(focal, model, dec.move_coords)
 
-  @test focal.pos == focal_pos                  # cannot move
+  @test log_test_step("Agent stayed put when surrounded", focal.pos == focal_pos, focal_pos, focal.pos)
 
-  # Re-populate because new agents were added after the previous API call
+  @test log_test_step("Grid is full as expected", nagents(model) == 5, 5, nagents(model))
+
+  ##########################################################################
+  # 5. Multiple agents move to valid spots
+  ##########################################################################
+  @info "Testing: Multiple agents move to valid spots"
+
+  model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
+    growth_rate=0, vision_dist=(2, 2), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+  model.sugar_values .= 0.0
+
+  # Create multiple sugar sites with different values
+  model.sugar_values[2, 2] = 15.0  # highest sugar
+  model.sugar_values[4, 4] = 12.0  # medium sugar
+  model.sugar_values[6, 6] = 8.0   # lower sugar
+  model.sugar_values[1, 1] = 10.0  # another site
+
+  # Place agents at different starting positions
+  agent1_pos = (3, 3)  # should move to (2, 2) - highest sugar within vision
+  agent2_pos = (5, 5)  # should move to (4, 4) - highest sugar within vision
+  agent3_pos = (1, 3)  # should move to (1, 1) - only sugar site in vision
+
+  add_custom_agent!(model, agent1_pos; sugar=0, vision=2, metabolism=0)
+  add_custom_agent!(model, agent2_pos; sugar=0, vision=2, metabolism=0)
+  add_custom_agent!(model, agent3_pos; sugar=0, vision=2, metabolism=0)
+
+  agents = allagents(model)
+  @test length(agents) == 3
+
   populate_llm_decisions!(model)
 
-  @test nagents(model) == 9           # full grid
+  # Move all agents
+  for agent in agents
+    dec = Sugarscape.get_decision(agent, model)
+    Sugarscape.try_llm_move!(agent, model, dec.move_coords)
+  end
+
+  # Check that each agent moved to the expected position
+  agent_positions = [agent.pos for agent in allagents(model)]
+  @test log_test_step("Agent 1 moved to highest sugar site", (2, 2) in agent_positions, (2, 2), agent_positions)
+  @test log_test_step("Agent 2 moved to medium sugar site", (4, 4) in agent_positions, (4, 4), agent_positions)
+  @test log_test_step("Agent 3 moved to available sugar site", (1, 1) in agent_positions, (1, 1), agent_positions)
+
+  # Check that agents collected sugar
+  agent_sugars = [agent.sugar for agent in allagents(model)]
+  @test log_test_step("Agent 1 collected 15 sugar", 15.0 in agent_sugars, 15.0, agent_sugars)
+  @test log_test_step("Agent 2 collected 12 sugar", 12.0 in agent_sugars, 12.0, agent_sugars)
+  @test log_test_step("Agent 3 collected 10 sugar", 10.0 in agent_sugars, 10.0, agent_sugars)
+
+  # Check that sugar sites were depleted
+  @test log_test_step("Sugar site (2,2) depleted", model.sugar_values[2, 2] == 0.0, 0.0, model.sugar_values[2, 2])
+  @test log_test_step("Sugar site (4,4) depleted", model.sugar_values[4, 4] == 0.0, 0.0, model.sugar_values[4, 4])
+  @test log_test_step("Sugar site (1,1) depleted", model.sugar_values[1, 1] == 0.0, 0.0, model.sugar_values[1, 1])
+
+  # Check that agents are at different positions (no collisions)
+  unique_positions = unique(agent_positions)
+  @test log_test_step("All agents moved to different positions", length(unique_positions) == 3, 3, length(unique_positions))
+
+  @info "✅ Movement Rule tests completed successfully"
 end
 
 ################################################################################

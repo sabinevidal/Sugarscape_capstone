@@ -15,6 +15,9 @@ using ..Agents: nearby_positions, nearby_agents, allagents, isempty
 import ..Sugarscape
 const SS = Sugarscape
 
+# Import prompts and schemas
+using ..SugarscapePrompts
+
 ##############################  helper utilities  #############################
 
 """
@@ -61,9 +64,11 @@ function build_agent_context(agent, model)
   visible_positions = Vector{Any}()
   for pos in nearby_positions(agent, model, agent.vision)
     value = model.enable_pollution ? SS.welfare(pos, model) : model.sugar_values[pos...]
+    distance = SS.euclidean_distance(agent.pos, pos)
     push!(visible_positions, Dict(
       "position" => pos,
       "value" => value,
+      "distance" => distance,
       "occupied" => !isempty(pos, model),
     ))
   end
@@ -108,40 +113,31 @@ function call_openai_api(contexts::Vector, model)
     throw(LLMAPIError("LLM API key is empty but use_llm_decisions=true", nothing, nothing))
   end
 
-  system_prompt = """
-You are an AI controlling agents in a Sugarscape simulation. For each agent, decide whether they should:
-1. MOVE: Choose whether to move and optionally specify coordinates
-2. COMBAT: Choose whether to attack a neighbour (if enabled)
-3. CREDIT: Choose whether to lend to a neighbour (if enabled)
-4. REPRODUCE: Choose whether to reproduce with a neighbour (if enabled)
-
-Return a JSON array where each element has the form
-agent_id: {
-  \"move\": boolean,
-  \"move_coords\": [x,y] | null,
-  \"combat\": boolean,
-  \"combat_target\": id | null,
-  \"credit\": boolean,
-  \"credit_partner\": id | null,
-  \"reproduce\": boolean,
-  \"reproduce_with\": id | null
-}
-    """
+  system_prompt = SugarscapePrompts.get_system_prompt()
 
   user_prompt = "Agent contexts:\n" * JSON.json(contexts)
 
-  # Call the OpenAI Chat Completion endpoint via OpenAI.jl helper
-  resp = OpenAI.create_chat(
-    model.llm_api_key,
-    model.llm_model,
-    [
-      Dict("role" => "system", "content" => system_prompt),
-      Dict("role" => "user", "content" => user_prompt),
-    ];
-    temperature=model.llm_temperature,
-  )
-  # `resp.response` already contains the parsed JSON returned by the API
-  j = resp.response
+  response_format = SugarscapePrompts.get_response_format()
+
+  # println("user_prompt: $user_prompt")
+  local j
+  try
+    # Call the OpenAI Chat Completion endpoint via OpenAI.jl helper
+    response = OpenAI.create_chat(
+      model.llm_api_key,
+      model.llm_model,
+      [
+        Dict("role" => "system", "content" => system_prompt),
+        Dict("role" => "user", "content" => user_prompt),
+      ];
+      temperature=model.llm_temperature,
+      response_format=response_format
+    )
+    # `response.response` already contains the parsed JSON returned by the API
+    j = response.response
+  catch err
+    throw(LLMAPIError("Failed to call OpenAI API: $(err)", nothing, nothing))
+  end
 
   println(j)
 
@@ -166,12 +162,17 @@ agent_id: {
       nothing, content))
   end
 
-  # Validate that response is an array
-  if !isa(parsed_content, Vector)
-    throw(LLMSchemaError("LLM response is not a JSON array", nothing, parsed_content))
+  # Validate that response is an object with a decisions array
+  if !isa(parsed_content, Dict) || !haskey(parsed_content, "decisions")
+    throw(LLMSchemaError("LLM response is not an object with 'decisions' field", nothing, parsed_content))
   end
 
-  return parsed_content
+  decisions_array = parsed_content["decisions"]
+  if !isa(decisions_array, Vector)
+    throw(LLMSchemaError("LLM response 'decisions' field is not an array", nothing, decisions_array))
+  end
+
+  return decisions_array
 end
 
 """
@@ -337,7 +338,7 @@ function populate_llm_decisions!(model)
   # Build contexts
   contexts = [build_agent_context(a, model) for a in allagents(model)]
 
-  println("contexts: $(contexts)")
+  # println("contexts: $(contexts)")
 
   if isempty(contexts)
     throw(LLMValidationError("No agents found to generate decisions for", "", nothing, nothing))
