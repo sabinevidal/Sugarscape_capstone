@@ -34,6 +34,12 @@ function get_decision(agent, model)
   return model.llm_decisions[agent.id]
 end
 
+"""
+    idle!(agent, model)
+
+Handles agent metabolism and ageing when movement is skipped.
+Collects sugar at current position, applies metabolism, and ages the agent.
+"""
 function idle!(agent, model)
   sugar_collected = model.sugar_values[agent.pos...]
   agent.sugar += sugar_collected
@@ -46,6 +52,41 @@ function idle!(agent, model)
     produced_pollution = model.production_rate * sugar_collected +
                          model.consumption_rate * agent.metabolism
     model.pollution[agent.pos...] += produced_pollution
+  end
+end
+
+"""
+    try_llm_move!(agent, model, target_pos)
+
+Attempt to move `agent` to `target_pos` proposed by an LLM. The move is allowed
+only if the cell is empty, within the agent's vision and inside the grid
+bounds. If the target is invalid or `nothing`, the agent stays idle.
+"""
+function try_llm_move!(agent, model, target_pos)
+  # If no target specified, agent stays idle
+  pos_before = agent.pos
+
+  @info "try_llm_move! pos_before: $(pos_before) target_pos: $(target_pos)" id = agent.id
+  if target_pos === nothing
+    @info "try_llm_move! target_pos is nothing"
+    idle!(agent, model)
+    return
+  end
+
+  @info "try_llm_move! target_pos is not nothing"
+  # Defensive: ensure we have a tuple of integers
+  !(target_pos isa Tuple{Int,Int}) && return
+
+  @info "try_llm_move! target_pos is a tuple"
+  if isempty(target_pos, model) &&
+     euclidean_distance(agent.pos, target_pos) <= agent.vision &&
+     all(1 .<= target_pos .<= size(getfield(model, :space)))
+    @info "try_llm_move! target_pos is valid"
+    _do_move!(agent, model, target_pos)
+  else
+    @info "try_llm_move! target_pos is invalid"
+    # Invalid target - agent stays idle
+    idle!(agent, model)
   end
 end
 
@@ -294,7 +335,7 @@ function _agent_step_llm!(agent, model)
     if should_act(agent, model, Val(:move))
       target = get_decision(agent, model).move_coords
       if target === nothing
-        movement!(agent, model)
+        idle!(agent, model)  # LLM said move but no target specified = stay idle
       else
         try_llm_move!(agent, model, target)
       end

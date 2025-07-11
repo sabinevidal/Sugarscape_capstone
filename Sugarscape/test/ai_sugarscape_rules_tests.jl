@@ -29,9 +29,9 @@ function log_test_step(step_name, condition, expected=nothing, actual=nothing)
       @info "   Expected: $expected, Got: $actual"
     end
   else
-    @error "❌ $step_name"
+    @info "❌ $step_name"
     if expected !== nothing && actual !== nothing
-      @error "   Expected: $expected, Got: $actual"
+      @info "   Expected: $expected, Got: $actual"
     end
   end
   return condition
@@ -180,17 +180,19 @@ end
   focal_pos = (3, 3)
 
   # Insert focal agent first
-  add_custom_agent!(model, focal_pos; sugar=0, vision=1, metabolism=0)
+  focal = add_custom_agent!(model, focal_pos; sugar=0, vision=1, metabolism=0)
 
   # Surround focal agent with blockers at the four von-Neumann neighbours
   for pos in ((3, 4), (3, 2), (2, 3), (4, 3))
     add_custom_agent!(model, pos; sugar=0, vision=1, metabolism=0)
   end
-  focal = first(allagents(model))
+
+  @info "focal: $(focal)" id = focal.id
 
   populate_llm_decisions!(model)
 
   dec = Sugarscape.get_decision(focal, model)
+  @info "dec: $(dec)"
   Sugarscape.try_llm_move!(focal, model, dec.move_coords)
 
   @test log_test_step("Agent stayed put when surrounded", focal.pos == focal_pos, focal_pos, focal.pos)
@@ -212,16 +214,16 @@ end
   model.sugar_values[6, 6] = 8.0   # lower sugar
   model.sugar_values[1, 1] = 10.0  # another site
 
-  # Place agents at different starting positions
+  # Place agents at different starting positions and track them individually
   agent1_pos = (3, 3)  # should move to (2, 2) - highest sugar within vision
   agent2_pos = (5, 5)  # should move to (4, 4) - highest sugar within vision
   agent3_pos = (1, 3)  # should move to (1, 1) - only sugar site in vision
 
-  add_custom_agent!(model, agent1_pos; sugar=0, vision=2, metabolism=0)
-  add_custom_agent!(model, agent2_pos; sugar=0, vision=2, metabolism=0)
-  add_custom_agent!(model, agent3_pos; sugar=0, vision=2, metabolism=0)
+  agent1 = add_custom_agent!(model, agent1_pos; sugar=0, vision=2, metabolism=0)
+  agent2 = add_custom_agent!(model, agent2_pos; sugar=0, vision=2, metabolism=0)
+  agent3 = add_custom_agent!(model, agent3_pos; sugar=0, vision=2, metabolism=0)
 
-  agents = allagents(model)
+  agents = [agent1, agent2, agent3]
   @test length(agents) == 3
 
   populate_llm_decisions!(model)
@@ -232,17 +234,15 @@ end
     Sugarscape.try_llm_move!(agent, model, dec.move_coords)
   end
 
-  # Check that each agent moved to the expected position
-  agent_positions = [agent.pos for agent in allagents(model)]
-  @test log_test_step("Agent 1 moved to highest sugar site", (2, 2) in agent_positions, (2, 2), agent_positions)
-  @test log_test_step("Agent 2 moved to medium sugar site", (4, 4) in agent_positions, (4, 4), agent_positions)
-  @test log_test_step("Agent 3 moved to available sugar site", (1, 1) in agent_positions, (1, 1), agent_positions)
+  # Check that each specific agent moved to the expected position
+  @test log_test_step("Agent 1 moved to highest sugar site", agent1.pos == (2, 2), (2, 2), agent1.pos)
+  @test log_test_step("Agent 2 moved to medium sugar site", agent2.pos == (4, 4), (4, 4), agent2.pos)
+  @test log_test_step("Agent 3 moved to available sugar site", agent3.pos == (1, 1), (1, 1), agent3.pos)
 
-  # Check that agents collected sugar
-  agent_sugars = [agent.sugar for agent in allagents(model)]
-  @test log_test_step("Agent 1 collected 15 sugar", 15.0 in agent_sugars, 15.0, agent_sugars)
-  @test log_test_step("Agent 2 collected 12 sugar", 12.0 in agent_sugars, 12.0, agent_sugars)
-  @test log_test_step("Agent 3 collected 10 sugar", 10.0 in agent_sugars, 10.0, agent_sugars)
+  # Check that each specific agent collected the expected sugar
+  @test log_test_step("Agent 1 collected 15 sugar", agent1.sugar == 15.0, 15.0, agent1.sugar)
+  @test log_test_step("Agent 2 collected 12 sugar", agent2.sugar == 12.0, 12.0, agent2.sugar)
+  @test log_test_step("Agent 3 collected 10 sugar", agent3.sugar == 10.0, 10.0, agent3.sugar)
 
   # Check that sugar sites were depleted
   @test log_test_step("Sugar site (2,2) depleted", model.sugar_values[2, 2] == 0.0, 0.0, model.sugar_values[2, 2])
@@ -250,6 +250,7 @@ end
   @test log_test_step("Sugar site (1,1) depleted", model.sugar_values[1, 1] == 0.0, 0.0, model.sugar_values[1, 1])
 
   # Check that agents are at different positions (no collisions)
+  agent_positions = [agent1.pos, agent2.pos, agent3.pos]
   unique_positions = unique(agent_positions)
   @test log_test_step("All agents moved to different positions", length(unique_positions) == 3, 3, length(unique_positions))
 

@@ -19,6 +19,7 @@
         "growback",
         "heatarray",
         "heatkwargs",
+        "LLMAPI",
         "mdata",
         "Mersenne",
         "nextid",

@@ -122,6 +122,55 @@ end
   Sugarscape.movement!(focal, model)
 
   @test focal.pos == focal_pos                  # cannot move
+
+  ##########################################################################
+  # 5. Multiple agents move to valid spots
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
+    growth_rate=0, vision_dist=(2, 2), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+  model.sugar_values .= 0.0
+
+  # Create multiple sugar sites with different values
+  model.sugar_values[2, 2] = 15.0  # highest sugar
+  model.sugar_values[4, 4] = 12.0  # medium sugar
+  model.sugar_values[6, 6] = 8.0   # lower sugar
+  model.sugar_values[1, 1] = 10.0  # another site
+
+  # Place agents at different starting positions
+  agent1_pos = (3, 3)  # should move to (2, 2)
+  agent2_pos = (5, 5)  # should move to (4, 4)
+  agent3_pos = (1, 3)  # should move to (1, 1)
+
+  agent1 = add_custom_agent!(model, agent1_pos; sugar=0, vision=2, metabolism=0)
+  agent2 = add_custom_agent!(model, agent2_pos; sugar=0, vision=2, metabolism=0)
+  agent3 = add_custom_agent!(model, agent3_pos; sugar=0, vision=2, metabolism=0)
+
+  agents = [agent1, agent2, agent3]
+  @test length(agents) == 3
+
+  # Move each agent according to the standard M-rule
+  for ag in agents
+    Sugarscape.movement!(ag, model)
+  end
+
+  # Expected destinations
+  @test agent1.pos == (2, 2)
+  @test agent2.pos == (4, 4)
+  @test agent3.pos == (1, 1)
+
+  # Expected sugar collection (metabolism = 0)
+  @test agent1.sugar == 15.0
+  @test agent2.sugar == 12.0
+  @test agent3.sugar == 10.0
+
+  # Sugar sites depleted
+  @test model.sugar_values[2, 2] == 0.0
+  @test model.sugar_values[4, 4] == 0.0
+  @test model.sugar_values[1, 1] == 0.0
+
+  # No collisions – all agents occupy unique sites
+  positions = [agent1.pos, agent2.pos, agent3.pos]
+  @test length(unique(positions)) == 3
 end
 
 ################################################################################

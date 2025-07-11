@@ -9,11 +9,10 @@ module SugarscapeLLM
 ###############################################################################
 
 using HTTP, JSON, Logging, OpenAI
-using ..Agents: nearby_positions, nearby_agents, allagents, isempty
+using ..Agents: nearby_positions, nearby_agents, allagents, isempty, wrap_position
 
 # Parent module alias for convenience
 import ..Sugarscape
-const SS = Sugarscape
 
 # Import prompts and schemas
 using ..SugarscapePrompts
@@ -35,7 +34,7 @@ _default_decision() = (move=false, move_coords=nothing, combat=false, combat_tar
 LLM integration error types for strict error handling when use_llm_decisions=true
 """
 struct LLMAPIError <: Exception
-  message::String
+  meSugarscapeage::String
   status_code::Union{Int,Nothing}
   response_body::Union{String,Nothing}
 end
@@ -62,9 +61,9 @@ stable so tests that rely on it do not break when the runtime model evolves.
 function build_agent_context(agent, model)
   # Visible lattice positions with sugar (or welfare when pollution enabled)
   visible_positions = Vector{Any}()
-  for pos in nearby_positions(agent, model, agent.vision)
-    value = model.enable_pollution ? SS.welfare(pos, model) : model.sugar_values[pos...]
-    distance = SS.euclidean_distance(agent.pos, pos)
+
+  # Use the same nearby_positions logic as movement! to ensure consistency
+  for (pos, value, distance) in Sugarscape.evaluate_nearby_positions(agent, model)
     push!(visible_positions, Dict(
       "position" => pos,
       "value" => value,
@@ -72,6 +71,8 @@ function build_agent_context(agent, model)
       "occupied" => !isempty(pos, model),
     ))
   end
+
+  @info id = agent.id "visible_positions: $(visible_positions)"
 
   # Immediate neighbours (Moore radius 1)
   neighbours = Vector{Any}()
@@ -338,7 +339,7 @@ function populate_llm_decisions!(model)
   # Build contexts
   contexts = [build_agent_context(a, model) for a in allagents(model)]
 
-  # println("contexts: $(contexts)")
+  println("contexts: $(contexts)")
 
   if isempty(contexts)
     throw(LLMValidationError("No agents found to generate decisions for", "", nothing, nothing))
@@ -355,7 +356,7 @@ function populate_llm_decisions!(model)
   end
 
   # Parse decisions with strict validation
-  decisions = Vector{SS.LLMDecision}(undef, length(contexts))
+  decisions = Vector{Sugarscape.LLMDecision}(undef, length(contexts))
   for (i, d) in enumerate(raw)
     agent_id = contexts[i]["agent_id"]
     try
@@ -373,7 +374,7 @@ function populate_llm_decisions!(model)
   end
 
   # Validate that all agents got decisions
-  model.llm_decisions = Dict{Int,SS.LLMDecision}()
+  model.llm_decisions = Dict{Int,Sugarscape.LLMDecision}()
   for (i, ctx) in enumerate(contexts)
     agent_id = ctx["agent_id"]
     model.llm_decisions[agent_id] = decisions[i]
