@@ -80,6 +80,7 @@ include("visualisation/ai_dashboards.jl")
 # Public API
 export SugarscapeAgent
 export sugarscape
+export sugarscape_core
 
 export gini_coefficient, morans_i
 
@@ -112,6 +113,7 @@ export make_loans!, pay_loans!
 export get_decision, try_llm_move!
 export LLMDecision
 export get_individual_agent_decision_with_retry
+export _agent_step_llm!, _model_step_llm!
 
 # Export testing functions
 export test_single_agent_llm_prompt, run_llm_prompt_test_interactive

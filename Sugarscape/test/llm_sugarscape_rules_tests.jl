@@ -102,7 +102,7 @@ end
   ##########################################################################
   @info "Testing: Agent moves to max-sugar site within vision"
 
-  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(5, 5), N=0, seed=rng_seed,
     growth_rate=0,                      # disable growback
     vision_dist=(2, 2),                 # deterministic vision
     metabolic_rate_dist=(0, 0),         # no metabolism for clarity
@@ -132,7 +132,7 @@ end
   ##########################################################################
   @info "Testing: Tie-breaking by distance preference"
 
-  model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(7, 7), N=0, seed=rng_seed,
     growth_rate=0, vision_dist=(3, 3), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
   model.sugar_values .= 0.0
 
@@ -154,7 +154,7 @@ end
   ##########################################################################
   @info "Testing: Random tie-breaking for equal sugar and distance"
 
-  model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(7, 7), N=0, seed=rng_seed,
     growth_rate=0, vision_dist=(2, 2), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
   model.sugar_values .= 0.0
 
@@ -177,7 +177,7 @@ end
   ##########################################################################
   @info "Testing: No movement when all neighbours are occupied"
 
-  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(5, 5), N=0, seed=rng_seed,
     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
   model.sugar_values .= 0.0
 
@@ -206,7 +206,7 @@ end
   ##########################################################################
   @info "Testing: Multiple agents move to valid spots"
 
-  model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(7, 7), N=0, seed=rng_seed,
     growth_rate=0, vision_dist=(2, 2), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
   model.sugar_values .= 0.0
 
@@ -267,7 +267,7 @@ end
   ##########################################################################
   # 1. Successful reproduction with opposite sex, fertility & empty cell
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(5, 5), N=0, seed=rng_seed,
     enable_reproduction=true, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
     w0_dist=(20, 20))  # fixed initial sugar
@@ -318,7 +318,7 @@ end
   ##########################################################################
   # 2. No reproduction when no empty neighbouring site
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(3, 3), N=0, seed=rng_seed,
     enable_reproduction=true, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
     w0_dist=(20, 20))
@@ -353,7 +353,7 @@ end
   ##########################################################################
   # 1. Wealth split equally among living children
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(5, 5), N=0, seed=rng_seed,
     enable_reproduction=true,  # inheritance active
     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
 
@@ -385,7 +385,7 @@ end
   ##########################################################################
   # 2. Only living children inherit (one child dies before parent)
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(5, 5), N=0, seed=rng_seed,
     enable_reproduction=true, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
 
@@ -417,7 +417,7 @@ end
   ##########################################################################
   # 1. Neighbour flips bit to match agent
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(3, 3), N=0, seed=rng_seed,
     enable_culture=true, culture_tag_length=1,
     enable_combat=false, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
@@ -433,7 +433,7 @@ end
   ##########################################################################
   # 2. No change if bits already match
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(3, 3), N=0, seed=rng_seed,
     enable_culture=true, culture_tag_length=1,
     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
   model.sugar_values .= 0.0
@@ -465,7 +465,7 @@ end
   ##########################################################################
   # 1. Cannot attack same-tribe target
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(5, 5), N=0, seed=rng_seed,
     enable_combat=true, enable_culture=false,
     culture_tag_length=3, combat_limit=50,
     vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
@@ -485,7 +485,7 @@ end
   ##########################################################################
   # 2. Cannot attack stronger other-tribe target
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(5, 5), N=0, seed=rng_seed,
     enable_combat=true, enable_culture=false,
     culture_tag_length=3, combat_limit=50,
     vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
@@ -503,7 +503,7 @@ end
   ##########################################################################
   # 3. Successful attack on weaker other-tribe target
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(5, 5), N=0, seed=rng_seed,
     enable_combat=true, enable_culture=false,
     culture_tag_length=3, combat_limit=50,
     vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
@@ -539,7 +539,7 @@ end
   ##########################################################################
   # 1. Loan creation between neighbours (eligibility + transfer)
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(3, 3), N=0, seed=rng_seed,
     enable_credit=true, interest_rate=0.0,
     duration=1, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
@@ -599,7 +599,7 @@ end
   ##########################################################################
   # 1. Immunity substring – no sugar penalty
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(3, 3), N=0, seed=rng_seed,
     enable_disease=true, disease_immunity_length=6,
     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
 
@@ -614,7 +614,7 @@ end
   ##########################################################################
   # 2. Immune response flips bit when not immune (penalty once)
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(3, 3), N=0, seed=rng_seed,
     enable_disease=true, disease_immunity_length=6,
     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
 
@@ -636,7 +636,7 @@ end
   ##########################################################################
   # 3. Disease transmission adds disease to neighbour
   ##########################################################################
-  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+  model = Sugarscape.sugarscape_core(; dims=(3, 3), N=0, seed=rng_seed,
     enable_disease=true, disease_immunity_length=6,
     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
 

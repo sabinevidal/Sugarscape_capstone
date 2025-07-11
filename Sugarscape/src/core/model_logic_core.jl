@@ -53,6 +53,12 @@ function sugarscape_core(;
   interest_rate::Float64=0.10,
   duration::Int=10,
   child_amount::Int=25,
+  # LLM-specific parameters (disabled by default)
+  use_llm_decisions::Bool=false,
+  llm_api_key::AbstractString=get(ENV, "OPENAI_API_KEY", ""),
+  llm_model::String=get(ENV, "LLM_MODEL", "gpt-4.1-nano"),
+  llm_temperature::Float64=0.0,
+  llm_max_tokens::Int=1000,
 )
   # -------------------------------------------------------------------------
   # Grid initialisation
@@ -132,21 +138,20 @@ function sugarscape_core(;
     :interest_rate => interest_rate,
     :duration => duration,
     :child_amount => child_amount,
-    # LLM compatibility (kept disabled)
-    :use_llm_decisions => false,
+    # LLM compatibility (disabled by default)
+    :use_llm_decisions => use_llm_decisions,
     :llm_decisions => Dict{Int,Any}(),
-    # Ensure LLM key exists so tests can toggle `use_llm_decisions` post-creation
-    :llm_api_key => get(ENV, "OPENAI_API_KEY", ""),
-    :llm_model => get(ENV, "LLM_MODEL", "gpt-4.1-nano"),
-    :llm_temperature => 0.0,
-    :llm_max_tokens => 1000,
+    :llm_api_key => llm_api_key,
+    :llm_model => llm_model,
+    :llm_temperature => llm_temperature,
+    :llm_max_tokens => llm_max_tokens,
   )
 
   model = StandardABM(
     SugarscapeAgent,
     space;
-    (agent_step!)=_agent_step!,
-    (model_step!)=_model_step!,
+    (agent_step!)=use_llm_decisions ? _agent_step_llm! : _agent_step!,
+    (model_step!)=use_llm_decisions ? _model_step_llm! : _model_step!,
     scheduler=Schedulers.Randomly(),
     properties=properties,
     rng=MersenneTwister(seed),
@@ -233,7 +238,7 @@ function _model_step!(model)
 end
 
 # =============================================================================
-# Agent-level step (rule-only)
+# Agent-level step (unified rule-based and LLM)
 # =============================================================================
 function _agent_step!(agent, model)
   # Skip movement if agent already moved during combat in this tick

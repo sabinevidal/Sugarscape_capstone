@@ -101,12 +101,7 @@ Create a Sugarscape model with LLM decision-making enabled.  This largely
 mirrors the original constructor but keeps explicit parameters to control LLM
 API usage.
 """
-function sugarscape_llm(; kwargs...)
-  # Pass through to original constructor logic from legacy file (now copied)
-  return _sugarscape_llm_impl(; kwargs...)
-end
-
-function _sugarscape_llm_impl(;  # signature mirrors original for brevity
+function sugarscape_llm(;  # signature mirrors original for brevity
   dims=(50, 50),
   gridspace_metric::Symbol=:manhattan,
   sugar_peaks=((10, 40), (40, 10)),
