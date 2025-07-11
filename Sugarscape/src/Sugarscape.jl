@@ -55,9 +55,8 @@ function sugarscape(; kwargs...)
   end
 end
 
-# LLM integration utilities (populate_llm_decisions!)
+# LLM integration utilities
 include("utils/llm_integration.jl")
-using .SugarscapeLLM: populate_llm_decisions!
 
 # visualisation/plotting.jl depends on the unified sugarscape constructor
 # and utils/metrics.jl (for gini_coefficient)
@@ -112,6 +111,7 @@ export make_loans!, pay_loans!
 # Export LLM integration functions
 export get_decision, try_llm_move!
 export LLMDecision
+export get_individual_agent_decision_with_retry
 
 # Export testing functions
 export test_single_agent_llm_prompt, run_llm_prompt_test_interactive

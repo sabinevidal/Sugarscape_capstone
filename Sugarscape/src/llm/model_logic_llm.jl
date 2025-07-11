@@ -256,16 +256,6 @@ function _sugarscape_llm_impl(;  # signature mirrors original for brevity
       culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
   end
 
-  # Pre-populate LLM decisions so tick-0 agent steps have cached actions
-  if use_llm_decisions
-    try
-      populate_llm_decisions!(model)
-    catch e
-      if isa(e, Exception)
-        rethrow()
-      end
-    end
-  end
 
   return model
 end
@@ -274,10 +264,7 @@ end
 # Model-level step (inherits from core but adds LLM decision caching)          |
 # ----------------------------------------------------------------------------
 function _model_step_llm!(model)
-  # Populate decisions each tick when enabled
-  if model.use_llm_decisions
-    populate_llm_decisions!(model)
-  end
+  # Individual LLM requests are handled inside each agent step
 
   # Delegate remaining logic to shared rule implementation
   # (copy from core but keep identical — duplication avoided for clarity)
@@ -331,23 +318,42 @@ end
 # Agent-level step with LLM gating                                             |
 # ----------------------------------------------------------------------------
 function _agent_step_llm!(agent, model)
+  # Movement/combat gating: skip movement decision if agent already moved via combat,
+  # but still execute subsequent ageing/death logic.
   if !(model.enable_combat && (agent.id in model.agents_moved_combat))
-    if should_act(agent, model, Val(:move))
-      target = get_decision(agent, model).move_coords
-      if target === nothing
-        idle!(agent, model)  # LLM said move but no target specified = stay idle
+    # ---------------------------------------------------------
+    # Obtain decision (LLM or rule-based fallback)
+    # ---------------------------------------------------------
+    local decision
+    if model.use_llm_decisions
+      decision = SugarscapeLLM.get_individual_agent_decision_with_retry(agent, model)
+    else
+      decision = nothing
+    end
+
+    # ---------------------------------------------------------
+    # Movement / idle handling
+    # ---------------------------------------------------------
+    if model.use_llm_decisions
+      if decision.move
+        target = decision.move_coords
+        if target === nothing
+          idle!(agent, model)  # LLM said move but no coords
+        else
+          try_llm_move!(agent, model, target)
+        end
       else
-        try_llm_move!(agent, model, target)
+        idle!(agent, model)
       end
     else
-      if model.use_llm_decisions
-        idle!(agent, model)
-      else
-        movement!(agent, model)
-      end
+      # Original rule-based movement when LLM disabled
+      movement!(agent, model)
     end
-  end
+  end  # movement/combat gating block
 
+  # ---------------------------------------------------------
+  # Post-movement death / reproduction logic (unchanged)
+  # ---------------------------------------------------------
   if !model.enable_reproduction
     death_replacement_llm!(agent, model)
   else

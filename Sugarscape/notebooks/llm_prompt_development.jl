@@ -7,24 +7,25 @@ println("Checking development environment...")
 
 ### A3: Model Creation
 m = Sugarscape.sugarscape(
-    use_llm_decisions = true,
-    llm_api_key = ENV["OPENAI_API_KEY"],
-    llm_temperature = 0.2,
-    dims = (20, 20),
-    N = 30,
-    enable_combat = true,
-    enable_reproduction = true,
-    enable_credit = true
+    use_llm_decisions=true,
+    llm_api_key=ENV["OPENAI_API_KEY"],
+    llm_temperature=0.2,
+    dims=(20, 20),
+    N=30,
+    enable_combat=true,
+    enable_reproduction=true,
+    enable_credit=true
 )
 
-### A4: Prompt Testing
-println("Testing LLM prompt...")
-Sugarscape.populate_llm_decisions!(m)
+### A4: Individual Agent Decision Testing
+println("Testing individual LLM decisions...")
 
-# Inspect first few decisions
+# Get decisions for a few agents individually
+agents = collect(Sugarscape.allagents(m))
 println("Sample LLM decisions:")
-for (i, (agent_id, decision)) in enumerate(first(m.llm_decisions, 3))
-    println("Agent $agent_id: ", decision)
+for (i, agent) in enumerate(agents[1:3])
+    decision = Sugarscape.SugarscapeLLM.get_individual_agent_decision_with_retry(agent, m)
+    println("Agent $(agent.id): ", decision)
 end
 
 ### A5: Visual Feedback
@@ -41,7 +42,19 @@ println("Total sugar: ", sum(a.sugar for a in Sugarscape.allagents(m)))
 
 ### A7: Decision Analysis
 println("Decision analysis:")
-move_count = count(d -> d.move, values(m.llm_decisions))
-combat_count = count(d -> d.combat, values(m.llm_decisions))
+# Get decisions for all agents
+decisions = Dict{Int,Any}()
+for agent in Sugarscape.allagents(m)
+    try
+        decision = Sugarscape.SugarscapeLLM.get_individual_agent_decision_with_retry(agent, m)
+        decisions[agent.id] = decision
+    catch e
+        println("Failed to get decision for agent $(agent.id): $(e)")
+    end
+end
+
+move_count = count(d -> d.move, values(decisions))
+combat_count = count(d -> d.combat, values(decisions))
 println("  Agents moving: $move_count")
 println("  Agents in combat: $combat_count")
+println("  Total decisions obtained: $(length(decisions))")

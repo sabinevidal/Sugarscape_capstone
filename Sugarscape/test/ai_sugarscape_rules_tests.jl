@@ -2,7 +2,6 @@ using Test
 using Random
 using Sugarscape
 using Agents
-using Sugarscape.SugarscapeLLM: populate_llm_decisions!
 using DotEnv
 using Logging
 DotEnv.load!()
@@ -13,7 +12,7 @@ DotEnv.load!()
 
 # ---------------------------------------------------------------------------
 # NOTE: These tests are now wired to hit the real OpenAI endpoint via
-# `populate_llm_decisions!`.  Make sure the `OPENAI_API_KEY` environment
+# individual agent decision calls.  Make sure the `OPENAI_API_KEY` environment
 # variable is set before running `Pkg.test()`.
 # ---------------------------------------------------------------------------
 
@@ -47,8 +46,7 @@ to creating the agent it also:
 1. Switches the *test* model into `use_llm_decisions = true` mode (this is a
    local change that avoids the expensive network call in the main constructor
    because we toggle the flag *after* model creation).
-2. Adds a stubbed LLM decision (`_TEST_LLM_DECISION`) for the new agent so that
-   the subsequent rule functions see a valid entry in `model.llm_decisions`.
+2. Ensures the model has API key set for individual agent decisions.
 
 Keyword arguments default to sensible values but can be overridden per test.
 """
@@ -59,7 +57,7 @@ function add_custom_agent!(model, pos; sugar, vision=2, metabolism=0, sex=:male,
   # flag here in case the model was created without it.
   model.use_llm_decisions = true
 
-  # Pull API key from ENV if still unset so that populate_llm_decisions! works.
+  # Pull API key from ENV if still unset so that individual agent decisions work.
   if isempty(model.llm_api_key)
     model.llm_api_key = get(ENV, "OPENAI_API_KEY", "")
   end
@@ -78,6 +76,15 @@ function add_custom_agent!(model, pos; sugar, vision=2, metabolism=0, sex=:male,
     total_inheritance_received, culture, loans, diseases, immunity)
 
   return ag
+end
+
+"""
+    get_agent_decision(agent, model)
+
+Get individual agent decision using the new individual-only approach.
+"""
+function get_agent_decision(agent, model)
+  return Sugarscape.SugarscapeLLM.get_individual_agent_decision_with_retry(agent, model)
 end
 
 ################################################################################
@@ -111,10 +118,9 @@ end
   agent_pos = (3, 3)
   add_custom_agent!(model, agent_pos; sugar=0, vision=2, metabolism=0)
   agent = first(allagents(model))
-  populate_llm_decisions!(model)
 
-  # Obtain the LLM directive and execute via try_llm_move!
-  dec = Sugarscape.get_decision(agent, model)
+  # Get individual agent decision
+  dec = get_agent_decision(agent, model)
   Sugarscape.try_llm_move!(agent, model, dec.move_coords)
 
   @test log_test_step("Agent moved to max-sugar site", agent.pos == (3, 5), (3, 5), agent.pos)
@@ -137,9 +143,8 @@ end
 
   add_custom_agent!(model, agent_pos; sugar=0, vision=3, metabolism=0)
   agent = first(allagents(model))
-  populate_llm_decisions!(model)
 
-  dec = Sugarscape.get_decision(agent, model)
+  dec = get_agent_decision(agent, model)
   Sugarscape.try_llm_move!(agent, model, dec.move_coords)
 
   @test log_test_step("Agent chose closer site for tie-breaking", agent.pos == (5, 4), (5, 4), agent.pos)
@@ -159,9 +164,8 @@ end
 
   add_custom_agent!(model, agent_pos; sugar=0, vision=2, metabolism=0)
   agent = first(allagents(model))
-  populate_llm_decisions!(model)
 
-  dec = Sugarscape.get_decision(agent, model)
+  dec = get_agent_decision(agent, model)
   Sugarscape.try_llm_move!(agent, model, dec.move_coords)
 
   # With fixed seed, the RNG should make the choice deterministic. Expected outcome
@@ -189,9 +193,7 @@ end
 
   @info "focal: $(focal)" id = focal.id
 
-  populate_llm_decisions!(model)
-
-  dec = Sugarscape.get_decision(focal, model)
+  dec = get_agent_decision(focal, model)
   @info "dec: $(dec)"
   Sugarscape.try_llm_move!(focal, model, dec.move_coords)
 
@@ -226,11 +228,9 @@ end
   agents = [agent1, agent2, agent3]
   @test length(agents) == 3
 
-  populate_llm_decisions!(model)
-
-  # Move all agents
+  # Move all agents using individual decisions
   for agent in agents
-    dec = Sugarscape.get_decision(agent, model)
+    dec = get_agent_decision(agent, model)
     Sugarscape.try_llm_move!(agent, model, dec.move_coords)
   end
 
@@ -278,7 +278,6 @@ end
   # cell above them to host the child.
   add_custom_agent!(model, (3, 3); sugar=20, sex=:male, age=25, vision=1, metabolism=0, culture_bits=[false, false, false])
   add_custom_agent!(model, (4, 3); sugar=20, sex=:female, age=25, vision=1, metabolism=0, culture_bits=[true, true, true])
-  populate_llm_decisions!(model)
 
   @test nagents(model) == 2
 
@@ -330,7 +329,6 @@ end
   focal_B = (2, 3)
   add_custom_agent!(model, focal_A; sugar=20, sex=:male, age=25, culture_bits=[false])
   add_custom_agent!(model, focal_B; sugar=20, sex=:female, age=25, culture_bits=[true])
-  populate_llm_decisions!(model)
 
   # Fill remaining 7 cells of the 3×3 grid
   for pos in ((1, 1), (1, 2), (1, 3), (2, 1), (3, 1), (3, 2), (3, 3))
@@ -427,7 +425,6 @@ end
 
   a = add_custom_agent!(model, (2, 2); sugar=0, culture_bits=[false])
   b = add_custom_agent!(model, (2, 3); sugar=0, culture_bits=[true])
-  populate_llm_decisions!(model)
 
   Sugarscape.culture_spread!(model)
 
@@ -477,7 +474,6 @@ end
 
   attacker = add_custom_agent!(model, (2, 2); sugar=10, culture_bits=[false, false, true], metabolism=1)  # blue, metabolism 1
   victim = add_custom_agent!(model, (4, 2); sugar=5, culture_bits=[false, true, false], vision=0, metabolism=1)   # red but stronger, cannot see attacker
-  populate_llm_decisions!(model)
 
   Sugarscape.combat!(model)
 
@@ -498,7 +494,6 @@ end
 
   attacker = add_custom_agent!(model, (2, 2); sugar=5, culture_bits=[false, false, true], vision=3, metabolism=1)   # blue
   victim = add_custom_agent!(model, (4, 2); sugar=10, culture_bits=[true, true, false], vision=0, metabolism=1)    # red but stronger, cannot see attacker
-  populate_llm_decisions!(model)
 
   Sugarscape.combat!(model)
 
@@ -520,7 +515,6 @@ end
 
   attacker = add_custom_agent!(model, (2, 2); sugar=10, culture_bits=[false, false, true], metabolism=1)  # blue, metabolism 1
   victim = add_custom_agent!(model, (4, 2); sugar=6, culture_bits=[true, true, false], metabolism=1)   # red, weaker, metabolism 1
-  populate_llm_decisions!(model)
 
   pre_kills = model.combat_kills
 
@@ -555,7 +549,6 @@ end
   lender = add_custom_agent!(model, (2, 2); sugar=40, sex=:male, age=55)
   # Borrower: fertile female with insufficient sugar (10)
   borrower = add_custom_agent!(model, (2, 3); sugar=10, sex=:female, age=25)
-  populate_llm_decisions!(model)
 
   @test isempty(lender.loans) && isempty(borrower.loans)
 

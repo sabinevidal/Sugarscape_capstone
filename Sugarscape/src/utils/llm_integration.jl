@@ -6,10 +6,12 @@ module SugarscapeLLM
 # This file provides non-intrusive helper utilities for retrieving decisions #
 # from an OpenAI-compatible endpoint and caching them on the Sugarscape      #
 # `model`.                                                                   #
+#                                                                            #
+# Individual agent decision-making implementation.                           #
 ###############################################################################
 
 using HTTP, JSON, Logging, OpenAI
-using ..Agents: nearby_positions, nearby_agents, allagents, isempty, wrap_position
+using ..Agents: nearby_positions, nearby_agents, allagents, isempty
 
 # Parent module alias for convenience
 import ..Sugarscape
@@ -17,24 +19,17 @@ import ..Sugarscape
 # Import prompts and schemas
 using ..SugarscapePrompts
 
-##############################  helper utilities  #############################
-
-"""
-    _default_decision() -> LLMDecision
-Return a decision where every boolean flag is `false` and every optional field
-is `nothing`. Used as a safe fallback whenever the LLM response is unavailable
-or malformed. NOTE: This should NOT be used when use_llm_decisions=true.
-"""
-_default_decision() = (move=false, move_coords=nothing, combat=false, combat_target=nothing,
-  credit=false, credit_partner=nothing, reproduce=false, reproduce_with=nothing)
+# Add time function for metrics
+import Base: time
 
 ############################### Error Types ################################
 
 """
-LLM integration error types for strict error handling when use_llm_decisions=true
+LLM integration error types for strict error handling when use_llm_decisions=true.
+All errors should propagate up to stop the simulation for research integrity.
 """
 struct LLMAPIError <: Exception
-  meSugarscapeage::String
+  message::String
   status_code::Union{Int,Nothing}
   response_body::Union{String,Nothing}
 end
@@ -50,6 +45,12 @@ struct LLMValidationError <: Exception
   field::String
   value::Any
   agent_id::Union{Int,Nothing}
+end
+
+struct LLMResearchIntegrityError <: Exception
+  message::String
+  agent_id::Union{Int,Nothing}
+  context::String
 end
 
 """
@@ -105,22 +106,19 @@ end
 ##############################  API interaction  ##############################
 
 """
-    call_openai_api(contexts::Vector, model) -> Vector{Dict}
-Low-level wrapper around the OpenAI Chat Completion endpoint. When `use_llm_decisions=true`,
-any failure will raise a specific LLM error rather than silently falling back.
+    call_openai_api_individual(context::Dict, model) -> Dict
+Low-level wrapper around the OpenAI Chat Completion endpoint for individual agent requests.
+Uses the individual response format and schema for single agent decisions.
 """
-function call_openai_api(contexts::Vector, model)
+function call_openai_api_individual(context::Dict, model)
   if isempty(model.llm_api_key)
     throw(LLMAPIError("LLM API key is empty but use_llm_decisions=true", nothing, nothing))
   end
 
   system_prompt = SugarscapePrompts.get_system_prompt()
+  user_prompt = "Agent context:\n" * JSON.json(context)
+  response_format = SugarscapePrompts.get_individual_response_format()
 
-  user_prompt = "Agent contexts:\n" * JSON.json(contexts)
-
-  response_format = SugarscapePrompts.get_response_format()
-
-  # println("user_prompt: $user_prompt")
   local j
   try
     # Call the OpenAI Chat Completion endpoint via OpenAI.jl helper
@@ -140,8 +138,6 @@ function call_openai_api(contexts::Vector, model)
     throw(LLMAPIError("Failed to call OpenAI API: $(err)", nothing, nothing))
   end
 
-  println(j)
-
   # Validate response structure
   if !haskey(j, "choices") || isempty(j["choices"])
     throw(LLMAPIError("OpenAI API response missing 'choices' field or choices empty",
@@ -160,20 +156,15 @@ function call_openai_api(contexts::Vector, model)
     parsed_content = JSON.parse(content)
   catch err
     throw(LLMSchemaError("Failed to parse LLM response content as JSON: $(err)",
-      nothing, content))
+      context["agent_id"], content))
   end
 
-  # Validate that response is an object with a decisions array
-  if !isa(parsed_content, Dict) || !haskey(parsed_content, "decisions")
-    throw(LLMSchemaError("LLM response is not an object with 'decisions' field", nothing, parsed_content))
+  # For individual requests, the response should be a single decision object
+  if !isa(parsed_content, Dict)
+    throw(LLMSchemaError("LLM response is not a dictionary", context["agent_id"], parsed_content))
   end
 
-  decisions_array = parsed_content["decisions"]
-  if !isa(decisions_array, Vector)
-    throw(LLMSchemaError("LLM response 'decisions' field is not an array", nothing, decisions_array))
-  end
-
-  return decisions_array
+  return parsed_content
 end
 
 """
@@ -324,72 +315,49 @@ function _strict_parse_decision(obj, agent_id)
     credit=credit, credit_partner=credit_partner, reproduce=reproduce, reproduce_with=reproduce_with)
 end
 
-###########################  public entry point  ##############################
+###########################  individual agent entry point  ##############################
 
 """
-    populate_llm_decisions!(model)
-Fetches decisions for *all* agents (batch request) and caches them in
-`model.llm_decisions`. When `use_llm_decisions=true`, uses strict validation
-and any failure will raise a specific LLM error rather than falling back.
+    get_individual_agent_decision(agent, model) -> LLMDecision
+Get a decision for a single agent by making an individual API call.
+This is the main entry point for individual agent decision-making.
 """
-function populate_llm_decisions!(model)
-  # Safety guard
-  model.use_llm_decisions || return
+function get_individual_agent_decision(agent, model)
+  # Build single agent context
+  context = build_agent_context(agent, model)
 
-  # Build contexts
-  contexts = [build_agent_context(a, model) for a in allagents(model)]
+  # Make individual API call
+  raw_response = call_openai_api_individual(context, model)
 
-  println("contexts: $(contexts)")
+  # Parse single decision
+  decision = _strict_parse_decision(raw_response, agent.id)
 
-  if isempty(contexts)
-    throw(LLMValidationError("No agents found to generate decisions for", "", nothing, nothing))
-  end
+  return decision
+end
 
-  # Obtain decisions from API
-  raw = call_openai_api(contexts, model)
+"""
+    get_individual_agent_decision_with_retry(agent, model) -> LLMDecision
+Get a decision for a single agent with simple retry logic.
+Either returns a valid LLM decision or throws an exception to stop the simulation.
+"""
+function get_individual_agent_decision_with_retry(agent, model)
+  max_retries = 3
 
-  # Strict validation: response length must exactly match agent count
-  if length(raw) != length(contexts)
-    throw(LLMSchemaError(
-      "LLM returned $(length(raw)) decisions for $(length(contexts)) agents - counts must match exactly",
-      nothing, raw))
-  end
-
-  # Parse decisions with strict validation
-  decisions = Vector{Sugarscape.LLMDecision}(undef, length(contexts))
-  for (i, d) in enumerate(raw)
-    agent_id = contexts[i]["agent_id"]
+  for attempt in 1:max_retries
     try
-      decisions[i] = _strict_parse_decision(d, agent_id)
+      return get_individual_agent_decision(agent, model)
     catch e
-      # Re-throw LLM-specific errors as-is
-      if isa(e, Union{LLMSchemaError,LLMValidationError})
+      @warn "Agent $(agent.id) LLM request failed (attempt $attempt/$max_retries)" exception = (e, catch_backtrace())
+
+      if attempt == max_retries
+        @error "Agent $(agent.id) LLM request failed after $max_retries attempts - simulation must fail for research integrity"
         rethrow()
-      else
-        # Wrap unexpected errors
-        throw(LLMSchemaError("Unexpected error parsing decision for agent $agent_id: $(e)",
-          agent_id, d))
       end
+
+      # Simple delay before retry
+      sleep(0.1 * attempt)
     end
   end
-
-  # Validate that all agents got decisions
-  model.llm_decisions = Dict{Int,Sugarscape.LLMDecision}()
-  for (i, ctx) in enumerate(contexts)
-    agent_id = ctx["agent_id"]
-    model.llm_decisions[agent_id] = decisions[i]
-  end
-
-  # Final validation: ensure all living agents have decisions
-  living_agents = allagents(model)
-  for agent in living_agents
-    if !haskey(model.llm_decisions, agent.id)
-      throw(LLMValidationError("No LLM decision found for living agent $(agent.id)",
-        "", nothing, agent.id))
-    end
-  end
-
-  @info "Successfully populated $(length(model.llm_decisions)) LLM decisions for $(length(living_agents)) agents"
 end
 
 ########################### Error Message Helpers ############################
@@ -427,19 +395,16 @@ function format_llm_error(e::Exception)
     msg *= "\nField: $(e.field)"
     msg *= "\nInvalid Value: $(e.value)"
     return msg
+  elseif isa(e, LLMResearchIntegrityError)
+    msg = "LLM Research Integrity Error: $(e.message)"
+    if e.agent_id !== nothing
+      msg *= "\nAgent ID: $(e.agent_id)"
+    end
+    msg *= "\nContext: $(e.context)"
+    return msg
   else
     return "Unexpected error: $(e)"
   end
 end
 
-"""
-    call_openai_api(context::Dict, model) -> Dict
-Single-agent wrapper for testing individual agent contexts.
-"""
-function call_openai_api(context::Dict, model)
-  result = call_openai_api([context], model)
-  return result[1]
-end
-
-###############################################################################
 end # module SugarscapeLLM

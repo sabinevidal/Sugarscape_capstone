@@ -5,6 +5,8 @@ module SugarscapePrompts
 #                                                                            #
 # This file contains the system prompts and structured schema definitions    #
 # used for LLM integration in the Sugarscape model.                         #
+#                                                                            #
+# Individual agent decision-making implementation.                           #
 ###############################################################################
 
 """
@@ -13,17 +15,16 @@ Returns the system prompt used for LLM decision-making in Sugarscape.
 """
 function get_system_prompt()
   return """
-  You are an AI controlling agents in a Sugarscape simulation. Your job is to mimic the decision rules as closely as possible.
+  You are an AI controlling a single agent in a Sugarscape simulation. Your job is to make decisions for this specific agent based on its current situation and the standard Sugarscape rules.
   """
 end
 
 """
-    get_decision_schema() -> Dict
-Returns the structured schema definition for agent decisions.
+    get_individual_decision_schema() -> Dict
+Returns the structured schema definition for a single agent decision.
 """
-function get_decision_schema()
-  # Define the schema for a single decision object
-  single_decision_schema = Dict(
+function get_individual_decision_schema()
+  return Dict(
     "type" => "object",
     "properties" => Dict(
       "agent_id" => Dict(
@@ -66,41 +67,24 @@ function get_decision_schema()
         "description" => "ID of the partner agent for reproduction, null if not reproducing"
       )
     ),
-    # All properties must be listed in `required` to satisfy the OpenAI response_format
     "required" => [
       "agent_id", "move", "move_coords", "combat", "combat_target",
       "credit", "credit_partner", "reproduce", "reproduce_with"
     ],
     "additionalProperties" => false
   )
-
-  # Define the schema for an object containing an array of decision objects
-  agent_action_schema = Dict(
-    "type" => "object",
-    "properties" => Dict(
-      "decisions" => Dict(
-        "type" => "array",
-        "items" => single_decision_schema,
-        "description" => "Array of decision objects, one per agent"
-      )
-    ),
-    "required" => ["decisions"],
-    "additionalProperties" => false
-  )
-
-  return agent_action_schema
 end
 
 """
-    get_response_format() -> Dict
-Returns the OpenAI response format configuration using the structured schema.
+    get_individual_response_format() -> Dict
+Returns the OpenAI response format configuration for individual agent decisions.
 """
-function get_response_format()
+function get_individual_response_format()
   return Dict(
     "type" => "json_schema",
     "json_schema" => Dict(
-      "name" => "decision_response",
-      "schema" => get_decision_schema(),
+      "name" => "individual_decision_response",
+      "schema" => get_individual_decision_schema(),
       "strict" => true
     ),
   )
