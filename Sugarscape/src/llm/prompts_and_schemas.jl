@@ -37,11 +37,16 @@ Returns the system prompt used for LLM reproduction decisions in Sugarscape.
 function get_reproduction_system_prompt()
   return """
   REPRODUCTION RULE:
-  - If the neighboring agent is of the opposite sex and if both agents are fertile and at least  one of the agents has an empty neighboring  site then a newborn is produced by crossing over the parents' genetic and cultural characteristics.
-  - Agent can only reproduce with max_partners per turn.
+  - An agent may reproduce up to max_partners times per turn.
+  - Reproduction occurs if:
+    - The partner is of the opposite sex, fertile, and within the agent’s Moore neighborhood.
+    - Both agents are fertile, where fertility is defined by age falling within the predefined fertility range.
+    - At least one of the two agents has an empty adjacent site (i.e. an unoccupied neighboring cell).
+  - From the set of eligible partners (those who meet all criteria above), select up to max_partners
   - Select partners from list of eligible_partners, up to max_partners.
   - If no partners are eligible, do not reproduce.
   - Either the agent or the partner must have an empty neighbouring site.
+  - If no eligible partners are found, or no valid empty site exists for either the agent or the partner, no reproduction occurs.
   """
 end
 
