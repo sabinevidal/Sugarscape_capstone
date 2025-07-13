@@ -33,11 +33,11 @@ Utility for inserting a `SugarscapeAgent` at a specific position with explicit
 attributes so that tests remain deterministic and self-contained. Keyword
 arguments default to sensible values but can be overridden per test.
 """
-function add_custom_agent!(model, pos; sugar, vision=2, metabolism=0, sex=:male,
+function add_custom_agent!(model, pos; sugar, initial_sugar=sugar, vision=2, metabolism=0, sex=:male,
   age=0, max_age=100, culture_bits=[false],
   has_reproduced=false)
 
-  initial_sugar = sugar
+  initial_sugar = initial_sugar
   children = Int[]
   total_inheritance_received = 0.0
   culture = BitVector(culture_bits)
@@ -280,6 +280,60 @@ end
   Sugarscape.reproduction!(focal_agent, model)
 
   @test log_test_step("Number of agents after reproduction", nagents(model) == 9, 9, nagents(model))
+
+  ##########################################################################
+  # 3. Reproduced with max_partners or less
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+    enable_reproduction=true, growth_rate=0,
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
+    w0_dist=(20, 20))
+  model.sugar_values .= 0.0
+
+  # Place fertile female at centre
+  focal_agent = add_custom_agent!(model, (3, 3); sugar=15, initial_sugar=5, sex=:female, age=25, culture_bits=[true])
+
+  # 4 surrounding agents, 3 fertile
+  for pos in ((2, 3), (3, 2), (4, 3))
+    isempty(pos, model) || continue
+    add_custom_agent!(model, pos; sugar=20, sex=:male, age=25, culture_bits=[false])
+  end
+
+  # Add one more agent that is not fertile
+  add_custom_agent!(model, (3, 4); sugar=20, sex=:male, age=5, culture_bits=[false])
+
+  @test log_test_step("Number of agents before reproduction", nagents(model) == 5, 5, nagents(model))
+
+  Sugarscape.reproduction!(focal_agent, model)
+
+  @test log_test_step("Number of agents after reproduction", nagents(model) == 7, 7, nagents(model))
+
+  @info "model.reproduction_counts_history: ", model.reproduction_counts_history
+
+  ##########################################################################
+  # 3. No eligible partners for reproduction
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+    enable_reproduction=true, growth_rate=0,
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
+    w0_dist=(20, 20))
+  model.sugar_values .= 0.0
+
+  # Place fertile female at centre
+  focal_agent = add_custom_agent!(model, (3, 3); sugar=15, initial_sugar=5, sex=:female, age=25, culture_bits=[true])
+
+  # 4 surrounding agents, all not fertile
+  for pos in ((2, 3), (3, 2), (4, 3), (3, 4))
+    isempty(pos, model) || continue
+    add_custom_agent!(model, pos; sugar=20, sex=:male, age=5, culture_bits=[false])
+  end
+
+  @test log_test_step("Number of agents before reproduction", nagents(model) == 5, 5, nagents(model))
+
+  Sugarscape.reproduction!(focal_agent, model)
+
+  @test log_test_step("Number of agents after reproduction", nagents(model) == 5, 5, nagents(model))
+
 end
 
 ################################################################################

@@ -66,7 +66,6 @@ function llm_move!(agent, model, target_pos)
   # If no target specified, agent stays idle
   pos_before = agent.pos
 
-  @info "try_llm_move! pos_before: $(pos_before) target_pos: $(target_pos)" id = agent.id
   if target_pos === nothing
     idle!(agent, model)
     return

@@ -39,27 +39,37 @@ Returns nothing if no reproduction occurs.
 """
 
 function reproduction!(agent, model)
+  model.reproduction_counts_step = Dict{Int,Int}()
   is_fertile(agent, model) || return
 
   # filter nearby agents to only include fertile agents of opposite sex
-  eligible_partners = filter(ep -> is_fertile(ep, model) && agent.sex != ep.sex, collect(nearby_agents(agent, model, 1)))
+  nearby = nearby_agents(agent, model, 1)
+  eligible_partners = filter(ep -> is_fertile(ep, model) && agent.sex != ep.sex, nearby === nothing ? [] : collect(nearby))
 
-  if eligible_partners |> isempty
+
+  if eligible_partners === nothing || isempty(eligible_partners)
     return
   end
 
-  @info "Eligible partners for reproduction: $eligible_partners"
-
   max_partners = max_matings(agent)
+
+  if max_partners == 0
+    #  Agent cannot afford any matings this turn.
+    return
+  end
 
   if model.use_llm_decisions
     # llm specific reproduction logic
     reproduction_context = build_reproduction_context(agent, model, eligible_partners, max_partners)
     reproduction_decision = SugarscapeLLM.get_reproduction_decision(reproduction_context, model)
 
+    if reproduction_decision.partners === nothing || isempty(reproduction_decision.partners)
+      # "No partners selected by LLM for reproduction."
+      return
+    end
+
     for partner_id in reproduction_decision.partners
       partner = getindex(model, partner_id)
-      @info "Partner llm: $partner"
       attempt_reproduction!(agent, partner, model)
     end
   else
@@ -67,10 +77,11 @@ function reproduction!(agent, model)
     # pick max_partners random partners from eligible_partners
     partners = rand(abmrng(model), eligible_partners, max_partners)
     for partner in partners
-      @info "Partner original: $partner"
       attempt_reproduction!(agent, partner, model)
     end
   end
+
+  push!(model.reproduction_counts_history, model.reproduction_counts_step)
 
 end
 
@@ -153,11 +164,10 @@ function attempt_reproduction!(agent, partner, model)
   is_fertile(agent, model) || return nothing
   is_fertile(partner, model) || return nothing
 
-  free_cells = collect(empty_nearby_positions(agent, model))
+  free_cells = union(collect(empty_nearby_positions(agent, model)), collect(empty_nearby_positions(partner, model)))
   isempty(free_cells) && return nothing
 
   child_pos = rand(abmrng(model), free_cells)
-  @info "Creating child at position $child_pos"
   child_id = create_child(agent, partner, child_pos, model)
 
   push!(agent.children, child_id)

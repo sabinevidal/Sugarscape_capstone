@@ -161,7 +161,6 @@ function call_openai_api(context::Dict, model, rule_prompt, response_format)
   end
 
   system_prompt = SugarscapePrompts.get_system_prompt() * rule_prompt
-  @info "system_prompt: $(system_prompt)"
   user_prompt = "Agent context:\n" * JSON.json(context)
 
   local j

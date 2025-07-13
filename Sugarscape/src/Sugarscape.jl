@@ -46,9 +46,6 @@ include("visualisation/interactive.jl")
 # visualisation/dashboard.jl provides debugging dashboard functionality
 include("visualisation/dashboard.jl")
 
-# Testing utilities for LLM integration
-include("visualisation/testing.jl")
-
 # Performance testing utilities
 include("visualisation/performance.jl")
 

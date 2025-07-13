@@ -219,6 +219,7 @@ end
   ##########################################################################
   # 1. Successful reproduction with opposite sex, fertility & empty cell
   ##########################################################################
+  @info "Testing: Successful reproduction with opposite sex, fertility & empty cell"
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_reproduction=true, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
@@ -273,6 +274,7 @@ end
   ##########################################################################
   # 2. No reproduction when no empty neighbouring site
   ##########################################################################
+  @info "Testing: No reproduction when no empty neighbouring site"
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_reproduction=true, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
@@ -301,13 +303,16 @@ end
 
 
   ##########################################################################
-  # 3. Reproduced with max_partners or less
+  # 3. Reproduced with max_partners
   ##########################################################################
+  @info "Testing: Agent reproduces with up to max partners"
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_reproduction=true, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
     w0_dist=(20, 20), use_llm_decisions=true)
   model.sugar_values .= 0.0
+
+  model.reproduction_counts_step = Dict{Int,Int}()
 
   # Place fertile female at centre
   focal_agent = add_custom_agent!(model, (3, 3); sugar=15, initial_sugar=5, sex=:female, age=25, culture_bits=[true])
@@ -325,9 +330,15 @@ end
 
   Sugarscape.reproduction!(focal_agent, model)
 
-  @test log_test_step("Number of agents after reproduction", nagents(model) == 9, 9, nagents(model))
+  @test log_test_step("Number of agents after reproduction", nagents(model) == 7, 7, nagents(model))
 
-  @info "model.reproduction_counts_history: ", model.reproduction_counts_history
+  steps = get(model.reproduction_counts_step, focal_agent.id, 0)
+  history = collect(values(model.reproduction_counts_history))
+
+  # Check reproduction counts step has been updated
+  @test log_test_step("Reproduction counts step", steps == 2, 2, steps)
+  # Check history has updated for 2 agents with 1 reproduction each, and 1 agent with 2
+  @test log_test_step("Reproduction counts history", sort(history) == [1, 1, 2], [1, 1, 2], sort(history))
 end
 
 
