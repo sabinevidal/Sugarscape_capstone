@@ -6,6 +6,25 @@ using Agents
 ################################################################################
 # Helpers
 ################################################################################
+"""
+    log_test_step(step_name, condition, expected=nothing, actual=nothing)
+
+Log the result of a test step with clear pass/fail indication.
+"""
+function log_test_step(step_name, condition, expected=nothing, actual=nothing)
+  if condition
+    @info "✅ $step_name"
+    if expected !== nothing && actual !== nothing
+      @info "   Expected: $expected, Got: $actual"
+    end
+  else
+    @info "❌ $step_name"
+    if expected !== nothing && actual !== nothing
+      @info "   Expected: $expected, Got: $actual"
+    end
+  end
+  return condition
+end
 
 """
     add_custom_agent!(model, pos; kwargs...)
@@ -111,17 +130,16 @@ end
   model.sugar_values .= 0.0
 
   focal_pos = (3, 3)
-  add_custom_agent!(model, focal_pos; sugar=0, vision=1, metabolism=0)
-  focal = first(allagents(model))
+  focal_agent = add_custom_agent!(model, focal_pos; sugar=0, vision=1, metabolism=0)
 
   # Surround focal agent with blockers at the four von-Neumann neighbours
   for pos in ((3, 4), (3, 2), (2, 3), (4, 3))
     add_custom_agent!(model, pos; sugar=0, vision=1, metabolism=0)
   end
 
-  Sugarscape.movement!(focal, model)
+  Sugarscape.movement!(focal_agent, model)
 
-  @test focal.pos == focal_pos                  # cannot move
+  @test log_test_step("Focal agent cannot move", focal_agent.pos == focal_pos, focal_pos, focal_agent.pos)
 
   ##########################################################################
   # 5. Multiple agents move to valid spots
@@ -195,28 +213,31 @@ end
   add_custom_agent!(model, (3, 3); sugar=20, sex=:male, age=25, vision=1, metabolism=0, culture_bits=[false, false, false])
   add_custom_agent!(model, (4, 3); sugar=20, sex=:female, age=25, vision=1, metabolism=0, culture_bits=[true, true, true])
 
-  @test nagents(model) == 2
+  @test log_test_step("Number of agents before reproduction", nagents(model) == 2, 2, nagents(model))
 
-  Sugarscape.reproduction!(model)
+  # Test reproduction with a random agent
+  focal_agent = random_agent(model)
+  @info "Focal agent: $focal_agent"
+  Sugarscape.reproduction!(focal_agent, model)
 
-  @test nagents(model) == 3                              # child created
+  @test log_test_step("Number of agents after reproduction", nagents(model) == 3, 3, nagents(model))
 
   # Identify parents and child by reproduction flag
   parents = [a for a in allagents(model) if a.has_reproduced]
-  @test length(parents) == 2  # exactly two parents
+  @test log_test_step("Number of parents", length(parents) == 2, 2, length(parents))
 
   child_candidates = [a for a in allagents(model) if !a.has_reproduced]
-  @test length(child_candidates) == 1
+  @test log_test_step("Number of child candidates", length(child_candidates) == 1, 1, length(child_candidates))
   child = only(child_candidates)
 
   # Parents lost half their initial endowment (20/2 = 10)
-  @test all(isapprox(p.sugar, 10.0; atol=1e-8) for p in parents)
+  @test log_test_step("Parents sugar", all(isapprox(p.sugar, 10.0; atol=1e-8) for p in parents), true, all(isapprox(p.sugar, 10.0; atol=1e-8) for p in parents))
 
   # Child sugar equals contributions (10 + 10)
-  @test isapprox(child.sugar, 20.0; atol=1e-8)
+  @test log_test_step("Child sugar", isapprox(child.sugar, 20.0; atol=1e-8), true, isapprox(child.sugar, 20.0; atol=1e-8))
 
   # Child ID recorded in parents' children arrays
-  @test all(child.id in p.children for p in parents)
+  @test log_test_step("Child ID in parents' children arrays", all(child.id in p.children for p in parents), true, all(child.id in p.children for p in parents))
 
   # Child located in one of the empty neighbouring cells (radius 1) of parents
   possible_child_cells = Set{Tuple{Int,Int}}()
@@ -225,11 +246,11 @@ end
       push!(possible_child_cells, p)
     end
   end
-  @test child.pos in possible_child_cells
+  @test log_test_step("Child position in possible child cells", child.pos in possible_child_cells, true, child.pos in possible_child_cells)
 
   # Child culture bits must come from one of the parents at each index
   parent1, parent2 = parents
-  @test all(child.culture[i] == parent1.culture[i] || child.culture[i] == parent2.culture[i] for i in 1:length(child.culture))
+  @test log_test_step("Child culture bits match parents", all(child.culture[i] == parent1.culture[i] || child.culture[i] == parent2.culture[i] for i in 1:length(child.culture)), true, all(child.culture[i] == parent1.culture[i] || child.culture[i] == parent2.culture[i] for i in 1:length(child.culture)))
 
   ##########################################################################
   # 2. No reproduction when no empty neighbouring site
@@ -246,17 +267,19 @@ end
   add_custom_agent!(model, focal_A; sugar=20, sex=:male, age=25, culture_bits=[false])
   add_custom_agent!(model, focal_B; sugar=20, sex=:female, age=25, culture_bits=[true])
 
+  focal_agent = random_agent(model)
+
   # Fill remaining 7 cells of the 3×3 grid
   for pos in ((1, 1), (1, 2), (1, 3), (2, 1), (3, 1), (3, 2), (3, 3))
     isempty(pos, model) || continue
     add_custom_agent!(model, pos; sugar=5, sex=:male)
   end
 
-  @test nagents(model) == 9           # full grid
+  @test log_test_step("Number of agents before reproduction", nagents(model) == 9, 9, nagents(model))
 
-  Sugarscape.reproduction!(model)
+  Sugarscape.reproduction!(focal_agent, model)
 
-  @test nagents(model) == 9           # no new child
+  @test log_test_step("Number of agents after reproduction", nagents(model) == 9, 9, nagents(model))
 end
 
 ################################################################################

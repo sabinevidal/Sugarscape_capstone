@@ -1,46 +1,77 @@
-function reproduction!(model)
-  agents = collect(allagents(model))
-  shuffle!(abmrng(model), agents)  # for fairness
+function build_reproduction_context(agent, model, eligible_partners, max_partners)
 
-  for agent in agents
-    agent.has_reproduced && continue
-    is_fertile(agent, model) || continue
-
-    if model.use_llm_decisions
-      # LLM gating
-      should_act(agent, model, Val(:reproduce)) || continue
-
-      # First, try LLM-specified partner if any
-      partner_id = get_decision(agent, model).reproduce_with
-      if partner_id !== nothing && hasid(model, partner_id)
-        partner = model[partner_id]
-        if partner.id != agent.id &&
-           is_fertile(partner, model) &&
-           !partner.has_reproduced &&
-           agent.sex != partner.sex &&
-           should_act(partner, model, Val(:reproduce))
-
-          attempt_reproduction!(agent, partner, model)
-          continue  # agent finished
-        end
-      end
-    end
-
-    # Original neighbour scanning logic (always executed; partners must pass
-    # should_act only when LLM is enabled)
-    neighbors = nearby_agents(agent, model, 1)
-    for partner in neighbors
-      if partner.id != agent.id &&
-         is_fertile(partner, model) &&
-         !partner.has_reproduced &&
-         agent.sex != partner.sex &&
-         (!model.use_llm_decisions || should_act(partner, model, Val(:reproduce)))
-
-        attempt_reproduction!(agent, partner, model)
-        break
-      end
+  eligible_partners_context = Vector{Dict{Symbol,Any}}()
+  for ep in eligible_partners
+    if is_fertile(ep, model) && agent.sex != ep.sex
+      push!(eligible_partners_context, Dict(
+        :id => ep.id,
+        :sugar => ep.sugar,
+        :age => ep.age,
+        :sex => ep.sex,
+        :culture => ep.culture,
+        :partner_empty_nearby_positions => collect(empty_nearby_positions(ep, model)),
+      ))
     end
   end
+
+  reproduction_context = Dict{Symbol,Any}(
+    :agent_id => agent.id,
+    :position => agent.pos,
+    :sugar => agent.sugar,
+    :age => agent.age,
+    :metabolism => agent.metabolism,
+    :vision => agent.vision,
+    :sex => agent.sex,
+    :eligible_partners => eligible_partners_context,
+    :max_partners => max_partners,
+    # doesn't need to know values of empty_nearby_positions
+    :empty_nearby_positions => collect(empty_nearby_positions(agent, model)),
+  )
+
+  return reproduction_context
+end
+
+"""
+    reproduction!(agent, model)
+Handles reproduction for a single agent, checking fertility and eligible partners.
+If the agent is fertile, it will attempt to reproduce with eligible partners.
+Returns nothing if no reproduction occurs.
+"""
+
+function reproduction!(agent, model)
+  is_fertile(agent, model) || return
+
+  # filter nearby agents to only include fertile agents of opposite sex
+  eligible_partners = filter(ep -> is_fertile(ep, model) && agent.sex != ep.sex, collect(nearby_agents(agent, model, 1)))
+
+  if eligible_partners |> isempty
+    return
+  end
+
+  @info "Eligible partners for reproduction: $eligible_partners"
+
+  max_partners = max_matings(agent)
+
+  if model.use_llm_decisions
+    # llm specific reproduction logic
+    reproduction_context = build_reproduction_context(agent, model, eligible_partners, max_partners)
+    reproduction_decision = SugarscapeLLM.get_reproduction_decision(reproduction_context, model)
+
+    for partner_id in reproduction_decision.partners
+      partner = getindex(model, partner_id)
+      @info "Partner llm: $partner"
+      attempt_reproduction!(agent, partner, model)
+    end
+  else
+    # original reproduction logic
+    # pick max_partners random partners from eligible_partners
+    partners = rand(abmrng(model), eligible_partners, max_partners)
+    for partner in partners
+      @info "Partner original: $partner"
+      attempt_reproduction!(agent, partner, model)
+    end
+  end
+
 end
 
 function create_child(parent1, parent2, pos, model)
@@ -80,6 +111,21 @@ function is_fertile(agent, model)
 end
 
 """
+Return the maximum number of matings an agent can afford *this turn*.
+
+Given the current sugar stock (s) and initial endowment (e₀), the agent
+can mate while its sugar after each mating (halving) remains ≥ e₀.
+The count is therefore
+
+    floor(log2(s / e₀)) + 1  # if s ≥ e₀
+    0                         # otherwise
+"""
+function max_matings(agent)
+  ratio = agent.sugar / agent.initial_sugar
+  return max(floor(Int, log2(ratio)) + 1, 0)
+end
+
+"""
 Crossover function for bit vectors (culture and immunity).
 Randomly selects bits from each parent.
 """
@@ -103,10 +149,15 @@ selection) can trigger the same behaviour without duplicating code.
 Returns the child ID on success, or `nothing` if no free cell was available.
 """
 function attempt_reproduction!(agent, partner, model)
+  # double check if both agents are fertile
+  is_fertile(agent, model) || return nothing
+  is_fertile(partner, model) || return nothing
+
   free_cells = collect(empty_nearby_positions(agent, model))
   isempty(free_cells) && return nothing
 
   child_pos = rand(abmrng(model), free_cells)
+  @info "Creating child at position $child_pos"
   child_id = create_child(agent, partner, child_pos, model)
 
   push!(agent.children, child_id)
@@ -114,6 +165,10 @@ function attempt_reproduction!(agent, partner, model)
 
   agent.has_reproduced = true
   partner.has_reproduced = true
+
+  # Increment per-step reproduction counters stored in the model
+  model.reproduction_counts_step[agent.id] = get(model.reproduction_counts_step, agent.id, 0) + 1
+  model.reproduction_counts_step[partner.id] = get(model.reproduction_counts_step, partner.id, 0) + 1
 
   return child_id
 end

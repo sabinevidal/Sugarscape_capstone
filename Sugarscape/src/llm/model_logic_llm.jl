@@ -56,35 +56,33 @@ function idle!(agent, model)
 end
 
 """
-    try_llm_move!(agent, model, target_pos)
+    llm_move!(agent, model, target_pos)
 
 Attempt to move `agent` to `target_pos` proposed by an LLM. The move is allowed
 only if the cell is empty, within the agent's vision and inside the grid
 bounds. If the target is invalid or `nothing`, the agent stays idle.
 """
-function try_llm_move!(agent, model, target_pos)
+function llm_move!(agent, model, target_pos)
   # If no target specified, agent stays idle
   pos_before = agent.pos
 
   @info "try_llm_move! pos_before: $(pos_before) target_pos: $(target_pos)" id = agent.id
   if target_pos === nothing
-    @info "try_llm_move! target_pos is nothing"
     idle!(agent, model)
     return
   end
 
-  @info "try_llm_move! target_pos is not nothing"
   # Defensive: ensure we have a tuple of integers
-  !(target_pos isa Tuple{Int,Int}) && return
+  if !(target_pos isa Tuple{Int,Int})
+    idle!(agent, model)
+    return
+  end
 
-  @info "try_llm_move! target_pos is a tuple"
   if isempty(target_pos, model) &&
      euclidean_distance(agent.pos, target_pos) <= agent.vision &&
      all(1 .<= target_pos .<= size(getfield(model, :space)))
-    @info "try_llm_move! target_pos is valid"
     _do_move!(agent, model, target_pos)
   else
-    @info "try_llm_move! target_pos is invalid"
     # Invalid target - agent stays idle
     idle!(agent, model)
   end
@@ -173,6 +171,7 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     :total_lifespan_starvation => 0,
     :total_lifespan_age => 0,
     :births => 0,
+    :reproduction_counts_history => Vector{Dict{Int,Int}}(),
     :season_duration => season_duration,
     :winter_growth_divisor => winter_growth_divisor,
     :is_summer_top => true,
@@ -286,13 +285,6 @@ function _model_step_llm!(model)
     end
   end
 
-  if model.enable_reproduction
-    for a in allagents(model)
-      a.has_reproduced = false
-    end
-    reproduction!(model)
-  end
-
   model.enable_culture && culture_spread!(model)
 
   if model.enable_credit
@@ -310,80 +302,60 @@ function _model_step_llm!(model)
 end
 
 # ----------------------------------------------------------------------------
-# Agent-level step with LLM gating                                             |
+# Agent-level step                                           |
 # ----------------------------------------------------------------------------
 function _agent_step_llm!(agent, model)
-  # Movement/combat gating: skip movement decision if agent already moved via combat,
-  # but still execute subsequent ageing/death logic.
-  if !(model.enable_combat && (agent.id in model.agents_moved_combat))
-    # ---------------------------------------------------------
-    # Obtain decision (LLM or rule-based fallback)
-    # ---------------------------------------------------------
-    local decision
-    if model.use_llm_decisions
-      decision = SugarscapeLLM.get_individual_agent_decision_with_retry(agent, model)
-    else
-      decision = nothing
-    end
-
-    # ---------------------------------------------------------
-    # Movement / idle handling
-    # ---------------------------------------------------------
-    if model.use_llm_decisions
-      if decision.move
-        target = decision.move_coords
-        if target === nothing
-          idle!(agent, model)  # LLM said move but no coords
-        else
-          try_llm_move!(agent, model, target)
-        end
-      else
-        idle!(agent, model)
-      end
-    else
-      # Original rule-based movement when LLM disabled
-      movement!(agent, model)
-    end
-  end  # movement/combat gating block
-
   # ---------------------------------------------------------
-  # Post-movement death / reproduction logic (unchanged)
+  # Movement Phase
+  # Either combat or movement
+  # Each require separate decisions with different response formats
+  # Can do each decision request and action in a separate if else block since they are
+  # mutually exclusive
   # ---------------------------------------------------------
-  if !model.enable_reproduction
-    death_replacement_llm!(agent, model)
+
+  if model.enable_combat
+    # TO BE IMPLEMENTED
+    # combat_context
+    # get_combat_decision (context, response format)
+    # combat_action
   else
+    # movement_context
+    movement_context = SugarscapeLLM.build_agent_movement_context(agent, model)
+    movement_decision = SugarscapeLLM.get_movement_decision(movement_context, model)
+    # get_movement_decision (context, response format)
+    # movement_action
+    llm_move!(agent, model, movement_decision.move_coords)
+  end
+
+
+  # ---------------------------------------------------------
+  # Post-movement death / reproduction phase
+  # Inheritance -> Death -> Reproduction
+  # Inheritance only happens with reproduction
+  # Death without reproduction leads to replacement and does not require a decision
+  # 2 branches:
+  # 1. Repro enabled: Inheritance -> Death -> Reproduction
+  # 2. Repro disabled: Death -> Replacement
+  # ---------------------------------------------------------
+
+  if model.enable_reproduction
     if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
       cause = agent.sugar ≤ 0 ? :starvation : :age
       death!(agent, model, cause)
     end
+    llm_reproduction!(agent, model)
+
+    # reproduction_action
+  else
+    Sugarscape.death_replacement!(agent, model)
   end
 end
 
-# -----------------------------------------------------------------------------
-# Replacement helper (identical to core)
-# -----------------------------------------------------------------------------
-function death_replacement_llm!(agent, model)
-  if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
-    cause = agent.sugar ≤ 0 ? :starvation : :age
-    death!(agent, model, cause)
+# ---------------------------------------------------------
+# Post-reproduction culture and credit phase
+# TO BE IMPLEMENTED
+# ---------------------------------------------------------
 
-    vision = rand(abmrng(model), model.vision_dist[1]:model.vision_dist[2])
-    metabolism = rand(abmrng(model), model.metabolic_rate_dist[1]:model.metabolic_rate_dist[2])
-    age = 0
-    max_age = rand(abmrng(model), model.max_age_dist[1]:model.max_age_dist[2])
-    sugar = Float64(rand(abmrng(model), model.w0_dist[1]:model.w0_dist[2]))
-    sex = rand(abmrng(model), (:male, :female))
-    has_reproduced = false
-    children = Int[]
-    total_inheritance_received = 0.0
-    culture = initialize_culture(model.culture_tag_length, model)
-
-    pos = random_empty(model)
-    add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-      sex, has_reproduced, sugar, children, total_inheritance_received,
-      culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
-  end
-end
 
 # -----------------------------------------------------------------------------
 # Generic helpers for combat movement etc are imported from shared.jl          |

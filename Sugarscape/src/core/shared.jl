@@ -81,11 +81,11 @@ function evaluate_nearby_positions(agent, model)
     # Skip occupied cells – agent can only move to empty ones
     !isempty(pos, model) && continue
 
-    val = model.enable_pollution ? welfare(pos, model) :
-          model.sugar_values[pos...]
+    sugar_val = model.enable_pollution ? welfare(pos, model) :
+                model.sugar_values[pos...]
     dist = euclidean_distance(agent.pos, pos)
 
-    push!(all_positions, (pos, val, dist))
+    push!(all_positions, (pos, sugar_val, dist))
   end
 
   # Sort by value (descending) then by distance (ascending)
@@ -174,4 +174,30 @@ function death!(agent, model, cause::Symbol=:unknown)
   end
 
   remove_agent!(agent, model)
+end
+
+# -----------------------------------------------------------------------------
+# Replacement (R-rule) helper
+# -----------------------------------------------------------------------------
+function death_replacement!(agent, model)
+  if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
+    cause = agent.sugar ≤ 0 ? :starvation : :age
+    death!(agent, model, cause)
+
+    vision = rand(abmrng(model), model.vision_dist[1]:model.vision_dist[2])
+    metabolism = rand(abmrng(model), model.metabolic_rate_dist[1]:model.metabolic_rate_dist[2])
+    age = 0
+    max_age = rand(abmrng(model), model.max_age_dist[1]:model.max_age_dist[2])
+    sugar = Float64(rand(abmrng(model), model.w0_dist[1]:model.w0_dist[2]))
+    sex = rand(abmrng(model), (:male, :female))
+    has_reproduced = false
+    children = Int[]
+    total_inheritance_received = 0.0
+    culture = initialize_culture(model.culture_tag_length, model)
+
+    pos = random_empty(model)
+    add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
+      sex, has_reproduced, sugar, children, total_inheritance_received,
+      culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
+  end
 end

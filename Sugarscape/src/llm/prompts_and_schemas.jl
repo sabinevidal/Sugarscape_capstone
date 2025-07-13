@@ -20,6 +20,32 @@ function get_system_prompt()
 end
 
 """
+    get_movement_system_prompt() -> String
+Returns the system prompt used for LLM movement decisions in Sugarscape.
+"""
+function get_movement_system_prompt()
+  return """
+  MOVEMENT RULE:
+  - Considering only unoccupied lattice positions, find the nearest position producing maximum welfare;
+  - Move to the new position;
+  """
+end
+"""
+    get_reproduction_system_prompt() -> String
+Returns the system prompt used for LLM reproduction decisions in Sugarscape.
+"""
+function get_reproduction_system_prompt()
+  return """
+  REPRODUCTION RULE:
+  - If the neighboring agent is of the opposite sex and if both agents are fertile and at least  one of the agents has an empty neighboring  site then a newborn is produced by crossing over the parents' genetic and cultural characteristics.
+  - Agent can only reproduce with max_partners per turn.
+  - Select partners from list of eligible_partners, up to max_partners.
+  - If no partners are eligible, do not reproduce.
+  - Either the agent or the partner must have an empty neighbouring site.
+  """
+end
+
+"""
     get_individual_decision_schema() -> Dict
 Returns the structured schema definition for a single agent decision.
 """
@@ -72,6 +98,101 @@ function get_individual_decision_schema()
       "credit", "credit_partner", "reproduce", "reproduce_with"
     ],
     "additionalProperties" => false
+  )
+end
+
+"""
+    get_movement_decision_schema() -> Dict
+Returns the structured schema definition for a movement decision.
+"""
+function get_movement_decision_schema()
+  return Dict(
+    "type" => "object",
+    "properties" => Dict(
+      "agent_id" => Dict(
+        "type" => "integer",
+        "description" => "Unique identifier for the agent"
+      ),
+      "move" => Dict(
+        "type" => "boolean",
+        "description" => "Whether the agent should move"
+      ),
+      "move_coords" => Dict(
+        "type" => ["array", "null"],
+        "items" => Dict("type" => "integer"),
+        "minItems" => 2,
+        "maxItems" => 2,
+        "description" => "Target coordinates [x, y] for movement, null if not moving"
+      ),
+    ),
+    "required" => [
+      "agent_id", "move", "move_coords"
+    ],
+    "additionalProperties" => false
+  )
+end
+
+"""
+    get_reproduction_decision_schema() -> Dict
+Returns the structured schema definition for a reproduction decision.
+"""
+function get_reproduction_decision_schema(max_partners::Int)
+  return Dict(
+    "type" => "object",
+    "properties" => Dict(
+      "agent_id" => Dict(
+        "type" => "integer",
+        "description" => "Unique identifier for the agent"
+      ),
+      "reproduce" => Dict(
+        "type" => "boolean",
+        "description" => "Whether the agent should reproduce"
+      ),
+      "partners" => Dict(
+        "type" => ["array", "null"],
+        "items" => Dict("type" => "integer"),
+        "maxItems" => max_partners,
+        "description" => "List of partner IDs for reproduction, null if not reproducing"
+      ),
+      "reasoning_for_choice" => Dict(
+        "type" => ["string"],
+        "description" => "Reasoning for the choice of partners or, if not applicable, the reason for not reproducing, max 2 sentences."
+      )
+    ),
+    "required" => [
+      "agent_id", "reproduce", "partners", "reasoning_for_choice"
+    ],
+    "additionalProperties" => false
+  )
+end
+
+"""
+    get_movement_response_format() -> Dict
+Returns the OpenAI response format configuration for movement decisions.
+"""
+function get_movement_response_format()
+  return Dict(
+    "type" => "json_schema",
+    "json_schema" => Dict(
+      "name" => "movement_response",
+      "schema" => get_movement_decision_schema(),
+      "strict" => true
+    ),
+  )
+end
+
+"""
+    get_reproduction_response_format() -> Dict
+Returns the OpenAI response format configuration for reproduction decisions.
+"""
+function get_reproduction_response_format(max_partners::Int)
+  return Dict(
+    "type" => "json_schema",
+    "json_schema" => Dict(
+      "name" => "reproduction_response",
+      "schema" => get_reproduction_decision_schema(max_partners),
+      "strict" => true
+    ),
   )
 end
 

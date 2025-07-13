@@ -33,28 +33,6 @@ include("llm/model_logic_llm.jl")
 # LLM prompts and schemas
 include("llm/prompts_and_schemas.jl")
 
-"""
-    sugarscape(; kwargs...) → StandardABM
-
-Unified constructor that dispatches to the pure rule-based implementation or
-the LLM-aware implementation depending on the `use_llm_decisions` keyword (or
-the `SUGARSCAPE_USE_LLM` environment variable).  All other keyword arguments
-are forwarded unchanged to the selected backend.
-"""
-function sugarscape(; kwargs...)
-  # Determine whether to use the LLM backend.
-  env_override = get(ENV, "SUGARSCAPE_USE_LLM", "false") == "true"
-  use_llm = haskey(kwargs, :use_llm_decisions) ? kwargs[:use_llm_decisions] : env_override
-
-  if use_llm
-    return sugarscape_llm(; kwargs...)
-  else
-    # Remove possible LLM-specific kwargs to avoid MethodErrors
-    clean_kwargs = filter(p -> p.first != :use_llm_decisions, collect(kwargs))
-    return sugarscape_core(; clean_kwargs...)
-  end
-end
-
 # LLM integration utilities
 include("utils/llm_integration.jl")
 
@@ -80,7 +58,6 @@ include("visualisation/ai_dashboards.jl")
 # Public API
 export SugarscapeAgent
 export sugarscape
-export sugarscape_core
 
 export gini_coefficient, morans_i
 
@@ -110,10 +87,13 @@ export disease_transmission!, immune_response!
 export make_loans!, pay_loans!
 
 # Export LLM integration functions
-export get_decision, try_llm_move!
+export get_decision, try_llm_move!, llm_move!, build_agent_movement_context
 export LLMDecision
 export get_individual_agent_decision_with_retry
 export _agent_step_llm!, _model_step_llm!
+
+# export decision helpers
+export get_reproduction_decision, get_movement_decision
 
 # Export testing functions
 export test_single_agent_llm_prompt, run_llm_prompt_test_interactive

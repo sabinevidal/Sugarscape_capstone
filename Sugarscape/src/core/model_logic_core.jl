@@ -11,7 +11,7 @@ Create a Sugarscape agent-based model that follows the standard rules without
 any LLM involvement.  The keyword arguments mirror the original `sugarscape`
 constructor, except that all LLM-specific parameters are omitted.
 """
-function sugarscape_core(;
+function sugarscape(;
   dims=(50, 50),
   gridspace_metric::Symbol=:manhattan,
   sugar_peaks=((10, 40), (40, 10)),
@@ -56,7 +56,7 @@ function sugarscape_core(;
   # LLM-specific parameters (disabled by default)
   use_llm_decisions::Bool=false,
   llm_api_key::AbstractString=get(ENV, "OPENAI_API_KEY", ""),
-  llm_model::String=get(ENV, "LLM_MODEL", "gpt-4.1-nano"),
+  llm_model::String=get(ENV, "LLM_MODEL", "gpt-4.1-mini"),
   llm_temperature::Float64=0.0,
   llm_max_tokens::Int=1000,
 )
@@ -99,6 +99,8 @@ function sugarscape_core(;
     :total_lifespan_starvation => 0,
     :total_lifespan_age => 0,
     :births => 0,
+    :reproduction_counts_history => Vector{Dict{Int,Int}}(),
+    :reproduction_counts_step => Dict{Int,Int}(),
 
     # Reproduction / inheritance
     :enable_reproduction => enable_reproduction,
@@ -198,8 +200,8 @@ function _model_step!(model)
   end
 
   # Reset combat movement registry and execute combat if enabled
-  model.agents_moved_combat = Set{Int}()
-  model.enable_combat && combat!(model)
+  # model.agents_moved_combat = Set{Int}()
+  # model.enable_combat && combat!(model)
 
   # Pollution diffusion
   if model.enable_pollution
@@ -208,14 +210,6 @@ function _model_step!(model)
       pollution_diffusion!(model)
       model.current_pollution_diffusion_steps = 0
     end
-  end
-
-  # Reproduction
-  if model.enable_reproduction
-    for a in allagents(model)
-      a.has_reproduced = false
-    end
-    reproduction!(model)
   end
 
   # Culture transmission
@@ -238,11 +232,12 @@ function _model_step!(model)
 end
 
 # =============================================================================
-# Agent-level step (unified rule-based and LLM)
+# Agent-level step
 # =============================================================================
 function _agent_step!(agent, model)
-  # Skip movement if agent already moved during combat in this tick
-  if !(model.enable_combat && (agent.id in model.agents_moved_combat))
+  if model.enable_combat
+    # TO BE IMPLEMENTED
+  else
     movement!(agent, model)
   end
 
@@ -254,31 +249,6 @@ function _agent_step!(agent, model)
       cause = agent.sugar ≤ 0 ? :starvation : :age
       death!(agent, model, cause)
     end
-  end
-end
-
-# =============================================================================
-# Replacement (R-rule) helper
-# =============================================================================
-function death_replacement!(agent, model)
-  if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
-    cause = agent.sugar ≤ 0 ? :starvation : :age
-    death!(agent, model, cause)
-
-    vision = rand(abmrng(model), model.vision_dist[1]:model.vision_dist[2])
-    metabolism = rand(abmrng(model), model.metabolic_rate_dist[1]:model.metabolic_rate_dist[2])
-    age = 0
-    max_age = rand(abmrng(model), model.max_age_dist[1]:model.max_age_dist[2])
-    sugar = Float64(rand(abmrng(model), model.w0_dist[1]:model.w0_dist[2]))
-    sex = rand(abmrng(model), (:male, :female))
-    has_reproduced = false
-    children = Int[]
-    total_inheritance_received = 0.0
-    culture = initialize_culture(model.culture_tag_length, model)
-
-    pos = random_empty(model)
-    add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-      sex, has_reproduced, sugar, children, total_inheritance_received,
-      culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
+    Sugarscape.reproduction!(agent, model)
   end
 end
