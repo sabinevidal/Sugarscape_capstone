@@ -308,8 +308,6 @@ end
 
   @test log_test_step("Number of agents after reproduction", nagents(model) == 7, 7, nagents(model))
 
-  @info "model.reproduction_counts_history: ", model.reproduction_counts_history
-
   ##########################################################################
   # 3. No eligible partners for reproduction
   ##########################################################################

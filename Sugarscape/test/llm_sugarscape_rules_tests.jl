@@ -80,11 +80,9 @@ rng_seed = 0x20240622
 @testset "Movement Rule (M)" begin
   @info "🏃 Starting Movement Rule tests..."
 
-
-
-  #   ##########################################################################
-  #   # 1. Moves to the max-sugar site within vision
-  #   ##########################################################################
+  ##########################################################################
+  # 1. Moves to the max-sugar site within vision
+  ##########################################################################
   @info "Testing: Agent moves to max-sugar site within vision"
 
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
@@ -333,78 +331,20 @@ end
   @test log_test_step("Number of agents after reproduction", nagents(model) == 7, 7, nagents(model))
 
   steps = get(model.reproduction_counts_step, focal_agent.id, 0)
-  history = collect(values(model.reproduction_counts_history))
-
   # Check reproduction counts step has been updated
   @test log_test_step("Reproduction counts step", steps == 2, 2, steps)
+
+
   # Check history has updated for 2 agents with 1 reproduction each, and 1 agent with 2
-  @test log_test_step("Reproduction counts history", sort(history) == [1, 1, 2], [1, 1, 2], sort(history))
+  history_dicts = collect(values(model.reproduction_counts_history))
+  if isempty(history_dicts)
+    @test log_test_step("Reproduction counts history", false, [1, 1, 2], [])
+  else
+    history = only(history_dicts)
+    counts = sort(collect(values(history)))
+    @test log_test_step("Reproduction counts history", counts == [1, 1, 2], [1, 1, 2], counts)
+  end
 end
-
-
-################################################################################
-# Inheritance Rule (I) – Specification Conformance Tests
-################################################################################
-
-# @testset "Inheritance Rule (I)" begin
-#   rng_seed = 0x20240622
-
-#   ##########################################################################
-#   # 1. Wealth split equally among living children
-#   ##########################################################################
-#   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
-#     enable_reproduction=true,  # inheritance active
-#     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
-
-#   # Create two children first so their IDs are lower than the parent's ID
-#   child1 = add_custom_agent!(model, (2, 2); sugar=0, age=5)
-#   child2 = add_custom_agent!(model, (2, 3); sugar=0, age=5)
-
-#   # Create parent with sugar to inherit
-#   parent = add_custom_agent!(model, (3, 3); sugar=20, age=60, max_age=60)
-#   parent.children = [child1.id, child2.id]
-
-#   # Check pre-conditions
-#   @test child1.sugar == 0.0 && child2.sugar == 0.0
-
-#   Sugarscape.death!(parent, model, :age)  # triggers inheritance
-
-#   # Each child gets floor(20 / 2) = 10
-#   @test isapprox(child1.sugar, 10.0; atol=1e-8)
-#   @test isapprox(child2.sugar, 10.0; atol=1e-8)
-
-#   # Parent removed from model
-#   @test !hasid(model, parent.id)
-
-#   # Model metrics updated
-#   @test model.total_inheritances == 2
-#   @test model.total_inheritance_value == 20.0
-#   @test model.generational_wealth_transferred == 20.0
-
-#   ##########################################################################
-#   # 2. Only living children inherit (one child dies before parent)
-#   ##########################################################################
-#   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
-#     enable_reproduction=true, growth_rate=0,
-#     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
-
-#   childA = add_custom_agent!(model, (1, 1); sugar=0, age=5)
-#   childB = add_custom_agent!(model, (1, 2); sugar=0, age=5)
-#   parent = add_custom_agent!(model, (1, 3); sugar=20, age=60, max_age=60)
-#   parent.children = [childA.id, childB.id]
-
-#   # Kill childB first so it's not alive when parent dies
-#   Sugarscape.death!(childB, model, :starvation)
-
-#   Sugarscape.death!(parent, model, :age)
-
-#   # Only childA should inherit the whole 20
-#   @test hasid(model, childA.id)
-#   @test isapprox(childA.sugar, 20.0; atol=1e-8)
-
-#   # childB removed, so cannot be in model
-#   @test !hasid(model, childB.id)
-# end
 
 # ################################################################################
 # # Culture Rule (K) – Specification Conformance Tests

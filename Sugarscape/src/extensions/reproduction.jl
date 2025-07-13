@@ -9,7 +9,7 @@ function build_reproduction_context(agent, model, eligible_partners, max_partner
         :age => ep.age,
         :sex => ep.sex,
         :culture => ep.culture,
-        :partner_empty_nearby_positions => collect(empty_nearby_positions(ep, model)),
+        :empty_nearby_positions_for_partner => collect(empty_nearby_positions(ep, model)),
       ))
     end
   end

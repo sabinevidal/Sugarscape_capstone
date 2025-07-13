@@ -37,15 +37,17 @@ Returns the system prompt used for LLM reproduction decisions in Sugarscape.
 function get_reproduction_system_prompt()
   return """
   REPRODUCTION RULE:
-  - An agent may reproduce up to max_partners times per turn.
+  - An agent can reproduce with up to max_partners eligible partners per turn.
+  - A partner is eligible if they:
+    - Are of the opposite sex
+    - Are within the agent’s vision range
+    - Are fertile
+    - Either the agent or the partner has at least one empty neighboring site.
   - Reproduction occurs if:
-    - The partner is of the opposite sex, fertile, and within the agent’s Moore neighborhood.
-    - Both agents are fertile, where fertility is defined by age falling within the predefined fertility range.
     - At least one of the two agents has an empty adjacent site (i.e. an unoccupied neighboring cell).
-  - From the set of eligible partners (those who meet all criteria above), select up to max_partners
-  - Select partners from list of eligible_partners, up to max_partners.
+  - From the set of eligible partners (those who meet all criteria above), select up to max_partners partners for reproduction.
   - If no partners are eligible, do not reproduce.
-  - Either the agent or the partner must have an empty neighbouring site.
+  - Reproduction is only possible if at least one of the agent or the eligible partner has at least one empty neighboring site. Check both empty_nearby_positions for the agent and partner_empty_nearby_positions for each partner.
   - If no eligible partners are found, or no valid empty site exists for either the agent or the partner, no reproduction occurs.
   """
 end
@@ -129,6 +131,10 @@ function get_movement_decision_schema()
         "maxItems" => 2,
         "description" => "Target coordinates [x, y] for movement, null if not moving"
       ),
+      # "reasoning_for_choice" => Dict(
+      #   "type" => ["string"],
+      #   "description" => "Reasoning for the choice of movement coordinates, if not applicable, the reason for not moving, max 2 sentences."
+      # )
     ),
     "required" => [
       "agent_id", "move", "move_coords"
@@ -159,13 +165,13 @@ function get_reproduction_decision_schema(max_partners::Int)
         "maxItems" => max_partners,
         "description" => "List of partner IDs for reproduction, null if not reproducing"
       ),
-      "reasoning_for_choice" => Dict(
-        "type" => ["string"],
-        "description" => "Reasoning for the choice of partners or, if not applicable, the reason for not reproducing, max 2 sentences."
-      )
+      # "reasoning_for_choice" => Dict(
+      #   "type" => ["string"],
+      #   "description" => "Reasoning for the choice of partners or, if not applicable, the reason for not reproducing, max 2 sentences."
+      # )
     ),
     "required" => [
-      "agent_id", "reproduce", "partners", "reasoning_for_choice"
+      "agent_id", "reproduce", "partners"
     ],
     "additionalProperties" => false
   )
