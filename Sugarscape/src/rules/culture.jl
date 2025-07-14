@@ -1,25 +1,3 @@
-# model_logic.jl
-# function sugarscape()
-#  culture_length::Int=11, # Length of culture bit string
-
-
-# properties:  :culture_length => culture_length,
-
-# for _ in 1:N
-#  culture = BitVector(rand(abmrng(model), Bool, culture_length))
-
-# Create replacement agent with proper initialization
-# culture = BitVector(rand(abmrng(model), Bool, model.culture_length))
-
-# reproduction.jl
-#  function create_child()
-#  culture = crossover(parent1.culture, parent2.culture, model)
-
-# agents.jl
-# @agent struct SugarscapeAgent(GridAgent{2})
-#   culture::BitVector  # Cultural attributes as bit string
-# end
-
 """
 Culture (K) Rule Implementation
 Each agent has a cultural tag that spreads through interaction with neighbors.
@@ -35,25 +13,44 @@ For each agent:
 5. Repeat for all neighbors.
 (Kehoe, 2016, p.35)
 """
-function culture_spread!(model)
-  for agent in allagents(model)
-    neighbors = collect(nearby_agents(agent, model, 1))  # radius 1 (von Neumann)
-    isempty(neighbors) && continue
 
-    for neighbor in neighbors
-      tag_len = length(agent.culture)
-      tag_len == 0 && continue  # allow empty tags to pass silently
+function build_culture_context(agent, model, neighbors)
+  culture_context = Dict(
+    :agent_id => agent.id,
+    :agent_culture => agent.culture,
+    :neighbors => []
+  )
 
-      # All culture strings are assumed equal length by the model design
-      @assert tag_len == length(neighbor.culture) "Cultural tags must have uniform length across agents"
+  for neighbor in neighbors
+    push!(culture_context[:neighbors], Dict(
+      :agent_id => neighbor.id,
+      :culture => neighbor.culture
+    ))
+  end
 
-      idx = rand(abmrng(model), 1:tag_len)  # pick random tag index
+  return culture_context
+end
 
-      # Rule K-2: flip neighbour’s randomly chosen bit so it matches the focal agent
-      if neighbor.culture[idx] != agent.culture[idx]
-        neighbor.culture[idx] = agent.culture[idx]
-      end
+
+function culture_spread!(agent, model)
+  neighbors = collect(nearby_agents(agent, model, 1))
+  isempty(neighbors) && return
+
+  if model.use_llm_decisions
+
+    culture_context = build_culture_context(agent, model, neighbors)
+    culture_decision = SugarscapeLLM.get_culture_decision(culture_context, model)
+    @info "Culture decision: $(culture_decision)"
+
+    if culture_decision.spread_culture === false || culture_decision.spread_to === nothing
+      @info "No culture spread decision made by LLM."
+      return
     end
+
+    llm_attempt_culture_spread!(agent, model, culture_decision)
+
+  else
+    attempt_culture_spread!(agent, neighbors)
   end
 end
 
@@ -72,6 +69,45 @@ function crossover_culture(c1::BitVector, c2::BitVector, model)::BitVector
   length(c1) != length(c2) && error("Cultural tags must have the same length")
   return BitVector([rand(abmrng(model), Bool) ? c1[i] : c2[i] for i in 1:length(c1)])
 end
+
+function attempt_culture_spread!(agent, neighbours)
+  for neighbour in neighbours
+    idx = rand(abmrng(model), 1:length(agent.culture))
+
+    if length(neighbour.culture) != length(agent.culture)
+      error("Cultural tags must have uniform length across agents")
+    end
+
+    # Rule K-2: flip neighbour's randomly chosen bit so it matches the focal agent
+    if neighbour.culture[idx] != agent.culture[idx]
+      neighbour.culture[idx] = agent.culture[idx]
+    end
+  end
+
+end
+
+function llm_attempt_culture_spread!(agent, model, culture_decision)
+  for decision in culture_decision.spread_to
+    # extract the target agent and tag index from the LLM decision
+    neighbour_id = decision["target_agent_id"]
+    idx = decision["tag_index"]
+    neighbor = getindex(model, neighbour_id)
+
+    if length(neighbor.culture) != length(agent.culture)
+      error("Cultural tags must have uniform length across agents")
+    end
+
+    # Rule K-2: flip neighbour's randomly chosen bit so it matches the focal agent
+    if neighbor.culture[idx] != agent.culture[idx]
+      neighbor.culture[idx] = agent.culture[idx]
+    end
+  end
+
+end
+
+# ==============================================================================
+# Cultural analytics functions
+# ==============================================================================
 
 """
 Calculate Shannon entropy of cultural diversity in the population.

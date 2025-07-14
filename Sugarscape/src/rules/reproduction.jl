@@ -1,3 +1,10 @@
+"""
+Reproduction (S) Rule Implementation
+"""
+
+"""
+Reproduction Rule:
+"""
 function build_reproduction_context(agent, model, eligible_partners, max_partners)
 
   eligible_partners_context = Vector{Dict{Symbol,Any}}()
@@ -63,7 +70,7 @@ function reproduction!(agent, model)
     reproduction_context = build_reproduction_context(agent, model, eligible_partners, max_partners)
     reproduction_decision = SugarscapeLLM.get_reproduction_decision(reproduction_context, model)
 
-    if reproduction_decision.partners === nothing || isempty(reproduction_decision.partners)
+    if reproduction_decision.reproduce === false || reproduction_decision.partners === nothing || isempty(reproduction_decision.partners)
       # "No partners selected by LLM for reproduction."
       return
     end

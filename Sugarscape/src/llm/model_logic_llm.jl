@@ -319,7 +319,7 @@ function _agent_step_llm!(agent, model)
     # combat_action
   else
     # movement_context
-    movement_context = SugarscapeLLM.build_agent_movement_context(agent, model)
+    movement_context = build_agent_movement_context(agent, model)
     movement_decision = SugarscapeLLM.get_movement_decision(movement_context, model)
     # get_movement_decision (context, response format)
     # movement_action
@@ -342,19 +342,29 @@ function _agent_step_llm!(agent, model)
       cause = agent.sugar ≤ 0 ? :starvation : :age
       death!(agent, model, cause)
     end
-    llm_reproduction!(agent, model)
+    reproduction!(agent, model)
 
     # reproduction_action
   else
     Sugarscape.death_replacement!(agent, model)
   end
+
+
+  # ---------------------------------------------------------
+  # Culture phase
+  # TO BE IMPLEMENTED
+  # ---------------------------------------------------------
+  if model.enable_culture
+    culture_spread!(agent, model)
+  end
+
+
+  # ---------------------------------------------------------
+  # Credit phase
+  # TO BE IMPLEMENTED
+  # ---------------------------------------------------------
+
 end
-
-# ---------------------------------------------------------
-# Post-reproduction culture and credit phase
-# TO BE IMPLEMENTED
-# ---------------------------------------------------------
-
 
 # -----------------------------------------------------------------------------
 # Generic helpers for combat movement etc are imported from shared.jl          |

@@ -7,12 +7,13 @@ include("core/agents.jl")
 include("core/environment.jl")
 
 # Extensions that add functions used inside model logic
-include("extensions/credit.jl")
-include("extensions/disease.jl")
-include("extensions/reproduction.jl")
-include("extensions/culture.jl")
-include("extensions/combat.jl")
-include("extensions/inheritance.jl")
+include("rules/movement.jl")
+include("rules/credit.jl")
+include("rules/disease.jl")
+include("rules/reproduction.jl")
+include("rules/culture.jl")
+include("rules/combat.jl")
+include("rules/inheritance.jl")
 
 # Order of includes matters if files depend on each other.
 include("utils/metrics.jl")
@@ -65,6 +66,9 @@ export create_custom_dashboard
 export create_reproduction_dashboard
 export create_dashboard
 
+# Export Movement functions
+export build_agent_movement_context
+
 # Export reproduction functions
 export reproduction!, is_fertile
 
@@ -84,7 +88,7 @@ export disease_transmission!, immune_response!
 export make_loans!, pay_loans!
 
 # Export LLM integration functions
-export get_decision, try_llm_move!, llm_move!, build_agent_movement_context
+export get_decision, try_llm_move!, llm_move!
 export LLMDecision
 export get_individual_agent_decision_with_retry
 export _agent_step_llm!, _model_step_llm!

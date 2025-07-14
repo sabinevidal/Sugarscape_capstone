@@ -53,59 +53,25 @@ function get_reproduction_system_prompt()
 end
 
 """
-    get_individual_decision_schema() -> Dict
-Returns the structured schema definition for a single agent decision.
+    get_culture_system_prompt() -> String
+Returns the system prompt used for LLM culture decisions in Sugarscape.
 """
-function get_individual_decision_schema()
-  return Dict(
-    "type" => "object",
-    "properties" => Dict(
-      "agent_id" => Dict(
-        "type" => "integer",
-        "description" => "Unique identifier for the agent"
-      ),
-      "move" => Dict(
-        "type" => "boolean",
-        "description" => "Whether the agent should move"
-      ),
-      "move_coords" => Dict(
-        "type" => ["array", "null"],
-        "items" => Dict("type" => "integer"),
-        "minItems" => 2,
-        "maxItems" => 2,
-        "description" => "Target coordinates [x, y] for movement, null if not moving"
-      ),
-      "combat" => Dict(
-        "type" => "boolean",
-        "description" => "Whether the agent should engage in combat"
-      ),
-      "combat_target" => Dict(
-        "type" => ["integer", "null"],
-        "description" => "ID of the target agent for combat, null if not fighting"
-      ),
-      "credit" => Dict(
-        "type" => "boolean",
-        "description" => "Whether the agent should engage in credit transactions"
-      ),
-      "credit_partner" => Dict(
-        "type" => ["integer", "null"],
-        "description" => "ID of the partner agent for credit transactions, null if not lending/borrowing"
-      ),
-      "reproduce" => Dict(
-        "type" => "boolean",
-        "description" => "Whether the agent should reproduce"
-      ),
-      "reproduce_with" => Dict(
-        "type" => ["integer", "null"],
-        "description" => "ID of the partner agent for reproduction, null if not reproducing"
-      )
-    ),
-    "required" => [
-      "agent_id", "move", "move_coords", "combat", "combat_target",
-      "credit", "credit_partner", "reproduce", "reproduce_with"
-    ],
-    "additionalProperties" => false
-  )
+function get_culture_system_prompt()
+  return """
+  CULTURE RULE:
+  For each neighbouring agent:
+  - Select ONLY ONE tag position (not more than one).
+  - Compare the agent's own value at that position to the neighbour's value.
+  - If the values are the same: do nothing.
+  - If the values are different: return a decision to flip the neighbour's tag at that index to match the agent's.
+
+  Important:
+  - You must return AT MOST ONE decision per neighbour.
+  - Do NOT return multiple tag positions for the same neighbour.
+  - Only include neighbours where a tag was selected AND disagreement was found.
+  - Repeat this for ALL neighbours.
+  - When specifying tag positions, use 1-based indexing (the first tag is index 1).
+  """
 end
 
 """
@@ -177,6 +143,56 @@ function get_reproduction_decision_schema(max_partners::Int)
   )
 end
 
+
+"""
+    get_culture_decision_schema() -> Dict
+Returns the structured schema definition for a culture decision.
+"""
+function get_culture_decision_schema()
+  return Dict(
+    "type" => "object",
+    "properties" => Dict(
+      "agent_id" => Dict(
+        "type" => "integer",
+        "description" => "Unique identifier for the agent"
+      ),
+      "spread_culture" => Dict(
+        "type" => "boolean",
+        "description" => "Whether the agent should spread culture"
+      ),
+      "transmit_to" => Dict(
+        "type" => ["array", "null"],
+        "items" => Dict(
+          "type" => "object",
+          "properties" => Dict(
+            "target_id" => Dict(
+              "type" => "integer",
+              "description" => "ID of the neighbouring agent to spread culture to"
+            ),
+            "tag_index" => Dict(
+              "type" => "integer",
+              "minItems" => 1,
+              "maxItems" => 1,
+              "description" => "Index (1-based) of the tag being modified"
+            )
+          ),
+          "required" => ["target_id", "tag_index"],
+          "additionalProperties" => false
+        ),
+        "description" => "Array of objects specifying which neighbouring agents to spread culture to and which tag index to modify; null if not spreading"
+      ),
+      # "reasoning_for_choice" => Dict(
+      #   "type" => ["string"],
+      #   "description" => "Reasoning for the choice of who to spread culture to or, if not applicable, the reason for not spreading culture, max 2 sentences."
+      # )
+    ),
+    "required" => [
+      "agent_id", "spread_culture", "spread_to"
+    ],
+    "additionalProperties" => false
+  )
+end
+
 """
     get_movement_response_format() -> Dict
 Returns the OpenAI response format configuration for movement decisions.
@@ -208,15 +224,15 @@ function get_reproduction_response_format(max_partners::Int)
 end
 
 """
-    get_individual_response_format() -> Dict
-Returns the OpenAI response format configuration for individual agent decisions.
+    get_culture_response_format() -> Dict
+Returns the OpenAI response format configuration for culture decisions.
 """
-function get_individual_response_format()
+function get_culture_response_format()
   return Dict(
     "type" => "json_schema",
     "json_schema" => Dict(
-      "name" => "individual_decision_response",
-      "schema" => get_individual_decision_schema(),
+      "name" => "culture_response",
+      "schema" => get_culture_decision_schema(),
       "strict" => true
     ),
   )

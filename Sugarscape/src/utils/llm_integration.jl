@@ -101,52 +101,6 @@ function build_agent_context(agent, model)
   )
 end
 
-"""
-    build_agent_movement_context(agent, model) -> Dict
-Collect a lightweight JSON-serialisable summary of the local state that the LLM
-can use to decide on the agent's next actions.  The schema is intentionally kept
-stable so tests that rely on it do not break when the runtime model evolves.
-"""
-function build_agent_movement_context(agent, model)
-  # Visible lattice positions with sugar (or welfare when pollution enabled)
-  visible_positions = Vector{Any}()
-
-  # Use the same nearby_positions logic as movement! to ensure consistency
-  for (pos, sugar_value, distance) in Sugarscape.evaluate_nearby_positions(agent, model)
-    push!(visible_positions, Dict(
-      "position" => pos,
-      "sugar_value" => sugar_value,
-      "distance" => distance,
-    ))
-  end
-
-  # Immediate neighbours (Von Neumann radius 1)
-  neighbours = Vector{Any}()
-  for nb in nearby_agents(agent, model, 1)
-    push!(neighbours, Dict(
-      "id" => nb.id,
-      "sugar" => nb.sugar,
-      "age" => nb.age,
-      "sex" => nb.sex,
-    ))
-  end
-
-  return Dict(
-    "agent_id" => agent.id,
-    "position" => agent.pos,
-    "sugar" => agent.sugar,
-    "age" => agent.age,
-    "metabolism" => agent.metabolism,
-    "vision" => agent.vision,
-    "sex" => agent.sex,
-    "visible_positions" => visible_positions,
-    # Future use could be allowing the agent to choose where to move based on what neighbours are nearby and what interaction is possible
-    "neighbours" => neighbours,
-    "enable_combat" => model.enable_combat,
-    "enable_reproduction" => model.enable_reproduction,
-    "enable_credit" => model.enable_credit,
-  )
-end
 
 ##############################  API interaction  ##############################
 
@@ -211,24 +165,7 @@ function call_openai_api(context::Dict, model, rule_prompt, response_format)
   return parsed_content
 end
 
-function _parse_movement_decision(obj)
-  move = get(obj, "move", false)
-  move_coords = get(obj, "move_coords", nothing)
 
-  # Convert vector to tuple if present
-  if move_coords !== nothing && isa(move_coords, Vector) && length(move_coords) == 2 && all(isa(x, Number) for x in move_coords)
-    move_coords = (Int(move_coords[1]), Int(move_coords[2]))
-  end
-
-  return (move=move, move_coords=move_coords)
-end
-
-function _parse_reproduction_decision(obj)
-  reproduce = get(obj, "reproduce", false)
-  partners = get(obj, "partners", nothing)
-
-  return (reproduce=reproduce, partners=partners)
-end
 
 
 """
@@ -267,7 +204,18 @@ end
 
 
 
-########################### Decision helpers ############################
+########################### Movement helpers ############################
+function _parse_movement_decision(obj)
+  move = get(obj, "move", false)
+  move_coords = get(obj, "move_coords", nothing)
+
+  # Convert vector to tuple if present
+  if move_coords !== nothing && isa(move_coords, Vector) && length(move_coords) == 2 && all(isa(x, Number) for x in move_coords)
+    move_coords = (Int(move_coords[1]), Int(move_coords[2]))
+  end
+
+  return (move=move, move_coords=move_coords)
+end
 
 function get_movement_decision(context::Dict, model)
   movement_response_format = SugarscapePrompts.get_movement_response_format()
@@ -281,6 +229,14 @@ function get_movement_decision(context::Dict, model)
   end
 end
 
+########################### Reproduction helpers ############################
+function _parse_reproduction_decision(obj)
+  reproduce = get(obj, "reproduce", false)
+  partners = get(obj, "partners", nothing)
+
+  return (reproduce=reproduce, partners=partners)
+end
+
 function get_reproduction_decision(context::Dict, model)
   reproduction_response_format = SugarscapePrompts.get_reproduction_response_format(context[:max_partners])
   reproduction_prompt = SugarscapePrompts.get_reproduction_system_prompt()
@@ -290,6 +246,27 @@ function get_reproduction_decision(context::Dict, model)
     return decision
   catch e
     throw(LLMAPIError("Failed to get reproduction decision: $(e)", nothing, nothing))
+  end
+end
+
+########################### Culture helpers ############################
+function _parse_culture_decision(obj)
+  # Culture decisions are expected to be a dictionary with culture tags
+  spread_culture = get(obj, "spread_culture", false)
+  spread_to = get(obj, "spread_to", nothing)
+
+  return (spread_culture=spread_culture, spread_to=spread_to)
+end
+
+function get_culture_decision(context::Dict, model)
+  culture_response_format = SugarscapePrompts.get_culture_response_format()
+  culture_prompt = SugarscapePrompts.get_culture_system_prompt()
+  try
+    raw_response = call_openai_api(context, model, culture_prompt, culture_response_format)
+    decision = _parse_culture_decision(raw_response)
+    return decision
+  catch e
+    throw(LLMAPIError("Failed to get culture decision: $(e)", nothing, nothing))
   end
 end
 

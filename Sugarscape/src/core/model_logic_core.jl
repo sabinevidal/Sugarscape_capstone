@@ -212,9 +212,6 @@ function _model_step!(model)
     end
   end
 
-  # Culture transmission
-  model.enable_culture && culture_spread!(model)
-
   # Credit system
   if model.enable_credit
     tick = abmtime(model)
@@ -241,7 +238,7 @@ function _agent_step!(agent, model)
     movement!(agent, model)
   end
 
-  # Death & replacement / inheritance logic
+  # Death & Reproduction
   if !model.enable_reproduction
     death_replacement!(agent, model)
   else
@@ -251,4 +248,11 @@ function _agent_step!(agent, model)
     end
     Sugarscape.reproduction!(agent, model)
   end
+
+  # Culture
+  if model.enable_culture
+    culture_spread!(agent, model)
+  end
+
+
 end
