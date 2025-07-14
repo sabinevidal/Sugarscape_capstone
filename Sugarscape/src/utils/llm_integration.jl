@@ -253,9 +253,9 @@ end
 function _parse_culture_decision(obj)
   # Culture decisions are expected to be a dictionary with culture tags
   spread_culture = get(obj, "spread_culture", false)
-  spread_to = get(obj, "spread_to", nothing)
+  transmit_to = get(obj, "transmit_to", nothing)
 
-  return (spread_culture=spread_culture, spread_to=spread_to)
+  return (spread_culture=spread_culture, transmit_to=transmit_to)
 end
 
 function get_culture_decision(context::Dict, model)

@@ -60,7 +60,7 @@ function get_culture_system_prompt()
   return """
   CULTURE RULE:
   For each neighbouring agent:
-  - Select ONLY ONE tag position (not more than one).
+  - RANDOMLY select ONLY ONE tag position (not more than one).
   - Compare the agent's own value at that position to the neighbour's value.
   - If the values are the same: do nothing.
   - If the values are different: return a decision to flip the neighbour's tag at that index to match the agent's.
@@ -181,13 +181,13 @@ function get_culture_decision_schema()
         ),
         "description" => "Array of objects specifying which neighbouring agents to spread culture to and which tag index to modify; null if not spreading"
       ),
-      # "reasoning_for_choice" => Dict(
-      #   "type" => ["string"],
-      #   "description" => "Reasoning for the choice of who to spread culture to or, if not applicable, the reason for not spreading culture, max 2 sentences."
-      # )
+      "reasoning_for_choice" => Dict(
+        "type" => ["string"],
+        "description" => "Reasoning for the choice of who to spread culture to or, if not applicable, the reason for not spreading culture, max 2 sentences."
+      )
     ),
     "required" => [
-      "agent_id", "spread_culture", "spread_to"
+      "agent_id", "spread_culture", "transmit_to", "reasoning_for_choice"
     ],
     "additionalProperties" => false
   )

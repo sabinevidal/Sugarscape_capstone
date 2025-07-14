@@ -32,7 +32,7 @@ function build_culture_context(agent, model, neighbors)
 end
 
 
-function culture_spread!(agent, model)
+function culture_spread!(agent, model, check_decision::Bool=false)
   neighbors = collect(nearby_agents(agent, model, 1))
   isempty(neighbors) && return
 
@@ -40,15 +40,16 @@ function culture_spread!(agent, model)
 
     culture_context = build_culture_context(agent, model, neighbors)
     culture_decision = SugarscapeLLM.get_culture_decision(culture_context, model)
-    @info "Culture decision: $(culture_decision)"
 
-    if culture_decision.spread_culture === false || culture_decision.spread_to === nothing
-      @info "No culture spread decision made by LLM."
+    if culture_decision.spread_culture === false || culture_decision.transmit_to === nothing
       return
     end
 
     llm_attempt_culture_spread!(agent, model, culture_decision)
 
+    if check_decision
+      return culture_decision
+    end
   else
     attempt_culture_spread!(agent, neighbors)
   end
@@ -87,9 +88,9 @@ function attempt_culture_spread!(agent, neighbours)
 end
 
 function llm_attempt_culture_spread!(agent, model, culture_decision)
-  for decision in culture_decision.spread_to
+  for decision in culture_decision.transmit_to
     # extract the target agent and tag index from the LLM decision
-    neighbour_id = decision["target_agent_id"]
+    neighbour_id = decision["target_id"]
     idx = decision["tag_index"]
     neighbor = getindex(model, neighbour_id)
 
