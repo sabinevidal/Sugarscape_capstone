@@ -51,7 +51,7 @@ function culture_spread!(agent, model, check_decision::Bool=false)
       return culture_decision
     end
   else
-    attempt_culture_spread!(agent, neighbors)
+    attempt_culture_spread!(agent, neighbors, model)
   end
 end
 
@@ -71,7 +71,7 @@ function crossover_culture(c1::BitVector, c2::BitVector, model)::BitVector
   return BitVector([rand(abmrng(model), Bool) ? c1[i] : c2[i] for i in 1:length(c1)])
 end
 
-function attempt_culture_spread!(agent, neighbours)
+function attempt_culture_spread!(agent, neighbours, model)
   for neighbour in neighbours
     idx = rand(abmrng(model), 1:length(agent.culture))
 

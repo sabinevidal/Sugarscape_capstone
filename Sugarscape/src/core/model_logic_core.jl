@@ -175,9 +175,18 @@ function sugarscape(;
     culture = initialize_culture(culture_tag_length, model)
 
     pos = random_empty(model)
-    add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-      sex, has_reproduced, sugar, children, total_inheritance_received,
-      culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
+    # Fix argument order and types to match SugarscapeAgent constructor
+    # The expected signature is:
+    # SugarscapeAgent(id, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced, initial_sugar, children, total_inheritance_received, culture, loans_given, loans_owed, diseases, immunity)
+    loans_given = Dict{Int,Vector{Sugarscape.Loan}}()
+    loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
+    diseases = BitVector[]
+    immunity = falses(model.disease_immunity_length)
+    
+    add_agent!(pos, SugarscapeAgent, model,
+      vision, metabolism, sugar, age, max_age, sex, has_reproduced,
+      sugar, children, total_inheritance_received, BitVector(culture),
+      loans_given, loans_owed, diseases, immunity)
   end
 
   return model
@@ -210,13 +219,6 @@ function _model_step!(model)
       pollution_diffusion!(model)
       model.current_pollution_diffusion_steps = 0
     end
-  end
-
-  # Credit system
-  if model.enable_credit
-    tick = abmtime(model)
-    pay_loans!(model, tick)
-    make_loans!(model, tick)
   end
 
   # Disease dynamics
@@ -252,6 +254,11 @@ function _agent_step!(agent, model)
   # Culture
   if model.enable_culture
     culture_spread!(agent, model)
+  end
+
+  # Credit phase
+  if model.enable_credit
+    credit!(agent, model)
   end
 
 

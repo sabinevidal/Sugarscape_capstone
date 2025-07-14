@@ -1,4 +1,10 @@
 using Agents
+struct Loan
+    agent_id::Int
+    amount::Float64
+    time_due::Int
+    interest_rate::Float64
+end
 
 @agent struct SugarscapeAgent(GridAgent{2})
     vision::Int
@@ -9,10 +15,11 @@ using Agents
     sex::Symbol
     has_reproduced::Bool
     initial_sugar::Float64
-    children::Vector{Int}  # IDs of child agents
-    total_inheritance_received::Float64  # Track total inheritance received
-    culture::BitVector  # Cultural tag
-    loans::Vector{Tuple{Int,Int,Float64,Int}} = Tuple{Int,Int,Float64,Int}[]   # empty
-    diseases::Vector{BitVector} = BitVector[]       # empty
-    immunity::BitVector = falses(0)  # empty
+    children::Vector{Int}
+    total_inheritance_received::Float64
+    culture::BitVector
+    loans_given::Dict{Int,Vector{Loan}}
+    loans_owed::Dict{Int,Vector{Loan}}
+    diseases::Vector{BitVector}
+    immunity::BitVector
 end

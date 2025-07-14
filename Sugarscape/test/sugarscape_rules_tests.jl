@@ -2,6 +2,7 @@ using Test
 using Random
 using Sugarscape
 using Agents
+using Agents: remove_agent!
 
 ################################################################################
 # Helpers
@@ -41,13 +42,15 @@ function add_custom_agent!(model, pos; sugar, initial_sugar=sugar, vision=2, met
   children = Int[]
   total_inheritance_received = 0.0
   culture = BitVector(culture_bits)
-  loans = NTuple{4,Int}[]
   diseases = BitVector[]
   immunity = falses(model.disease_immunity_length)
+  loans_given = Dict{Int,Vector{Sugarscape.Loan}}()
+  loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
 
   return add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age,
     max_age, sex, has_reproduced, initial_sugar, children,
-    total_inheritance_received, culture, loans, diseases, immunity)
+    total_inheritance_received, culture, loans_given, loans_owed,
+    diseases, immunity)
 end
 
 # Seed for deterministic behaviour across all tests in this set
@@ -585,51 +588,175 @@ end
   # ##########################################################################
   # # 1. Loan creation between neighbours (eligibility + transfer)
   # ##########################################################################
-  # model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
-  #   enable_credit=true, interest_rate=0.0,
-  #   duration=1, growth_rate=0,
-  #   vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
-  # model.sugar_values .= 0.0
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+    enable_credit=true, interest_rate=0.0,
+    duration=10, growth_rate=0,
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(25, 25))
+  model.sugar_values .= 0.0
 
-  # # Lender: post-fertility male, 40 sugar → may lend half (20)
-  # lender = add_custom_agent!(model, (2, 2); sugar=40, sex=:male, age=55)
-  # # Borrower: fertile female with insufficient sugar (10)
-  # borrower = add_custom_agent!(model, (2, 3); sugar=10, sex=:female, age=25)
+  # Lender: post-fertility male, 40 sugar → may lend half (20)
+  lender = add_custom_agent!(model, (2, 2); sugar=40, sex=:male, age=55, initial_sugar=40)
+  # Borrower: fertile female with insufficient sugar (10), needs 15
+  borrower = add_custom_agent!(model, (2, 3); sugar=10, sex=:female, age=25, initial_sugar=25)
 
-  # @test isempty(lender.loans) && isempty(borrower.loans)
+  @test isempty(lender.loans_given) && isempty(borrower.loans_owed)
 
-  # Sugarscape.make_loans!(model, 0)
+  # Manually trigger credit logic for the borrower, who should find the lender
+  Sugarscape.credit!(borrower, model)
 
-  # # A loan of 15 should be created (child_amount=25 → need 15)
-  # @test !isempty(lender.loans) && !isempty(borrower.loans)
-  # tup = first(lender.loans)
-  # @test tup[3] == 15                      # principal
-  # @test tup[4] == 1                       # due tick
-  # @test lender.sugar == 25                # 40 − 15
-  # @test borrower.sugar == 25              # 10 + 15 (now has child_amount)
+  # A loan of 15 should be created
+  @test haskey(lender.loans_given, borrower.id)
+  @test haskey(borrower.loans_owed, lender.id)
+  loan = first(lender.loans_given[borrower.id])
+  @test loan.amount == 15                 # principal
+  @test loan.time_due == abmtime(model) + 10  # due tick
+  @test lender.sugar == 25                # 40 − 15
+  @test borrower.sugar == 25              # 10 + 15
 
-  # ##########################################################################
-  # # 2. Repayment at due date (full repayment, zero interest)
-  # ##########################################################################
-  # Sugarscape.pay_loans!(model, 1)         # process due loans
-  # @test isempty(lender.loans) && isempty(borrower.loans)
-  # @test lender.sugar == 40                # got 15 back
-  # @test borrower.sugar == 10              # paid 15 back
+  ##########################################################################
+  # 2. Repayment at due date (full repayment, zero interest)
+  ##########################################################################
+  # Advance the model time to the loan due date
+  step!(model, loan.time_due - abmtime(model))
+  borrower.sugar = 30 # Ensure enough sugar to repay
+  Sugarscape.attempt_pay_loans!(borrower, model)
+  @test !haskey(borrower.loans_owed, lender.id) || isempty(borrower.loans_owed[lender.id])
+  @test !haskey(lender.loans_given, borrower.id) || isempty(lender.loans_given[borrower.id])
+  @test lender.sugar == 40                # got 15 back
+  @test borrower.sugar == 15              # paid 15 back
 
-  # ##########################################################################
-  # # 3. Loan forgiven when lender dies before due date
-  # ##########################################################################
-  # # Re-issue a loan
-  # Sugarscape.make_loans!(model, 2)
-  # @test !isempty(lender.loans)
-  # # Kill lender
-  # Sugarscape.death!(lender, model, :age)
-  # # Advance to due date
-  # Sugarscape.pay_loans!(model, 3)
-  # # Borrower keeps money (no repayment because lender gone)
-  # @test hasid(model, borrower.id)
-  # @test borrower.sugar == 25
-  # @test isempty(borrower.loans)
+  ##########################################################################
+  # 3. Loan forgiven when lender dies before due date
+  ##########################################################################
+  # Re-issue a loan
+  Sugarscape.make_loan!(lender, borrower, 15.0, model)
+  @test haskey(borrower.loans_owed, lender.id)
+  # Kill lender, which should trigger clear_loans_on_death!
+  Sugarscape.clear_loans_on_death!(lender, model)
+  remove_agent!(lender, model)
+  # Borrower's debt should be cleared
+  @test !haskey(borrower.loans_owed, lender.id)
+end
+
+@testset "Credit Rule (Ldr) - Advanced Scenarios" begin
+  rng_seed = 0x20240622
+
+  ##########################################################################
+  # 4. Partial Repayment and Rollover
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+    enable_credit=true, interest_rate=0.1, duration=10,
+    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
+    w0_dist=(0, 0))
+  model.sugar_values .= 0.0
+
+  lender = add_custom_agent!(model, (2, 2); sugar=50, sex=:male, age=55)
+  borrower = add_custom_agent!(model, (2, 3); sugar=10, sex=:female, age=25)
+
+  Sugarscape.make_loan!(lender, borrower, 20.0, model)
+  borrower.sugar = 10 # Not enough to repay 20 * 1.1 = 22
+
+  step!(model, 10) # Advance time to due date
+  Sugarscape.attempt_pay_loans!(borrower, model)
+
+  @test borrower.sugar == 5.0 # Paid half of wealth (10 / 2)
+  @test lender.sugar == 55.0 # Received 5
+  @test length(borrower.loans_owed[lender.id]) == 1
+  new_loan = first(borrower.loans_owed[lender.id])
+  @test new_loan.amount ≈ 17.0 # Rollover amount 22 - 5
+  @test new_loan.time_due == 20 # New due date
+
+  ##########################################################################
+  # 5. Loan Inheritance on Lender Death
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+    enable_credit=true, enable_reproduction=true, interest_rate=0.0,
+    duration=10, growth_rate=0, vision_dist=(1, 1),
+    metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+  model.sugar_values .= 0.0
+
+  lender = add_custom_agent!(model, (1, 1); sugar=50, sex=:male, age=55)
+  borrower = add_custom_agent!(model, (1, 2); sugar=10, sex=:female, age=25)
+  heir = add_custom_agent!(model, (3, 3); sugar=0, sex=:female, age=1)
+  lender.children = [heir.id]
+
+  Sugarscape.make_loan!(lender, borrower, 15.0, model)
+  Sugarscape.clear_loans_on_death!(lender, model)
+  remove_agent!(lender, model)
+
+  @test !hasid(model, lender.id)
+  @test haskey(borrower.loans_owed, heir.id)
+  @test length(borrower.loans_owed[heir.id]) == 1
+  @test haskey(heir.loans_given, borrower.id)
+  @test length(heir.loans_given[borrower.id]) == 1
+  @test first(heir.loans_given[borrower.id]).amount == 15.0
+
+  ##########################################################################
+  # 6. Multiple Loans Repayment
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+    enable_credit=true, interest_rate=0.0, duration=5,
+    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
+    w0_dist=(0, 0))
+  model.sugar_values .= 0.0
+
+  lender1 = add_custom_agent!(model, (1, 1); sugar=50, sex=:male, age=55)
+  lender2 = add_custom_agent!(model, (1, 2); sugar=50, sex=:male, age=55)
+  borrower = add_custom_agent!(model, (2, 2); sugar=50, sex=:female, age=25)
+
+  Sugarscape.make_loan!(lender1, borrower, 10.0, model)
+  Sugarscape.make_loan!(lender2, borrower, 15.0, model)
+
+  step!(model, 5)
+  Sugarscape.attempt_pay_loans!(borrower, model)
+
+  @test borrower.sugar == 25.0 # 50 - 10 - 15
+  @test lender1.sugar == 60.0
+  @test lender2.sugar == 65.0
+  @test isempty(borrower.loans_owed)
+
+  ##########################################################################
+  # 7. No lending if fertile and no excess income
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed)
+  agent = add_custom_agent!(model, (1, 1); sugar=10, metabolism=10, sex=:female, age=25, initial_sugar=10)
+  can_lend_result = Sugarscape.can_lend(agent, model)
+  @test !can_lend_result.can_lend
+
+  ##########################################################################
+  # 8. Lending if not fertile
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed)
+  agent = add_custom_agent!(model, (1, 1); sugar=50, sex=:male, age=80, initial_sugar=50)
+  can_lend_result = Sugarscape.can_lend(agent, model)
+  @test can_lend_result.can_lend
+  @test can_lend_result.max_amount == 25.0
+
+  ##########################################################################
+  # 9. No borrowing if has enough sugar
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed)
+  agent = add_custom_agent!(model, (1, 1); sugar=30, initial_sugar=25, sex=:female, age=30)
+  will_borrow_result = Sugarscape.will_borrow(agent, model)
+  @test !will_borrow_result.will_borrow
+
+  ##########################################################################
+  # 10. No borrowing if no lenders available
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed)
+  borrower = add_custom_agent!(model, (2, 2); sugar=10, initial_sugar=25, sex=:female, age=25)
+  pre_sugar = borrower.sugar
+  Sugarscape.attempt_borrow!(borrower, model, 15.0)
+  @test borrower.sugar == pre_sugar # No change as no neighbours to lend
+
+  ##########################################################################
+  # 11. No lending if no borrowers available
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed)
+  lender = add_custom_agent!(model, (2, 2); sugar=50, sex=:male, age=55, initial_sugar=50)
+  pre_sugar = lender.sugar
+  Sugarscape.attempt_lend!(lender, model, 25.0)
+  @test lender.sugar == pre_sugar # No change as no neighbours to borrow
 end
 
 ################################################################################

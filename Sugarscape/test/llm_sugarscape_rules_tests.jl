@@ -61,13 +61,15 @@ function add_custom_agent!(model, pos; sugar, initial_sugar=sugar, vision=2, met
   children = Int[]
   total_inheritance_received = 0.0
   culture = BitVector(culture_bits)
-  loans = NTuple{4,Int}[]
   diseases = BitVector[]
   immunity = falses(model.disease_immunity_length)
+  loans_given = Dict{Int,Vector{Sugarscape.Loan}}()
+  loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
 
   ag = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age,
     max_age, sex, has_reproduced, initial_sugar, children,
-    total_inheritance_received, culture, loans, diseases, immunity)
+    total_inheritance_received, culture, loans_given, loans_owed,
+    diseases, immunity)
 
   return ag
 end

@@ -173,6 +173,10 @@ function death!(agent, model, cause::Symbol=:unknown)
     # :combat is tracked separately in combat.jl
   end
 
+  # Remove any loans involving this agent
+  if model.enable_credit
+    clear_loans_on_death!(agent, model)
+  end
   remove_agent!(agent, model)
 end
 
@@ -196,8 +200,13 @@ function death_replacement!(agent, model)
     culture = initialize_culture(model.culture_tag_length, model)
 
     pos = random_empty(model)
+    loans_given = Dict{Int,Vector{Sugarscape.Loan}}()
+    loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
+    diseases = BitVector[]
+    immunity = falses(model.disease_immunity_length)
+    
     add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
       sex, has_reproduced, sugar, children, total_inheritance_received,
-      culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
+      culture, loans_given, loans_owed, diseases, immunity)
   end
 end

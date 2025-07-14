@@ -70,7 +70,7 @@ export create_dashboard
 export build_agent_movement_context
 
 # Export reproduction functions
-export reproduction!, is_fertile
+export reproduction!, is_fertile, is_fertile_by_age
 
 # Export culture functions
 export culture_spread!, cultural_entropy, unique_cultures, mean_hamming_distance, cultural_islands
@@ -85,7 +85,7 @@ export distribute_inheritance, get_inheritance_metrics, calculate_inheritance_co
 export disease_transmission!, immune_response!
 
 # Export credit functions
-export make_loans!, pay_loans!
+export make_loans!, pay_loans!, clear_loans_on_death!
 
 # Export LLM integration functions
 export get_decision, try_llm_move!, llm_move!

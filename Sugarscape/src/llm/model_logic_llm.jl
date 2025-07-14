@@ -244,9 +244,14 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     culture = initialize_culture(culture_tag_length, model)
 
     pos = random_empty(model)
+    loans_given = Dict{Int,Vector{Sugarscape.Loan}}()
+    loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
+    diseases = BitVector[]
+    immunity = falses(model.disease_immunity_length)
+    
     add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
       sex, has_reproduced, sugar, children, total_inheritance_received,
-      culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
+      culture, loans_given, loans_owed, diseases, immunity)
   end
 
 
@@ -359,10 +364,14 @@ function _agent_step_llm!(agent, model)
   end
 
 
+
   # ---------------------------------------------------------
   # Credit phase
-  # TO BE IMPLEMENTED
   # ---------------------------------------------------------
+  if model.enable_credit
+    # LLM or rule-based credit action
+    credit!(agent, model)
+  end
 
 end
 

@@ -112,7 +112,12 @@ function create_child(parent1, parent2, pos, model)
   culture = crossover_culture(parent1.culture, parent2.culture, model)
 
   # Create child with inheritance tracking fields
-  child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, NTuple{4,Int}[], BitVector[], falses(model.disease_immunity_length))
+  loans_given = Dict{Int,Vector{Sugarscape.Loan}}()
+  loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
+  diseases = BitVector[]
+  immunity = falses(model.disease_immunity_length)
+  
+  child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity)
 
   # Track birth in model statistics
   model.births += 1
@@ -128,7 +133,13 @@ function is_fertile(agent, model)
   return age_eligible && wealth_eligible
 end
 
+function is_fertile_by_age(agent, model)
+  min_age, max_age = model.fertility_age_range
+  return agent.age >= min_age && agent.age <= max_age
+end
+
 """
+    max_matings(agent)
 Return the maximum number of matings an agent can afford *this turn*.
 
 Given the current sugar stock (s) and initial endowment (e₀), the agent
