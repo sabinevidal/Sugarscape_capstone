@@ -346,53 +346,120 @@ end
   end
 end
 
-# ################################################################################
-# # Culture Rule (K) – Specification Conformance Tests
-# ################################################################################
+################################################################################
+# Culture Rule (K) – Specification Conformance Tests
+################################################################################
 
-# @testset "Culture Rule (K)" begin
-#   rng_seed = 0x20240622
+@testset "Culture Rule (K)" begin
 
-#   ##########################################################################
-#   # 1. Neighbour flips bit to match agent
-#   ##########################################################################
-#   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
-#     enable_culture=true, culture_tag_length=1,
-#     enable_combat=false, growth_rate=0,
-#     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
-#   model.sugar_values .= 0.0
+  ##########################################################################
+  # 1. Neighbour flips bit to match agent
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+    enable_culture=true, culture_tag_length=1,
+    enable_combat=false, growth_rate=0,
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
 
-#   a = add_custom_agent!(model, (2, 2); sugar=0, culture_bits=[false])
-#   b = add_custom_agent!(model, (2, 3); sugar=0, culture_bits=[true])
+  model.sugar_values .= 0.0
 
-#   Sugarscape.culture_spread!(model)
+  a = add_custom_agent!(model, (2, 2); sugar=0, culture_bits=[false])
+  b = add_custom_agent!(model, (2, 3); sugar=0, culture_bits=[true])
 
-#   @test a.culture[1] == b.culture[1]            # neighbours match
+  Sugarscape.culture_spread!(a, model)
 
-#   ##########################################################################
-#   # 2. No change if bits already match
-#   ##########################################################################
-#   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
-#     enable_culture=true, culture_tag_length=1,
-#     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
-#   model.sugar_values .= 0.0
+  @test log_test_step("Agent A culture matches neighbour B", a.culture[1] == b.culture[1], true, a.culture[1] == b.culture[1])
 
-#   c1 = add_custom_agent!(model, (1, 1); sugar=0, culture_bits=[true])
-#   c2 = add_custom_agent!(model, (1, 2); sugar=0, culture_bits=[true])
 
-#   Sugarscape.culture_spread!(model)
+  ##########################################################################
+  # 2. No change if bits already match
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+    enable_culture=true, culture_tag_length=1,
+    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+  model.sugar_values .= 0.0
 
-#   @test c1.culture[1] == c2.culture[1] == true  # unchanged
+  c1 = add_custom_agent!(model, (1, 1); sugar=0, culture_bits=[true])
+  c2 = add_custom_agent!(model, (1, 2); sugar=0, culture_bits=[true])
 
-#   ##########################################################################
-#   # 3. Tribe calculation (blue vs red)
-#   ##########################################################################
-#   red_agent = add_custom_agent!(model, (3, 1); sugar=0, culture_bits=[true, true, false])
-#   blue_agent = add_custom_agent!(model, (3, 2); sugar=0, culture_bits=[false, false, true])
+  culture_decision = Sugarscape.culture_spread!(c1, model)
 
-#   @test Sugarscape.tribe(red_agent) == :red
-#   @test Sugarscape.tribe(blue_agent) == :blue
-# end
+  @test log_test_step("Culture bits unchanged for matching agents", c1.culture[1] == c2.culture[1], true, c1.culture[1] == c2.culture[1])
+
+  ##########################################################################
+  # 3. Tribe calculation (blue vs red)
+  ##########################################################################
+  red_agent = add_custom_agent!(model, (3, 1); sugar=0, culture_bits=[true, true, false])
+  blue_agent = add_custom_agent!(model, (3, 2); sugar=0, culture_bits=[false, false, true])
+
+
+  @test log_test_step("Agent A is red tribe", Sugarscape.tribe(red_agent) == :red, true, Sugarscape.tribe(red_agent))
+  @test log_test_step("Agent B is blue tribe", Sugarscape.tribe(blue_agent) == :blue, true, Sugarscape.tribe(blue_agent))
+
+  ##########################################################################
+  # 4. Multiple tag propagation (only one tag affected)
+  ##########################################################################
+
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+    enable_culture=true, culture_tag_length=3,
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+  model.sugar_values .= 0.0
+
+  d1 = add_custom_agent!(model, (2, 2); sugar=0, culture_bits=[true, true, true])
+  d2 = add_custom_agent!(model, (2, 3); sugar=0, culture_bits=[false, false, false])
+
+  before = copy(d2.culture)
+
+  Sugarscape.culture_spread!(d1, model)
+
+  # Only one tag should have changed (with fixed seed, index is deterministic)
+  changed = sum(before .!= d2.culture)
+  @test log_test_step("Only one culture tag changed", changed == 1, true, changed)
+
+  # The changed bit matches d1 at that index
+  idx = findfirst(before .!= d2.culture)
+  if idx === nothing
+    @test log_test_step("Changed culture tag matches d1", d2.culture[idx] == d1.culture[idx], true, d2.culture[idx] == d1.culture[idx]) broken = true
+  end
+  @test log_test_step("Changed culture tag matches d1", d2.culture[idx] == d1.culture[idx], true, d2.culture[idx] == d1.culture[idx])
+
+  ##########################################################################
+  # 5. All neighbours update
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+    enable_culture=true, culture_tag_length=1,
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+  model.sugar_values .= 0.0
+
+  e = add_custom_agent!(model, (2, 2); sugar=0, culture_bits=[true])
+
+  neighbors = [
+    add_custom_agent!(model, (2, 1); sugar=0, culture_bits=[false]),
+    add_custom_agent!(model, (2, 3); sugar=0, culture_bits=[false]),
+    add_custom_agent!(model, (1, 2); sugar=0, culture_bits=[false]),
+    add_custom_agent!(model, (3, 2); sugar=0, culture_bits=[false])
+  ]
+
+  culture_decision = Sugarscape.culture_spread!(e, model)
+
+  @test log_test_step("All neighbors updated culture", all(n.culture[1] == true for n in neighbors), true, all(n.culture[1] == true for n in neighbors))
+
+  ##########################################################################
+  # 5. No nearby neighbours, no culture spread
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+    enable_culture=true, culture_tag_length=1,
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+  model.sugar_values .= 0.0
+
+  f = add_custom_agent!(model, (3, 3); sugar=0, culture_bits=[true])
+
+  neighbors = [
+    add_custom_agent!(model, (2, 1); sugar=0, culture_bits=[false]),
+    add_custom_agent!(model, (5, 3); sugar=0, culture_bits=[false]),
+  ]
+  Sugarscape.culture_spread!(f, model)
+  @test log_test_step("No neighbors updated culture", all(n.culture[1] == false for n in neighbors), true, all(n.culture[1] == false for n in neighbors))
+end
 
 # ################################################################################
 # # Combat Rule (Cα) – Specification Conformance Tests
