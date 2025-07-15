@@ -4,7 +4,12 @@ using Agents
 build_credit_lender_context(agent, model, neighbours, amount_available) -> Dict
 """
 function build_credit_lender_context(agent, model, neighbours, amount_available)
-    nbrs = isa(neighbours, AbstractVector) ? neighbours : [neighbours]
+    # Collect neighbours if iterable, else wrap single agent in array
+    if neighbours isa Base.Generator || neighbours isa AbstractVector
+        nbrs = collect(neighbours)
+    else
+        nbrs = [neighbours]
+    end
 
     lender_context = Dict(
         :agent_id => agent.id,
@@ -32,7 +37,12 @@ end
 build_credit_borrower_context(agent, model, neighbours, amount_required) -> Dict
 """
 function build_credit_borrower_context(agent, model, neighbours, amount_required)
-    nbrs = isa(neighbours, AbstractVector) ? neighbours : [neighbours]
+    # Collect neighbours if iterable, else wrap single agent in array
+    if neighbours isa Base.Generator || neighbours isa AbstractVector
+        nbrs = collect(neighbours)
+    else
+        nbrs = [neighbours]
+    end
 
     borrower_context = Dict(
         :agent_id => agent.id,
@@ -148,8 +158,6 @@ function attempt_borrow!(borrower, model, amount, neighbours)
         borrower_context = build_credit_borrower_context(borrower, model, neighbours, needed)
         credit_decision = SugarscapeLLM.get_credit_borrower_decision(borrower_context, model)
 
-        @info "LLM Credit Decision for borrower $(borrower.id): $credit_decision"
-
         if !credit_decision.borrow || credit_decision.borrow_from === nothing
             return
         end
@@ -176,7 +184,7 @@ function attempt_borrow!(borrower, model, amount, neighbours)
                 end
 
                 if lend_to_borrower !== nothing
-                    amt = lend_to_borrower["lend_amount"]
+                    amt = Float64(lend_to_borrower["lend_amount"])
                     # transfer sugar
                     lender.sugar -= amt
                     borrower.sugar += amt
@@ -198,7 +206,7 @@ function attempt_borrow!(borrower, model, amount, neighbours)
             cl = can_lend(lender, model)
             if cl.can_lend
                 avail = cl.max_amount
-                amt = min(avail, needed)
+                amt = Float64(min(avail, needed))
                 # transfer sugar
                 lender.sugar -= amt
                 borrower.sugar += amt
@@ -254,8 +262,6 @@ function attempt_lend!(lender, model, amount, neighbours)
         lender_context = build_credit_lender_context(lender, model, neighbours, avail)
         credit_decision = SugarscapeLLM.get_credit_lender_decision(lender_context, model)
 
-        @info "LLM Credit Decision for lender $(lender.id): $credit_decision"
-
         if !credit_decision.lend || credit_decision.lend_to === nothing
             return
         end
@@ -282,7 +288,7 @@ function attempt_lend!(lender, model, amount, neighbours)
                 end
 
                 if borrow_from_lender !== nothing
-                    amt = borrow_from_lender["requested_amount"]
+                    amt = Float64(borrow_from_lender["requested_amount"])
                     # transfer sugar
                     lender.sugar -= amt
                     borrower.sugar += amt
@@ -301,7 +307,7 @@ function attempt_lend!(lender, model, amount, neighbours)
             wb = will_borrow(borrower, model)
             if wb.will_borrow
                 req = wb.amount_required
-                amt = min(avail, req)
+                amt = Float64(min(avail, req))
                 # transfer sugar
                 lender.sugar -= amt
                 borrower.sugar += amt
