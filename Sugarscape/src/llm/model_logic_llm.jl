@@ -248,7 +248,7 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
     diseases = BitVector[]
     immunity = falses(model.disease_immunity_length)
-    
+
     add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
       sex, has_reproduced, sugar, children, total_inheritance_received,
       culture, loans_given, loans_owed, diseases, immunity)
@@ -289,18 +289,11 @@ function _model_step_llm!(model)
     end
   end
 
-  model.enable_culture && culture_spread!(model)
 
-  if model.enable_credit
-    tick = abmtime(model)
-    pay_loans!(model, tick)
-    make_loans!(model, tick)
-  end
-
-  if model.enable_disease
-    disease_transmission!(model)
-    immune_response!(model)
-  end
+  # if model.enable_disease
+  #   disease_transmission!(model)
+  #   immune_response!(model)
+  # end
 
   return
 end

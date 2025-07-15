@@ -1,21 +1,64 @@
 using Agents
 
 """
-build_credit_context(agent, model) -> Dict
-Placeholder context builder for Credit rule.
-    # context: maximum amount to lend
-    # context: amount needed to borrow
-    # context: agent's current sugar
-    # context: agent's age
+build_credit_lender_context(agent, model, neighbours, amount_available) -> Dict
 """
-function build_credit_context(agent, model)
-    # TODO: assemble and return context Dict for LLM decision
+function build_credit_lender_context(agent, model, neighbours, amount_available)
+    nbrs = isa(neighbours, AbstractVector) ? neighbours : [neighbours]
 
-    return Dict()
+    lender_context = Dict(
+        :agent_id => agent.id,
+        :sugar => agent.sugar,
+        :age => agent.age,
+        :can_lend => true,
+        :amount_available => amount_available,
+        :eligible_borrowers => []
+    )
+
+    for neighbour in nbrs
+        push!(lender_context[:eligible_borrowers], Dict(
+            :agent_id => neighbour.id,
+            :sugar => neighbour.sugar,
+            :age => neighbour.age,
+            :will_borrow => will_borrow(neighbour, model).will_borrow,
+            :amount_required => will_borrow(neighbour, model).amount_required
+        ))
+    end
+
+    return lender_context
 end
 
 """
-attempt_credit!(agent, model)
+build_credit_borrower_context(agent, model, neighbours, amount_required) -> Dict
+"""
+function build_credit_borrower_context(agent, model, neighbours, amount_required)
+    nbrs = isa(neighbours, AbstractVector) ? neighbours : [neighbours]
+
+    borrower_context = Dict(
+        :agent_id => agent.id,
+        :sugar => agent.sugar,
+        :age => agent.age,
+        :will_borrow => will_borrow(agent, model).will_borrow,
+        :amount_to_borrow => amount_required,
+        :reproduction_threshold => agent.initial_sugar,
+        :eligible_lenders => []
+    )
+
+    for neighbour in nbrs
+        push!(borrower_context[:eligible_lenders], Dict(
+            :agent_id => neighbour.id,
+            :sugar => neighbour.sugar,
+            :age => neighbour.age,
+            :can_lend => can_lend(neighbour, model).can_lend,
+            :max_amount => can_lend(neighbour, model).max_amount
+        ))
+    end
+
+    return borrower_context
+end
+
+"""
+attempt_pay_loans!(agent, model)
 Placeholder for rule-based credit logic.
 """
 function attempt_pay_loans!(borrower, model)
@@ -63,54 +106,209 @@ function attempt_pay_loans!(borrower, model)
     return
 end
 
-function attempt_borrow!(borrower, model, amount)
-    neighbours = nearby_agents(borrower, model, 1)
-    if neighbours === nothing || isempty(neighbours)
-        return
-    end
+"""
+    attempt_borrow!(borrower, model, amount, neighbours)
+
+Attempts to borrow a specified `amount` of sugar for the `borrower` agent from neighboring agents (`neighbours`) within the `model`.
+
+Depending on the `model.use_llm_decisions` flag, the borrowing decision is made either by a rule-based approach or by leveraging an LLM (Large Language Model):
+
+- **LLM-based borrowing**: Constructs a context for the borrower and queries the LLM for borrowing decisions. If borrowing is approved, sugar is transferred from selected lenders to the borrower, and new loan records are created.
+- **Rule-based borrowing**: Iterates over neighbors who can lend sugar, transferring sugar and recording loans until the requested amount is satisfied or no more lenders are available.
+
+# Arguments
+- `borrower`: The agent attempting to borrow sugar.
+- `model`: The simulation model containing agents and parameters.
+- `amount`: The amount of sugar the borrower wishes to borrow.
+- `neighbours`: A collection of neighboring agents who may be able to lend sugar.
+
+# Side Effects
+- Modifies the `sugar` attribute of both lender and borrower agents.
+- Records new loan originations in the model.
+
+# Returns
+- Nothing. The function operates by modifying agent states in-place.
+"""
+
+function attempt_borrow!(borrower, model, amount, neighbours)
 
     # Rule-based borrowing: iterate over neighbors who can lend sugar
     needed = amount
-    for lender in neighbours
-        if needed <= 0
-            break
+
+    if isempty(neighbours)
+        return
+    end
+    eligible_lenders = filter(l -> can_lend(l, model).can_lend, collect(neighbours))
+    if isempty(eligible_lenders)
+        return
+    end
+
+    if model.use_llm_decisions
+        # LLM-based borrowing decision
+        borrower_context = build_credit_borrower_context(borrower, model, neighbours, needed)
+        credit_decision = SugarscapeLLM.get_credit_borrower_decision(borrower_context, model)
+
+        @info "LLM Credit Decision for borrower $(borrower.id): $credit_decision"
+
+        if !credit_decision.borrow || credit_decision.borrow_from === nothing
+            return
         end
-        cl = can_lend(lender, model)
-        if cl.can_lend
-            avail = cl.max_amount
-            amt = min(avail, needed)
-            # transfer sugar
-            lender.sugar -= amt
-            borrower.sugar += amt
-            needed -= amt
-            # record new loan origination
-            make_loan!(lender, borrower, amt, model)
+
+        sorted_borrow_from = sort(credit_decision.borrow_from, by=x -> x["order"])
+        for borrow_from in sorted_borrow_from
+            lender = model[borrow_from["lender_id"]]
+            if needed <= 0
+                break
+            end
+            lender_context = build_credit_lender_context(lender, model, borrower, can_lend(lender, model).max_amount)
+            lender_decision = SugarscapeLLM.get_credit_lender_decision(lender_context, model)
+
+            if !lender_decision.lend || lender_decision.lend_to === nothing
+                continue
+            elseif lender_decision.lend
+                # Find the corresponding lend decision for this borrower
+                lend_to_borrower = nothing
+                for lend_entry in lender_decision.lend_to
+                    if lend_entry["borrower_id"] == borrower.id
+                        lend_to_borrower = lend_entry
+                        break
+                    end
+                end
+
+                if lend_to_borrower !== nothing
+                    amt = lend_to_borrower["lend_amount"]
+                    # transfer sugar
+                    lender.sugar -= amt
+                    borrower.sugar += amt
+                    needed -= amt
+                    # record new loan origination
+                    make_loan!(lender, borrower, amt, model)
+                end
+            end
+        end
+
+
+        return
+    else
+
+        for lender in neighbours
+            if needed <= 0
+                break
+            end
+            cl = can_lend(lender, model)
+            if cl.can_lend
+                avail = cl.max_amount
+                amt = min(avail, needed)
+                # transfer sugar
+                lender.sugar -= amt
+                borrower.sugar += amt
+                needed -= amt
+                # record new loan origination
+                make_loan!(lender, borrower, amt, model)
+            end
         end
     end
 end
 
-function attempt_lend!(lender, model, amount)
-    neighbours = nearby_agents(lender, model, 1)
-    if neighbours === nothing || isempty(neighbours)
-        return
-    end
+"""
+    attempt_lend!(lender, model, amount, neighbours)
+
+Attempts to lend a specified `amount` of sugar from the `lender` agent to eligible `neighbours` within the `model`.
+
+Depending on the `model.use_llm_decisions` flag, lending decisions are made either by a rule-based approach or by querying an LLM (Large Language Model):
+
+- **LLM-based lending:** Uses `build_credit_lender_context` and `SugarscapeLLM.get_credit_lender_decision` to determine which neighbours to lend to and how much.
+- **Rule-based lending:** Iterates over neighbours, checks if they want to borrow using `will_borrow`, and lends accordingly.
+
+For each successful loan:
+- Transfers the sugar amount from lender to borrower.
+- Records the loan origination via `make_loan!`.
+
+# Arguments
+- `lender`: The agent attempting to lend sugar.
+- `model`: The simulation model containing agents and parameters.
+- `amount`: The total amount of sugar available for lending.
+- `neighbours`: A collection of neighbouring agents who may be eligible to borrow.
+
+# Notes
+- Lending stops when the available amount is depleted.
+- Loans are only made to agents who wish to borrow and meet the decision criteria.
+"""
+
+function attempt_lend!(lender, model, amount, neighbours)
 
     # Rule-based lending: iterate over neighbors who want loans
     avail = amount
-    for borrower in neighbours
-        if avail <= 0
-            break
+
+    if isempty(neighbours)
+        return
+    end
+
+    eligible_borrowers = filter(l -> will_borrow(l, model).will_borrow, collect(neighbours))
+    if isempty(eligible_borrowers)
+        return
+    end
+
+    if model.use_llm_decisions
+        # LLM-based lending decision
+        lender_context = build_credit_lender_context(lender, model, neighbours, avail)
+        credit_decision = SugarscapeLLM.get_credit_lender_decision(lender_context, model)
+
+        @info "LLM Credit Decision for lender $(lender.id): $credit_decision"
+
+        if !credit_decision.lend || credit_decision.lend_to === nothing
+            return
         end
-        wb = will_borrow(borrower, model)
-        if wb.will_borrow
-            req = wb.amount_required
-            amt = min(avail, req)
-            # transfer sugar
-            lender.sugar -= amt
-            borrower.sugar += amt
-            avail -= amt
-            # record new loan origination
-            make_loan!(lender, borrower, amt, model)
+
+        sorted_lend_to = sort(credit_decision.lend_to, by=x -> x["order"])
+        for lend_to in sorted_lend_to
+            borrower = model[lend_to["borrower_id"]]
+            if avail <= 0
+                break
+            end
+            borrower_context = build_credit_borrower_context(borrower, model, lender, will_borrow(borrower, model).amount_required)
+            borrower_decision = SugarscapeLLM.get_credit_borrower_decision(borrower_context, model)
+
+            if !borrower_decision.borrow || borrower_decision.borrow_from === nothing
+                continue
+            elseif borrower_decision.borrow
+                # Find the corresponding borrow decision for this lender
+                borrow_from_lender = nothing
+                for borrow_entry in borrower_decision.borrow_from
+                    if borrow_entry["lender_id"] == lender.id
+                        borrow_from_lender = borrow_entry
+                        break
+                    end
+                end
+
+                if borrow_from_lender !== nothing
+                    amt = borrow_from_lender["requested_amount"]
+                    # transfer sugar
+                    lender.sugar -= amt
+                    borrower.sugar += amt
+                    avail -= amt
+                    # record new loan origination
+                    make_loan!(lender, borrower, amt, model)
+                end
+            end
+        end
+
+    else
+        for borrower in neighbours
+            if avail <= 0
+                break
+            end
+            wb = will_borrow(borrower, model)
+            if wb.will_borrow
+                req = wb.amount_required
+                amt = min(avail, req)
+                # transfer sugar
+                lender.sugar -= amt
+                borrower.sugar += amt
+                avail -= amt
+                # record new loan origination
+                make_loan!(lender, borrower, amt, model)
+            end
         end
     end
 end
@@ -126,28 +324,21 @@ function credit!(agent, model)
         attempt_pay_loans!(agent, model)
     end
 
-    if !model.use_llm_decisions
-        # Rule-based credit logic
-        # check if agent needs a loan
-
-        if will_borrow(agent, model).will_borrow
-            # attempt to borrow sugar
-            attempt_borrow!(agent, model, will_borrow(agent, model).amount_required)
-
-        elseif can_lend(agent, model).can_lend
-            # attempt to lend sugar
-            attempt_lend!(agent, model, can_lend(agent, model).max_amount)
-        end
-
-
-    else
-        # LLM-based credit decision
-        context = build_credit_context(agent, model)
-        decision = SugarscapeLLM.get_credit_decision(context, model)
-        if decision.credit
-            attempt_credit!(agent, model)
-        end
+    neighbours = nearby_agents(agent, model, 1)
+    if neighbours === nothing || isempty(neighbours)
+        return
     end
+
+    if will_borrow(agent, model).will_borrow
+        # attempt to borrow sugar
+        attempt_borrow!(agent, model, will_borrow(agent, model).amount_required, neighbours)
+
+    elseif can_lend(agent, model).can_lend
+        # attempt to lend sugar
+
+        attempt_lend!(agent, model, can_lend(agent, model).max_amount, neighbours)
+    end
+
 end
 
 # -- Helper functions ------------------------------------------------------

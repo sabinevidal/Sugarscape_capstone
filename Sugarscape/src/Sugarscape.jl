@@ -85,12 +85,11 @@ export distribute_inheritance, get_inheritance_metrics, calculate_inheritance_co
 export disease_transmission!, immune_response!
 
 # Export credit functions
-export make_loans!, pay_loans!, clear_loans_on_death!
+export credit!, clear_loans_on_death!
 
 # Export LLM integration functions
 export get_decision, try_llm_move!, llm_move!
 export LLMDecision
-export get_individual_agent_decision_with_retry
 export _agent_step_llm!, _model_step_llm!
 
 # export decision helpers
