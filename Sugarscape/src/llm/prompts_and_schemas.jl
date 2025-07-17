@@ -97,13 +97,13 @@ function get_movement_decision_schema()
         "maxItems" => 2,
         "description" => "Target coordinates [x, y] for movement, null if not moving"
       ),
-      # "reasoning_for_choice" => Dict(
-      #   "type" => ["string"],
-      #   "description" => "Reasoning for the choice of movement coordinates, if not applicable, the reason for not moving, max 2 sentences."
-      # )
+      "reasoning_for_choice" => Dict(
+        "type" => ["string"],
+        "description" => "Reasoning for the choice of movement coordinates, if not applicable, the reason for not moving, max 2 sentences."
+      )
     ),
     "required" => [
-      "agent_id", "move", "move_coords"
+      "agent_id", "move", "move_coords", "reasoning_for_choice"
     ],
     "additionalProperties" => false
   )
@@ -131,10 +131,10 @@ function get_reproduction_decision_schema(max_partners::Int)
         "maxItems" => max_partners,
         "description" => "List of partner IDs for reproduction, null if not reproducing"
       ),
-      # "reasoning_for_choice" => Dict(
-      #   "type" => ["string"],
-      #   "description" => "Reasoning for the choice of partners or, if not applicable, the reason for not reproducing, max 2 sentences."
-      # )
+      "reasoning_for_choice" => Dict(
+        "type" => ["string"],
+        "description" => "Reasoning for the choice of partners or, if not applicable, the reason for not reproducing, max 2 sentences."
+      )
     ),
     "required" => [
       "agent_id", "reproduce", "partners"

@@ -1,4 +1,5 @@
 using Agents
+
 struct Loan
     agent_id::Int
     amount::Float64

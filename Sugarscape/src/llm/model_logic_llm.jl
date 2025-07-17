@@ -267,6 +267,7 @@ function _model_step_llm!(model)
   # Delegate remaining logic to shared rule implementation
   # (copy from core but keep identical — duplication avoided for clarity)
 
+  println("Model step $(abmtime(model))")
   if model.enable_seasonality
     seasonal_growback!(model)
     model.current_season_steps += 1
@@ -319,8 +320,6 @@ function _agent_step_llm!(agent, model)
     # movement_context
     movement_context = build_agent_movement_context(agent, model)
     movement_decision = SugarscapeLLM.get_movement_decision(movement_context, model)
-    # get_movement_decision (context, response format)
-    # movement_action
     llm_move!(agent, model, movement_decision.move_coords)
   end
 
@@ -336,6 +335,7 @@ function _agent_step_llm!(agent, model)
   # ---------------------------------------------------------
 
   if model.enable_reproduction
+    println("Agent $(agent.id) is reproducing")
     if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
       cause = agent.sugar ≤ 0 ? :starvation : :age
       death!(agent, model, cause)

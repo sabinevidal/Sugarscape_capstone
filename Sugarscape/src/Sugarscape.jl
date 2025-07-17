@@ -5,6 +5,9 @@ using Agents, Random, CairoMakie, Observables, Statistics, Distributions
 # Core model components
 include("core/agents.jl")
 include("core/environment.jl")
+# Personality trait agent definitions
+include("psychological_dimensions/big_five/big_five.jl")
+include("psychological_dimensions/big_five/big_five_processor.jl")
 
 # Extensions that add functions used inside model logic
 include("rules/movement.jl")
@@ -54,7 +57,7 @@ include("visualisation/performance.jl")
 include("visualisation/ai_dashboards.jl")
 
 # Public API
-export SugarscapeAgent
+export SugarscapeAgent, BigFiveSugarscapeAgent, BigFiveProcessor
 export sugarscape
 
 export gini_coefficient, morans_i

@@ -128,7 +128,8 @@ function call_openai_api(context::Dict, model, rule_prompt, response_format)
                 Dict("role" => "user", "content" => user_prompt),
             ];
             temperature=model.llm_temperature,
-            response_format=response_format
+            response_format=response_format,
+            metadata=model.llm_metadata,
         )
         # `response.response` already contains the parsed JSON returned by the API
         j = response.response

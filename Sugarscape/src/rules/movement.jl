@@ -33,6 +33,9 @@ function build_agent_movement_context(agent, model)
     ))
   end
 
+  # Big Five personality traits (if present)
+  big_five_traits = hasproperty(agent, :traits) ? Dict(string(k)=>v for (k,v) in pairs(agent.traits)) : nothing
+
   return Dict(
     "agent_id" => agent.id,
     "position" => agent.pos,
@@ -41,6 +44,7 @@ function build_agent_movement_context(agent, model)
     "metabolism" => agent.metabolism,
     "vision" => agent.vision,
     "sex" => agent.sex,
+    "big_five_traits" => big_five_traits,
     "visible_positions" => visible_positions,
     # Future use could be allowing the agent to choose where to move based on what neighbours are nearby and what interaction is possible
     "neighbours" => neighbours,

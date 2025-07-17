@@ -1,17 +1,17 @@
-using Agents, Random, Distributions
+using Agents, Random, Distributions, DataFrames
 
 # =============================================================================
 # Rule-only Sugarscape model logic (no LLM integration)
 # =============================================================================
 
 """
-    sugarscape_core(; kwargs...) -> StandardABM
+    sugarscape(; kwargs...) -> StandardABM
 
 Create a Sugarscape agent-based model that follows the standard rules without
 any LLM involvement.  The keyword arguments mirror the original `sugarscape`
 constructor, except that all LLM-specific parameters are omitted.
 """
-function sugarscape(;
+function sugarscape(; mvn_dist::Union{MvNormal,Nothing}=nothing,
   dims=(50, 50),
   gridspace_metric::Symbol=:manhattan,
   sugar_peaks=((10, 40), (40, 10)),
@@ -25,7 +25,7 @@ function sugarscape(;
   seed=42,
   season_duration::Int=20,
   winter_growth_divisor::Int=4,
-  enable_seasonality::Bool=true,
+  enable_seasonality::Bool=false,
   enable_pollution::Bool=false,
   pollution_production_rate::Float64=1.0,
   pollution_consumption_rate::Float64=1.0,
@@ -53,12 +53,16 @@ function sugarscape(;
   interest_rate::Float64=0.10,
   duration::Int=10,
   child_amount::Int=25,
+  # Personality trait agent option
+  use_big_five::Bool=false,
+  big_five_traits_path::AbstractString="data/processed/big5-traits_raw.csv",
   # LLM-specific parameters (disabled by default)
   use_llm_decisions::Bool=false,
   llm_api_key::AbstractString=get(ENV, "OPENAI_API_KEY", ""),
   llm_model::String=get(ENV, "LLM_MODEL", "gpt-4.1-mini"),
   llm_temperature::Float64=0.0,
   llm_max_tokens::Int=1000,
+  llm_metadata::AbstractDict=Dict{String,Any}(),
 )
   # -------------------------------------------------------------------------
   # Grid initialisation
@@ -147,10 +151,28 @@ function sugarscape(;
     :llm_model => llm_model,
     :llm_temperature => llm_temperature,
     :llm_max_tokens => llm_max_tokens,
-  )
+    :llm_metadata => llm_metadata,
+    # Big Five MvNormal for runtime sampling
+    :use_big_five => use_big_five,
+    :bigfive_mvn => mvn_dist,
+    :big_five_traits_path => big_five_traits_path,)
+
+  # Prepare Big Five trait distribution if needed
+  traits_samples = nothing
+  mvn = mvn_dist
+  if use_big_five
+    traits_df = BigFiveProcessor.load_processed_bigfive(big_five_traits_path)
+    if mvn === nothing
+      mvn = BigFiveProcessor.fit_mvn_distribution(traits_df)
+    end
+    traits_samples = BigFiveProcessor.sample_agents(mvn, N)
+  end
+
+  # Select agent type based on flag
+  agent_type = use_big_five ? BigFiveSugarscapeAgent : SugarscapeAgent
 
   model = StandardABM(
-    SugarscapeAgent,
+    agent_type,
     space;
     (agent_step!)=use_llm_decisions ? _agent_step_llm! : _agent_step!,
     (model_step!)=use_llm_decisions ? _model_step_llm! : _model_step!,
@@ -162,7 +184,7 @@ function sugarscape(;
   # -----------------------------------------------------------------------
   # Initialise population
   # -----------------------------------------------------------------------
-  for _ in 1:N
+  for i in 1:N
     vision = rand(abmrng(model), vision_dist[1]:vision_dist[2])
     metabolism = rand(abmrng(model), metabolic_rate_dist[1]:metabolic_rate_dist[2])
     age = 0
@@ -182,11 +204,27 @@ function sugarscape(;
     loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
     diseases = BitVector[]
     immunity = falses(model.disease_immunity_length)
-    
-    add_agent!(pos, SugarscapeAgent, model,
-      vision, metabolism, sugar, age, max_age, sex, has_reproduced,
-      sugar, children, total_inheritance_received, BitVector(culture),
-      loans_given, loans_owed, diseases, immunity)
+
+    if use_big_five
+      row = traits_samples[i, :]
+      traits = (
+        openness=row.Openness,
+        conscientiousness=row.Conscientiousness,
+        extraversion=row.Extraversion,
+        agreeableness=row.Agreeableness,
+        neuroticism=row.Neuroticism,
+      )
+      add_agent!(pos, BigFiveSugarscapeAgent, model,
+        vision, metabolism, sugar, age, max_age, sex, has_reproduced,
+        sugar, children, total_inheritance_received, BitVector(culture),
+        loans_given, loans_owed, diseases, immunity,
+        traits)
+    else
+      add_agent!(pos, SugarscapeAgent, model,
+        vision, metabolism, sugar, age, max_age, sex, has_reproduced,
+        sugar, children, total_inheritance_received, BitVector(culture),
+        loans_given, loans_owed, diseases, immunity)
+    end
   end
 
   return model
