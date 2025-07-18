@@ -17,9 +17,9 @@ Where dashboard_type can be:
 # Parse command line arguments
 dashboard_type = length(ARGS) >= 1 ? ARGS[1] : "main"
 
-if dashboard_type ∉ ["main", "custom", "reproduction"]
+if dashboard_type ∉ ["main", "custom", "reproduction", "simple"]
   println("Error: Invalid dashboard type '$(dashboard_type)'")
-  println("Valid options: main, custom, reproduction")
+  println("Valid options: main, custom, reproduction, simple")
   exit(1)
 end
 
@@ -39,6 +39,8 @@ else
     create_function_name = "create_custom_dashboard"
   elseif dashboard_type == "reproduction"
     create_function_name = "create_reproduction_dashboard"
+  elseif dashboard_type == "simple"
+    create_function_name = "create_simple_dashboard"
   end
 end
 
@@ -64,6 +66,8 @@ elseif dashboard_type == "custom"
   fig, abmobs = Sugarscape.create_custom_dashboard()
 elseif dashboard_type == "reproduction"
   fig, abmobs = Sugarscape.create_reproduction_dashboard()
+elseif dashboard_type == "simple"
+  fig, abmobs = Sugarscape.create_simple_dashboard()
 end
 
 # Display both the figure and the ABM object

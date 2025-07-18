@@ -47,8 +47,7 @@ function create_big_five_agent!(model, pos, vision, metabolism, sugar, age, max_
     neuroticism=traits_row.Neuroticism,
   )
 
-  add_agent!(pos, BigFiveSugarscapeAgent, model,
-    vision, metabolism, sugar, age, max_age, sex, has_reproduced,
+  add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced,
     initial_sugar, children, total_inheritance_received, culture,
     loans_given, loans_owed, diseases, immunity,
     traits)

@@ -74,6 +74,7 @@ export record_wealth_hist_animation
 export create_custom_dashboard
 export create_reproduction_dashboard
 export create_dashboard
+export create_simple_dashboard
 
 # Export Movement functions
 export build_agent_movement_context
@@ -102,7 +103,7 @@ export LLMDecision
 export _agent_step_llm!, _model_step_llm!
 
 # export decision helpers
-export get_reproduction_decision, get_movement_decision, get_big_five_system_prompt
+export get_reproduction_decision, get_movement_decision, get_big_five_system_prompt, get_big_five_reproduction_system_prompt
 
 # Export testing functions
 export test_single_agent_llm_prompt, run_llm_prompt_test_interactive

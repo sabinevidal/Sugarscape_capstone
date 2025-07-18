@@ -76,24 +76,25 @@ function show_main_menu()
   println("1. Main Dashboard - Comprehensive interactive dashboard")
   println("2. Custom Dashboard - Basic metrics with custom plots")
   println("3. Reproduction Dashboard - Population dynamics focused")
+  println("4. Simple Dashboard - Basic visualization with step counter")
   println()
   println("🔬 ANALYTICS & RESEARCH")
-  println("4. Analytics Pipeline - Comprehensive data analysis and research")
+  println("5. Analytics Pipeline - Comprehensive data analysis and research")
   println()
   println("🤖 LLM INTEGRATION")
-  println("5. LLM Development Dashboard - LLM debugging with hot-reload")
-  println("6. Enhanced LLM Dashboard - Advanced LLM decision visualization")
-  println("7. LLM Prompt Tester - Test individual agent prompts")
-  println("8. LLM Performance Benchmark - Performance testing")
+  println("6. LLM Development Dashboard - LLM debugging with hot-reload")
+  println("7. Enhanced LLM Dashboard - Advanced LLM decision visualization")
+  println("8. LLM Prompt Tester - Test individual agent prompts")
+  println("9. LLM Performance Benchmark - Performance testing")
   println()
   println("🔧 UTILITIES")
-  println("9. Environment Setup - Configure .env and dependencies")
-  println("10. Documentation - View development guides")
+  println("10. Environment Setup - Configure .env and dependencies")
+  println("11. Documentation - View development guides")
   println()
   println("0. Exit")
   println()
   println("─────────────────────────────────────────────────────────────────────────────────")
-  print("Choose an option (0-9): ")
+  print("Choose an option (0-11): ")
 end
 
 function setup_environment()
@@ -231,6 +232,41 @@ function launch_reproduction_dashboard()
     return true
   catch e
     println("❌ Error launching reproduction dashboard:")
+    println("Error: $(e)")
+    println("Please check that all dependencies are installed and the environment is set up correctly.")
+    return false
+  end
+end
+
+function launch_simple_dashboard()
+  println("📊 Launching Simple Dashboard...")
+
+  try
+    # Set up arguments and include the unified dashboard script
+    dashboard_script = joinpath(dirname(@__FILE__), "run_dashboard.jl")
+    if !isfile(dashboard_script)
+      error("Could not find run_dashboard.jl: $(dashboard_script)")
+    end
+
+    println("Running simple dashboard script...")
+    # Set ARGS for the dashboard script and include it
+    original_args = copy(ARGS)
+    empty!(ARGS)
+    push!(ARGS, "simple")
+    try
+      include(dashboard_script)
+    finally
+      # Restore original ARGS
+      empty!(ARGS)
+      append!(ARGS, original_args)
+    end
+
+    println("✅ Simple dashboard launched successfully!")
+    println("Features: Interactive controls, agent monitoring, CSV export, performance tracking")
+
+    return true
+  catch e
+    println("❌ Error launching simple dashboard:")
     println("Error: $(e)")
     println("Please check that all dependencies are installed and the environment is set up correctly.")
     return false
@@ -557,36 +593,41 @@ function main()
           println("Dashboard launch failed. Please check the error above.")
         end
       elseif choice == 4
+        success = launch_simple_dashboard()
+        if !success
+          println("Dashboard launch failed. Please check the error above.")
+        end
+      elseif choice == 5
         success = launch_analytics_pipeline()
         if !success
           println("Analytics pipeline launch failed. Please check the error above.")
         end
-      elseif choice == 5
+      elseif choice == 6
         success = launch_llm_dev_dashboard()
         if success == false
           println("LLM dashboard launch failed. Please check the error above.")
         end
-      elseif choice == 6
+      elseif choice == 7
         success = launch_enhanced_llm_dashboard()
         if success == false
           println("LLM dashboard launch failed. Please check the error above.")
         end
-      elseif choice == 7
+      elseif choice == 8
         result = launch_llm_prompt_tester()
         if result == false
           println("LLM prompt tester launch failed. Please check the error above.")
         end
-      elseif choice == 8
+      elseif choice == 9
         result = launch_llm_benchmark()
         if result == false
           println("LLM benchmark launch failed. Please check the error above.")
         end
-      elseif choice == 9
-        setup_environment()
       elseif choice == 10
+        setup_environment()
+      elseif choice == 11
         show_documentation()
       else
-        println("❌ Invalid choice. Please enter 0-10.")
+        println("❌ Invalid choice. Please enter 0-11.")
       end
 
       if choice != 0

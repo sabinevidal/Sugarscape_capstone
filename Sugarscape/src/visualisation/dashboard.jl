@@ -8,6 +8,7 @@ using CSV
 using Observables
 using Statistics
 using Dates
+# using ColorSchemes
 
 """
     create_dashboard(; model_kwargs...)
@@ -21,7 +22,7 @@ Creates an interactive dashboard for the Sugarscape model with:
 function create_dashboard()
   # Initialize model with all rules disabled by default for debugging
   initial_model = sugarscape(;
-    dims=(30, 30),
+    dims=(50, 50),
     N=100,
     enable_reproduction=false,
     enable_culture=false,
@@ -74,8 +75,11 @@ function create_dashboard()
   function total_principal(model)
     total = 0.0
     for a in allagents(model)
-      for t in a.loans
-        total += t[3]
+      # Sum up all loans given by this agent
+      for (_, loans_list) in a.loans_given
+        for loan in loans_list
+          total += loan.amount
+        end
       end
     end
     return total
@@ -100,13 +104,13 @@ function create_dashboard()
   # Agent visualization functions
   agent_color(agent) = begin
     if agent.sugar > 20
-      :gold
+      "#EB5038"
     elseif agent.sugar > 10
-      :orange
+      "#f08765"
     elseif agent.sugar > 5
-      :yellow
+      "#f4bd91"
     else
-      :red
+      "#05668d"
     end
   end
 
@@ -116,8 +120,10 @@ function create_dashboard()
   sugarmap(model) = model.sugar_values
   max_sugar_capacity = maximum(initial_model.sugar_capacities)
 
+  my_colormap = cgrad(["#BDD4E7", "#C4CC78"])
+
   heatkwargs = (
-    colormap=:thermal,
+    colormap=my_colormap,
     colorrange=(0.0, max_sugar_capacity)
   )
 
@@ -248,13 +254,51 @@ function create_dashboard()
       timestamp = Dates.format(Dates.now(), "yyyymmdd_HHMMSS")
       model = abmobs.model[]
       agent_list = collect(allagents(model))
-      loans_given_total(a) = sum((t[3] for t in a.loans if t[1] == a.id); init=0.0)
-      loans_received_total(a) = sum((t[3] for t in a.loans if t[2] == a.id); init=0.0)
-      loans_given_count(a) = count(t -> t[1] == a.id, a.loans)
-      loans_received_count(a) = count(t -> t[2] == a.id, a.loans)
+      loans_given_total(a) = begin
+        total = 0.0
+        for (_, loans_list) in a.loans_given
+          for loan in loans_list
+            total += loan.amount
+          end
+        end
+        return total
+      end
+
+      loans_received_total(a) = begin
+        total = 0.0
+        for (_, loans_list) in a.loans_owed
+          for loan in loans_list
+            total += loan.amount
+          end
+        end
+        return total
+      end
+
+      loans_given_count(a) = begin
+        count = 0
+        for (_, loans_list) in a.loans_given
+          count += length(loans_list)
+        end
+        return count
+      end
+
+      loans_received_count(a) = begin
+        count = 0
+        for (_, loans_list) in a.loans_owed
+          count += length(loans_list)
+        end
+        return count
+      end
+
       net_credit(a) = loans_given_total(a) - loans_received_total(a)
+
       next_due(a, step) = begin
-        dues = [t[4] for t in a.loans if t[2] == a.id]
+        dues = []
+        for (_, loans_list) in a.loans_owed
+          for loan in loans_list
+            push!(dues, loan.time_due)
+          end
+        end
         isempty(dues) ? missing : minimum(dues)
       end
 
@@ -353,6 +397,85 @@ function create_dashboard()
 
   Label(perf_section[2, 1], perf_text,
     tellwidth=false, font="monospace", fontsize=12)
+
+  # Initialize the display
+  notify(abmobs.model)
+
+  return fig, abmobs
+end
+
+"""
+    create_simple_dashboard(; model_kwargs...)
+
+Creates a simple dashboard for the Sugarscape model that only displays:
+- Step counter
+- Basic model visualization
+- No interactive controls or additional information
+"""
+function create_simple_dashboard()
+  # Initialize model with default settings
+  initial_model = sugarscape(;
+    dims=(50, 50),
+    N=100,
+    enable_reproduction=false,
+    enable_culture=false,
+    enable_combat=false,
+    enable_pollution=false,
+    enable_credit=false,
+    enable_disease=false,
+    use_llm_decisions=false,
+    seed=42
+  )
+
+  # Agent visualization functions
+  agent_color(agent) = begin
+    if agent.sugar > 20
+      "#EB5038"
+    elseif agent.sugar > 10
+      "#f08765"
+    elseif agent.sugar > 5
+      "#f4bd91"
+    else
+      "#05668d"
+    end
+  end
+
+  agent_size(agent) = max(4, min(12, agent.sugar / 2))
+
+  # Sugar landscape heatmap
+  sugarmap(model) = model.sugar_values
+  max_sugar_capacity = maximum(initial_model.sugar_capacities)
+
+  my_colormap = cgrad(["#BDD4E7", "#C4CC78"])
+
+  heatkwargs = (
+    colormap=my_colormap,
+    colorrange=(0.0, max_sugar_capacity)
+  )
+
+  # Create the simple visualization interface with no parameters or data collection
+  fig, ax, abmobs = abmplot(
+    initial_model;
+    add_controls=true,
+    agent_color=agent_color,
+    agent_size=agent_size,
+    heatarray=sugarmap,
+    heatkwargs=heatkwargs,
+    figure=(; size=(800, 600))
+  )
+
+  # Add only a step counter
+  current_step = Observable(0)
+  step_text = Observable("Step: 0")
+
+  # Update step counter
+  on(abmobs.model) do model
+    current_step[] += 1
+    step_text[] = "Step: $(current_step[])"
+  end
+
+  # Display step counter at the top
+  Label(fig[0, 1], step_text, tellwidth=false, font=:bold, fontsize=16)
 
   # Initialize the display
   notify(abmobs.model)

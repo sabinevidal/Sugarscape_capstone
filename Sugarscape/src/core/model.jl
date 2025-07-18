@@ -25,7 +25,7 @@ function sugarscape(;
   metabolic_rate_dist=(1, 4),
   vision_dist=(1, 6),
   max_age_dist=(60, 100),
-  max_sugar=4,
+  max_sugar=5,
 
   # reproduction
   enable_reproduction::Bool=false,
@@ -191,7 +191,7 @@ function sugarscape(;
   else
     (nothing, nothing)
   end
-  
+
   # Store MVN distribution in model for runtime sampling during reproduction
   if use_big_five
     model.big_five_mvn_dist = big_five_mvn
@@ -218,17 +218,19 @@ function sugarscape(;
     diseases = BitVector[]
     immunity = falses(model.disease_immunity_length)
 
-    common_agent_args = (
-      model, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced,
+    # Create agent arguments for add_agent! (pos, AgentType, model, ...args)
+    agent_args = (
+      vision, metabolism, sugar, age, max_age, sex, has_reproduced,
       sugar, children, total_inheritance_received, BitVector(culture),
       loans_given, loans_owed, diseases, immunity
     )
 
     if use_big_five
       traits_row = traits_samples[i, :]
-      create_big_five_agent!(common_agent_args..., traits_row)
+      # For Big Five agents, we need to include model in the args for create_big_five_agent!
+      create_big_five_agent!(model, pos, agent_args..., traits_row)
     else
-      add_agent!(common_agent_args, SugarscapeAgent)
+      add_agent!(pos, SugarscapeAgent, model, agent_args...)
     end
   end
 

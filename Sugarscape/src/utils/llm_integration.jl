@@ -249,7 +249,11 @@ end
 
 function get_reproduction_decision(context::Dict, model)
     reproduction_response_format = SugarscapePrompts.get_reproduction_response_format(context["max_partners"])
-    reproduction_prompt = SugarscapePrompts.get_reproduction_system_prompt()
+    if model.use_big_five
+        reproduction_prompt = get_big_five_reproduction_system_prompt()
+    else
+        reproduction_prompt = SugarscapePrompts.get_reproduction_system_prompt()
+    end
     try
         raw_response = call_openai_api(context, "reproduction", model, reproduction_prompt, reproduction_response_format)
         decision = _parse_reproduction_decision(raw_response)
