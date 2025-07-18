@@ -7,32 +7,39 @@ Reproduction Rule:
 """
 function build_reproduction_context(agent, model, eligible_partners, max_partners)
 
-  eligible_partners_context = Vector{Dict{Symbol,Any}}()
+  eligible_partners_context = Vector{Dict{String,Any}}()
   for ep in eligible_partners
     if is_fertile(ep, model) && agent.sex != ep.sex
-      push!(eligible_partners_context, Dict(
-        :id => ep.id,
-        :sugar => ep.sugar,
-        :age => ep.age,
-        :sex => ep.sex,
-        :culture => ep.culture,
-        :empty_nearby_positions_for_partner => collect(empty_nearby_positions(ep, model)),
+      neighbour_big_five_traits = hasproperty(ep, :traits) ? Dict(string(k) => v for (k, v) in pairs(ep.traits)) : nothing
+      push!(eligible_partners_context, Dict{String,Any}(
+        "id" => ep.id,
+        "sugar" => ep.sugar,
+        "age" => ep.age,
+        "sex" => ep.sex,
+        "culture" => ep.culture,
+        "traits" => neighbour_big_five_traits,
+        "empty_nearby_positions_for_partner" => collect(empty_nearby_positions(ep, model)),
       ))
     end
   end
 
-  reproduction_context = Dict{Symbol,Any}(
-    :agent_id => agent.id,
-    :position => agent.pos,
-    :sugar => agent.sugar,
-    :age => agent.age,
-    :metabolism => agent.metabolism,
-    :vision => agent.vision,
-    :sex => agent.sex,
-    :eligible_partners => eligible_partners_context,
-    :max_partners => max_partners,
+  # Big Five personality traits (if present)
+  big_five_traits = hasproperty(agent, :traits) ? Dict(string(k) => v for (k, v) in pairs(agent.traits)) : nothing
+
+  reproduction_context = Dict{String,Any}(
+    "agent_id" => agent.id,
+    "position" => agent.pos,
+    "sugar" => agent.sugar,
+    "min_sugar_for_reproduction" => agent.initial_sugar,
+    "age" => agent.age,
+    "metabolism" => agent.metabolism,
+    "vision" => agent.vision,
+    "sex" => agent.sex,
+    "big_five_traits" => big_five_traits,
+    "eligible_partners" => eligible_partners_context,
+    "max_partners" => max_partners,
     # doesn't need to know values of empty_nearby_positions
-    :empty_nearby_positions => collect(empty_nearby_positions(agent, model)),
+    "empty_nearby_positions" => collect(empty_nearby_positions(agent, model)),
   )
 
   return reproduction_context
@@ -69,6 +76,7 @@ function reproduction!(agent, model)
     # llm specific reproduction logic
     reproduction_context = build_reproduction_context(agent, model, eligible_partners, max_partners)
     reproduction_decision = SugarscapeLLM.get_reproduction_decision(reproduction_context, model)
+    println("Agent $(agent.id) Reproduction: ", reproduction_decision.reasoning)
 
     if reproduction_decision.reproduce === false || reproduction_decision.partners === nothing || isempty(reproduction_decision.partners)
       # "No partners selected by LLM for reproduction."
@@ -116,8 +124,25 @@ function create_child(parent1, parent2, pos, model)
   loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
   diseases = BitVector[]
   immunity = falses(model.disease_immunity_length)
-  
-  child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity)
+
+  # Create child based on whether Big Five traits are enabled
+  if model.use_big_five
+    # Generate new Big Five traits using sample_agents from the stored MVN distribution
+    traits_sample = BigFiveProcessor.sample_agents(model.big_five_mvn_dist, 1)
+    traits_row = traits_sample[1, :]
+
+    child_traits = (
+      openness=traits_row.Openness,
+      conscientiousness=traits_row.Conscientiousness,
+      extraversion=traits_row.Extraversion,
+      agreeableness=traits_row.Agreeableness,
+      neuroticism=traits_row.Neuroticism
+    )
+
+    child = add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, child_traits)
+  else
+    child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity)
+  end
 
   # Track birth in model statistics
   model.births += 1

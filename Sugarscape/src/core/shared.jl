@@ -192,7 +192,7 @@ function death_replacement!(agent, model)
     metabolism = rand(abmrng(model), model.metabolic_rate_dist[1]:model.metabolic_rate_dist[2])
     age = 0
     max_age = rand(abmrng(model), model.max_age_dist[1]:model.max_age_dist[2])
-    sugar = Float64(rand(abmrng(model), model.w0_dist[1]:model.w0_dist[2]))
+    sugar = Float64(rand(abmrng(model), model.initial_sugar_dist[1]:model.initial_sugar_dist[2]))
     sex = rand(abmrng(model), (:male, :female))
     has_reproduced = false
     children = Int[]
@@ -204,7 +204,7 @@ function death_replacement!(agent, model)
     loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
     diseases = BitVector[]
     immunity = falses(model.disease_immunity_length)
-    
+
     add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
       sex, has_reproduced, sugar, children, total_inheritance_received,
       culture, loans_given, loans_owed, diseases, immunity)

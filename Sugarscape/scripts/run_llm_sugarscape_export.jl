@@ -53,13 +53,15 @@ function main()
     # ---------------------------------------------------------------------
     # Initialise model (pure rule-based by default)
     # ---------------------------------------------------------------------
-    model = Sugarscape.sugarscape(
+    model = Sugarscape.sugarscape_llm_bigfive(
         use_llm_decisions=true,
+        llm_temperature=0.4,
         use_big_five=true,
-        N=2,
+        N=4,
         enable_reproduction=false,
-        dims=(30, 30),
-        sugar_peaks=(15, 15),
+        dims=(4, 4),
+        sugar_peaks=(2, 2),
+        max_sugar=3,
         fertility_age_range=(1, 20),
         llm_metadata=Dict{String,Any}("output_prefix" => "$(output_prefix)")
     )

@@ -104,7 +104,7 @@ function sugarscape_llm(;  # signature mirrors original for brevity
   sugar_peaks=((10, 40), (40, 10)),
   growth_rate=1,
   N=100,
-  w0_dist=(5, 25),
+  initial_sugar_dist=(5, 25),
   metabolic_rate_dist=(1, 4),
   vision_dist=(1, 6),
   max_age_dist=(60, 100),
@@ -139,7 +139,6 @@ function sugarscape_llm(;  # signature mirrors original for brevity
   enable_credit::Bool=false,
   interest_rate::Float64=0.10,
   duration::Int=10,
-  child_amount::Int=25,
   # LLM-specific
   use_llm_decisions::Bool=true,
   llm_api_key::AbstractString=get(ENV, "OPENAI_API_KEY", ""),
@@ -158,7 +157,7 @@ function sugarscape_llm(;  # signature mirrors original for brevity
   properties = Dict(
     :growth_rate => growth_rate,
     :N => N,
-    :w0_dist => w0_dist,
+    :initial_sugar_dist => initial_sugar_dist,
     :metabolic_rate_dist => metabolic_rate_dist,
     :vision_dist => vision_dist,
     :max_age_dist => max_age_dist,
@@ -236,7 +235,7 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     metabolism = rand(abmrng(model), metabolic_rate_dist[1]:metabolic_rate_dist[2])
     age = 0
     max_age = rand(abmrng(model), max_age_dist[1]:max_age_dist[2])
-    sugar = Float64(rand(abmrng(model), w0_dist[1]:w0_dist[2]))
+    sugar = Float64(rand(abmrng(model), initial_sugar_dist[1]:initial_sugar_dist[2]))
     sex = rand(abmrng(model), (:male, :female))
     has_reproduced = false
     children = Int[]
@@ -252,6 +251,11 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
       sex, has_reproduced, sugar, children, total_inheritance_received,
       culture, loans_given, loans_owed, diseases, immunity)
+
+    agents = allagents(model)
+    for agent in agents
+      println("Agent $(agent.id): $(agent.big_five_traits)")
+    end
   end
 
 
@@ -320,6 +324,7 @@ function _agent_step_llm!(agent, model)
     # movement_context
     movement_context = build_agent_movement_context(agent, model)
     movement_decision = SugarscapeLLM.get_movement_decision(movement_context, model)
+    println("Agent $(agent.id), step $(abmtime(model)): $(movement_decision.reasoning)")
     llm_move!(agent, model, movement_decision.move_coords)
   end
 
@@ -335,7 +340,6 @@ function _agent_step_llm!(agent, model)
   # ---------------------------------------------------------
 
   if model.enable_reproduction
-    println("Agent $(agent.id) is reproducing")
     if agent.sugar ≤ 0 || agent.age ≥ agent.max_age
       cause = agent.sugar ≤ 0 ? :starvation : :age
       death!(agent, model, cause)

@@ -69,7 +69,7 @@ rng_seed = 0x20240622
     growth_rate=0,                      # disable growback
     vision_dist=(2, 2),                 # deterministic vision
     metabolic_rate_dist=(0, 0),         # no metabolism for clarity
-    w0_dist=(0, 0))                     # start with zero sugar
+    initial_sugar_dist=(0, 0))                     # start with zero sugar
 
   model.sugar_values .= 0.0        # blank slate
 
@@ -91,7 +91,7 @@ rng_seed = 0x20240622
   # 2. Tie-breaking by distance (prefer nearer of equal sugar)
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
-    growth_rate=0, vision_dist=(3, 3), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    growth_rate=0, vision_dist=(3, 3), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
 
   agent_pos = (4, 4)
@@ -110,7 +110,7 @@ rng_seed = 0x20240622
   # 3. Tie-breaking by random choice among equal sugar & equal distance
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
-    growth_rate=0, vision_dist=(2, 2), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    growth_rate=0, vision_dist=(2, 2), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
 
   agent_pos = (4, 4)
@@ -130,7 +130,7 @@ rng_seed = 0x20240622
   # 4. No move if all neighbouring sites are occupied (must stay put)
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
-    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
 
   focal_pos = (3, 3)
@@ -149,7 +149,7 @@ rng_seed = 0x20240622
   # 5. Multiple agents move to valid spots
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
-    growth_rate=0, vision_dist=(2, 2), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    growth_rate=0, vision_dist=(2, 2), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
 
   # Create multiple sugar sites with different values
@@ -207,7 +207,7 @@ end
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_reproduction=true, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
-    w0_dist=(20, 20))  # fixed initial sugar
+    initial_sugar_dist=(20, 20))  # fixed initial sugar
 
   model.sugar_values .= 0.0
 
@@ -261,7 +261,7 @@ end
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_reproduction=true, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
-    w0_dist=(20, 20))
+    initial_sugar_dist=(20, 20))
   model.sugar_values .= 0.0
 
   # Place fertile male & female adjacent at centre; fill every other cell
@@ -290,7 +290,7 @@ end
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_reproduction=true, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
-    w0_dist=(20, 20))
+    initial_sugar_dist=(20, 20))
   model.sugar_values .= 0.0
 
   # Place fertile female at centre
@@ -317,7 +317,7 @@ end
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_reproduction=true, growth_rate=0,
     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
-    w0_dist=(20, 20))
+    initial_sugar_dist=(20, 20))
   model.sugar_values .= 0.0
 
   # Place fertile female at centre
@@ -348,7 +348,7 @@ end
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_reproduction=true,  # inheritance active
-    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
 
   # Create two children first so their IDs are lower than the parent's ID
   child1 = add_custom_agent!(model, (2, 2); sugar=0, age=5)
@@ -380,7 +380,7 @@ end
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_reproduction=true, growth_rate=0,
-    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
 
   childA = add_custom_agent!(model, (1, 1); sugar=0, age=5)
   childB = add_custom_agent!(model, (1, 2); sugar=0, age=5)
@@ -412,7 +412,7 @@ end
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_culture=true, culture_tag_length=1,
     enable_combat=false, growth_rate=0,
-    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
 
   a = add_custom_agent!(model, (2, 2); sugar=0, culture_bits=[false])
@@ -427,7 +427,7 @@ end
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_culture=true, culture_tag_length=1,
-    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
 
   c1 = add_custom_agent!(model, (1, 1); sugar=0, culture_bits=[true])
@@ -452,7 +452,7 @@ end
 
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_culture=true, culture_tag_length=3,
-    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
   d1 = add_custom_agent!(model, (2, 2); sugar=0, culture_bits=[true, true, true])
   d2 = add_custom_agent!(model, (2, 3); sugar=0, culture_bits=[false, false, false])
@@ -472,7 +472,7 @@ end
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_culture=true, culture_tag_length=1,
-    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
 
   e = add_custom_agent!(model, (2, 2); sugar=0, culture_bits=[true])
@@ -491,7 +491,7 @@ end
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_culture=true, culture_tag_length=1,
-    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
 
   f = add_custom_agent!(model, (3, 3); sugar=0, culture_bits=[true])
@@ -519,7 +519,7 @@ end
   #   enable_combat=true, enable_culture=false,
   #   culture_tag_length=3, combat_limit=50,
   #   vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
-  #   w0_dist=(5, 5), growth_rate=0)
+  #   initial_sugar_dist=(5, 5), growth_rate=0)
   # model.sugar_values .= 0.0
 
   # attacker = add_custom_agent!(model, (2, 2); sugar=10, culture_bits=[false, false, true], metabolism=1)  # blue, metabolism 1
@@ -539,7 +539,7 @@ end
   #   enable_combat=true, enable_culture=false,
   #   culture_tag_length=3, combat_limit=50,
   #   vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
-  #   w0_dist=(5, 5), growth_rate=0)
+  #   initial_sugar_dist=(5, 5), growth_rate=0)
   # model.sugar_values .= 0.0
 
   # attacker = add_custom_agent!(model, (2, 2); sugar=5, culture_bits=[false, false, true], vision=3, metabolism=1)   # blue
@@ -557,7 +557,7 @@ end
   #   enable_combat=true, enable_culture=false,
   #   culture_tag_length=3, combat_limit=50,
   #   vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
-  #   w0_dist=(5, 5), growth_rate=0)
+  #   initial_sugar_dist=(5, 5), growth_rate=0)
   # model.sugar_values .= 0.0
 
   # # Place sugar at victim location for additional reward
@@ -591,7 +591,7 @@ end
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_credit=true, interest_rate=0.0,
     duration=10, growth_rate=0,
-    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(25, 25))
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(25, 25))
   model.sugar_values .= 0.0
 
   # Lender: post-fertility male, 40 sugar → may lend half (20)
@@ -647,7 +647,7 @@ end
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_credit=true, interest_rate=0.1, duration=10,
     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
-    w0_dist=(0, 0))
+    initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
 
   lender = add_custom_agent!(model, (2, 2); sugar=50, sex=:male, age=55)
@@ -672,7 +672,7 @@ end
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_credit=true, enable_reproduction=true, interest_rate=0.0,
     duration=10, growth_rate=0, vision_dist=(1, 1),
-    metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+    metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
 
   lender = add_custom_agent!(model, (1, 1); sugar=50, sex=:male, age=55)
@@ -697,7 +697,7 @@ end
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_credit=true, interest_rate=0.0, duration=5,
     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
-    w0_dist=(0, 0))
+    initial_sugar_dist=(0, 0))
   model.sugar_values .= 0.0
 
   lender1 = add_custom_agent!(model, (1, 1); sugar=50, sex=:male, age=55)
@@ -746,7 +746,9 @@ end
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed)
   borrower = add_custom_agent!(model, (2, 2); sugar=10, initial_sugar=25, sex=:female, age=25)
   pre_sugar = borrower.sugar
-  Sugarscape.attempt_borrow!(borrower, model, 15.0)
+  neighbours = nearby_agents(borrower, model)
+
+  Sugarscape.attempt_borrow!(borrower, model, 15.0, neighbours)
   @test borrower.sugar == pre_sugar # No change as no neighbours to lend
 
   ##########################################################################
@@ -755,7 +757,9 @@ end
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed)
   lender = add_custom_agent!(model, (2, 2); sugar=50, sex=:male, age=55, initial_sugar=50)
   pre_sugar = lender.sugar
-  Sugarscape.attempt_lend!(lender, model, 25.0)
+  neighbours = nearby_agents(lender, model)
+
+  Sugarscape.attempt_lend!(lender, model, 25.0, neighbours)
   @test lender.sugar == pre_sugar # No change as no neighbours to borrow
 end
 
@@ -773,7 +777,7 @@ end
   # ##########################################################################
   # model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
   #   enable_disease=true, disease_immunity_length=6,
-  #   growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+  #   growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
 
   # immune_bits = BitVector([false, true, false, true, false, true])   # disease is subseq
   # ag = add_custom_agent!(model, (2, 2); sugar=20)
@@ -788,7 +792,7 @@ end
   # ##########################################################################
   # model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
   #   enable_disease=true, disease_immunity_length=6,
-  #   growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+  #   growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
 
   # ag = add_custom_agent!(model, (2, 2); sugar=20)
   # before_imm = BitVector([false, false, false, false, false, false])
@@ -810,7 +814,7 @@ end
   # ##########################################################################
   # model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
   #   enable_disease=true, disease_immunity_length=6,
-  #   growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+  #   growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
 
   # src = add_custom_agent!(model, (2, 2); sugar=10)
   # dst = add_custom_agent!(model, (2, 3); sugar=10)

@@ -169,8 +169,11 @@ Returns a DataFrame with named Big Five trait columns.
 """
 function sample_agents(mvn::MvNormal, n::Int)::DataFrame
   samples = rand(mvn, n)'
+  # Round all samples to 2 decimal places
+  samples_rounded = round.(samples, digits=2)
+  samples_clipped = clamp.(samples_rounded, 1.0, 5.0)
   trait_names = [:Extraversion, :Neuroticism, :Agreeableness, :Conscientiousness, :Openness]
-  return DataFrame(samples, trait_names)
+  return DataFrame(samples_clipped, trait_names)
 end
 
 

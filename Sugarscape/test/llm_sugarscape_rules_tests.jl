@@ -91,7 +91,7 @@ rng_seed = 0x20240622
 #     growth_rate=0,                      # disable growback
 #     vision_dist=(2, 2),                 # deterministic vision
 #     metabolic_rate_dist=(0, 0),         # no metabolism for clarity
-#     w0_dist=(0, 0),                     # start with zero sugar
+#     initial_sugar_dist=(0, 0),                     # start with zero sugar
 #     use_llm_decisions=true)
 
 
@@ -116,7 +116,7 @@ rng_seed = 0x20240622
 #   @info "Testing: Tie-breaking by distance preference"
 
 #   model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
-#     growth_rate=0, vision_dist=(3, 3), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+#     growth_rate=0, vision_dist=(3, 3), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
 #   model.sugar_values .= 0.0
 
 #   agent_pos = (4, 4)
@@ -136,7 +136,7 @@ rng_seed = 0x20240622
 #   @info "Testing: No movement when all neighbours are occupied"
 
 #   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
-#     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+#     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
 #   model.sugar_values .= 0.0
 
 #   focal_pos = (3, 3)
@@ -161,7 +161,7 @@ rng_seed = 0x20240622
 #   @info "Testing: Multiple agents move to valid spots"
 
 #   model = Sugarscape.sugarscape(; dims=(7, 7), N=0, seed=rng_seed,
-#     growth_rate=0, vision_dist=(2, 2), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+#     growth_rate=0, vision_dist=(2, 2), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
 #   model.sugar_values .= 0.0
 
 #   # Create multiple sugar sites with different values
@@ -223,7 +223,7 @@ rng_seed = 0x20240622
 #   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
 #     enable_reproduction=true, growth_rate=0,
 #     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
-#     w0_dist=(20, 20), use_llm_decisions=true)
+#     initial_sugar_dist=(20, 20), use_llm_decisions=true)
 
 #   model.sugar_values .= 0.0
 
@@ -278,7 +278,7 @@ rng_seed = 0x20240622
 #   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
 #     enable_reproduction=true, growth_rate=0,
 #     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
-#     w0_dist=(20, 20), use_llm_decisions=true)
+#     initial_sugar_dist=(20, 20), use_llm_decisions=true)
 #   model.sugar_values .= 0.0
 
 #   # Place fertile male & female adjacent at centre; fill every other cell
@@ -309,7 +309,7 @@ rng_seed = 0x20240622
 #   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
 #     enable_reproduction=true, growth_rate=0,
 #     vision_dist=(1, 1), metabolic_rate_dist=(0, 0),
-#     w0_dist=(20, 20), use_llm_decisions=true)
+#     initial_sugar_dist=(20, 20), use_llm_decisions=true)
 #   model.sugar_values .= 0.0
 
 #   model.reproduction_counts_step = Dict{Int,Int}()
@@ -360,7 +360,7 @@ rng_seed = 0x20240622
 #   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
 #     enable_culture=true, culture_tag_length=1,
 #     enable_combat=false, growth_rate=0,
-#     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+#     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
 
 #   model.sugar_values .= 0.0
 
@@ -377,7 +377,7 @@ rng_seed = 0x20240622
 #   ##########################################################################
 #   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
 #     enable_culture=true, culture_tag_length=1,
-#     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+#     growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
 #   model.sugar_values .= 0.0
 
 #   c1 = add_custom_agent!(model, (1, 1); sugar=0, culture_bits=[true])
@@ -403,7 +403,7 @@ rng_seed = 0x20240622
 
 #   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
 #     enable_culture=true, culture_tag_length=3,
-#     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+#     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
 #   model.sugar_values .= 0.0
 
 #   d1 = add_custom_agent!(model, (2, 2); sugar=0, culture_bits=[true, true, true])
@@ -429,7 +429,7 @@ rng_seed = 0x20240622
 #   ##########################################################################
 #   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
 #     enable_culture=true, culture_tag_length=1,
-#     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+#     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
 #   model.sugar_values .= 0.0
 
 #   e = add_custom_agent!(model, (2, 2); sugar=0, culture_bits=[true])
@@ -450,7 +450,7 @@ rng_seed = 0x20240622
 #   ##########################################################################
 #   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
 #     enable_culture=true, culture_tag_length=1,
-#     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0))
+#     vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
 #   model.sugar_values .= 0.0
 
 #   f = add_custom_agent!(model, (3, 3); sugar=0, culture_bits=[true])
@@ -477,7 +477,7 @@ rng_seed = 0x20240622
 #     enable_combat=true, enable_culture=false,
 #     culture_tag_length=3, combat_limit=50,
 #     vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
-#     w0_dist=(5, 5), growth_rate=0)
+#     initial_sugar_dist=(5, 5), growth_rate=0)
 #   model.sugar_values .= 0.0
 
 #   attacker = add_custom_agent!(model, (2, 2); sugar=10, culture_bits=[false, false, true], metabolism=1)  # blue, metabolism 1
@@ -497,7 +497,7 @@ rng_seed = 0x20240622
 #     enable_combat=true, enable_culture=false,
 #     culture_tag_length=3, combat_limit=50,
 #     vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
-#     w0_dist=(5, 5), growth_rate=0)
+#     initial_sugar_dist=(5, 5), growth_rate=0)
 #   model.sugar_values .= 0.0
 
 #   attacker = add_custom_agent!(model, (2, 2); sugar=5, culture_bits=[false, false, true], vision=3, metabolism=1)   # blue
@@ -515,7 +515,7 @@ rng_seed = 0x20240622
 #     enable_combat=true, enable_culture=false,
 #     culture_tag_length=3, combat_limit=50,
 #     vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
-#     w0_dist=(5, 5), growth_rate=0)
+#     initial_sugar_dist=(5, 5), growth_rate=0)
 #   model.sugar_values .= 0.0
 
 #   # Place sugar at victim location for additional reward
@@ -549,7 +549,7 @@ rng_seed = 0x20240622
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_credit=true, interest_rate=0.0,
     duration=10, growth_rate=0,
-    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(25, 25), use_llm_decisions=true)
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(25, 25), use_llm_decisions=true)
   model.sugar_values .= 0.0
 
   # Lender: post-fertility male, 40 sugar → may lend half (20)
@@ -608,7 +608,7 @@ end
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_credit=true, interest_rate=0.0, duration=5, growth_rate=0,
-    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
   model.sugar_values .= 0.0
   lender = add_custom_agent!(model, (2, 2); sugar=20, sex=:male, age=60, initial_sugar=20)
   # Give borrower a small positive sugar to ensure positive income, and set initial_sugar so they need 10
@@ -629,7 +629,7 @@ end
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
     enable_credit=true, interest_rate=0.0, duration=5, growth_rate=0,
-    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+    vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
   model.sugar_values .= 0.0
   lender = add_custom_agent!(model, (2, 2); sugar=30, sex=:male, age=60, initial_sugar=30)
   borrower = add_custom_agent!(model, (2, 3); sugar=5, sex=:female, age=25, initial_sugar=15)
@@ -648,7 +648,7 @@ end
   # ##########################################################################
   # model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
   #   enable_credit=true, interest_rate=0.0, duration=5, growth_rate=0,
-  #   vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+  #   vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
   # model.sugar_values .= 0.0
   # lender = add_custom_agent!(model, (2, 2); sugar=50, sex=:male, age=60, initial_sugar=50)
   # b1 = add_custom_agent!(model, (2, 1); sugar=1, initial_sugar=10, sex=:female, age=25)
@@ -666,7 +666,7 @@ end
   # ##########################################################################
   # model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
   #   enable_credit=true, interest_rate=0.0, duration=5, growth_rate=0,
-  #   vision_dist=(1, 1), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+  #   vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
   # model.sugar_values .= 0.0
   # l1 = add_custom_agent!(model, (1, 2); sugar=20, initial_sugar=20)
   # l2 = add_custom_agent!(model, (3, 2); sugar=20, initial_sugar=20)
@@ -683,7 +683,7 @@ end
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_credit=true, interest_rate=0.0, duration=5, growth_rate=0,
-    vision_dist=(2, 2), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+    vision_dist=(2, 2), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
   model.sugar_values .= 0.0
 
   # One wealthy lender with enough sugar to lend to multiple borrowers
@@ -712,7 +712,7 @@ end
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_credit=true, interest_rate=0.0, duration=5, growth_rate=0,
-    vision_dist=(2, 2), metabolic_rate_dist=(0, 0), w0_dist=(0, 0), use_llm_decisions=true)
+    vision_dist=(2, 2), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0), use_llm_decisions=true)
   model.sugar_values .= 0.0
 
   # Multiple potential lenders within borrower's vision

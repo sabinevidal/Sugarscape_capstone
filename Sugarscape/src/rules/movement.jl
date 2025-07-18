@@ -17,29 +17,34 @@ function build_agent_movement_context(agent, model)
   for (pos, sugar_value, distance) in Sugarscape.evaluate_nearby_positions(agent, model)
     push!(visible_positions, Dict(
       "position" => pos,
-      "sugar_value" => sugar_value,
-      "distance" => distance,
+      "sugar_value" => round(sugar_value, digits=2),
+      "distance" => round(distance, digits=2),
     ))
   end
 
-  # Immediate neighbours (Von Neumann radius 1)
+  # Neighbours in vision
   neighbours = Vector{Any}()
-  for nb in nearby_agents(agent, model, 1)
+  occupied_positions = Vector{Any}()
+  for nb in nearby_agents(agent, model, agent.vision)
     push!(neighbours, Dict(
       "id" => nb.id,
-      "sugar" => nb.sugar,
+      "sugar" => round(nb.sugar, digits=2),
       "age" => nb.age,
       "sex" => nb.sex,
+      "position" => nb.pos,
+    ))
+    push!(occupied_positions, Dict(
+      "position" => nb.pos,
     ))
   end
 
   # Big Five personality traits (if present)
-  big_five_traits = hasproperty(agent, :traits) ? Dict(string(k)=>v for (k,v) in pairs(agent.traits)) : nothing
+  big_five_traits = hasproperty(agent, :traits) ? Dict(string(k) => v for (k, v) in pairs(agent.traits)) : nothing
 
   return Dict(
     "agent_id" => agent.id,
     "position" => agent.pos,
-    "sugar" => agent.sugar,
+    "sugar" => round(agent.sugar, digits=2),
     "age" => agent.age,
     "metabolism" => agent.metabolism,
     "vision" => agent.vision,
@@ -48,6 +53,7 @@ function build_agent_movement_context(agent, model)
     "visible_positions" => visible_positions,
     # Future use could be allowing the agent to choose where to move based on what neighbours are nearby and what interaction is possible
     "neighbours" => neighbours,
+    "occupied_positions" => occupied_positions,
     "enable_combat" => model.enable_combat,
     "enable_reproduction" => model.enable_reproduction,
     "enable_credit" => model.enable_credit,

@@ -12,18 +12,19 @@ Usage:
   julia run_ai.jl [mode]
 
 Where `mode` can be:
-  • dev    – interactive dashboard for LLM development (default)
-  • prompt – single-agent prompt test (strict parsing)
-  • single – quick single-agent prompt test (non-interactive)
+  • dev      – interactive dashboard for LLM development (default)
+  • bigfive  – interactive dashboard with Big Five trait integration
+  • prompt   – single-agent prompt test (strict parsing)
+  • single   – quick single-agent prompt test (non-interactive)
 """
 
 # -----------------------------------------------------------------------------
 # Parse command-line arguments
 # -----------------------------------------------------------------------------
 mode = length(ARGS) >= 1 ? ARGS[1] : "dev"
-if mode ∉ ["dev", "prompt", "single"]
+if mode ∉ ["dev", "bigfive", "prompt", "single"]
   println("Error: Invalid mode '$(mode)'")
-  println("Valid options: dev, prompt, single")
+  println("Valid options: dev, bigfive, prompt, single")
   exit(1)
 end
 
@@ -64,6 +65,34 @@ if mode == "dev"
   display(fig)
   display(abmobs)
   println("Interactive dashboard window displayed.")
+
+  # Keep script alive in non-interactive terminals
+  if !isinteractive()
+    try
+      while GLMakie.isopen(fig.scene)
+        sleep(0.1)
+      end
+    catch e
+      if e isa InterruptException
+        println("Interrupted by user (Ctrl+C).")
+      else
+        rethrow()
+      end
+    end
+    println("Makie window closed. Exiting.")
+  end
+
+elseif mode == "bigfive"
+  if !haskey(ENV, "OPENAI_API_KEY")
+    println("❌ OPENAI_API_KEY not set.  Please configure it first (see README).")
+    exit(1)
+  end
+
+  println("Creating Big Five Traits + LLM dashboard – press Ctrl+C to quit …")
+  fig, abmobs = Sugarscape.create_big_five_dashboard()
+  display(fig)
+  display(abmobs)
+  println("Interactive Big Five dashboard window displayed.")
 
   # Keep script alive in non-interactive terminals
   if !isinteractive()

@@ -34,6 +34,8 @@ include("core/model_logic_core.jl")
 # LLM-aware implementation that builds on the shared helpers
 include("llm/model_logic_llm.jl")
 
+include("core/model.jl")
+
 # LLM prompts and schemas
 include("llm/prompts_and_schemas.jl")
 
@@ -57,8 +59,12 @@ include("visualisation/performance.jl")
 include("visualisation/ai_dashboards.jl")
 
 # Public API
-export SugarscapeAgent, BigFiveSugarscapeAgent, BigFiveProcessor
+export SugarscapeAgent
 export sugarscape
+
+# Export Big Five related functions
+export BigFiveSugarscapeAgent, BigFiveProcessor
+export prepare_big_five_traits, create_big_five_agent!, get_big_five_system_prompt
 
 export gini_coefficient, morans_i
 
@@ -96,7 +102,7 @@ export LLMDecision
 export _agent_step_llm!, _model_step_llm!
 
 # export decision helpers
-export get_reproduction_decision, get_movement_decision
+export get_reproduction_decision, get_movement_decision, get_big_five_system_prompt
 
 # Export testing functions
 export test_single_agent_llm_prompt, run_llm_prompt_test_interactive

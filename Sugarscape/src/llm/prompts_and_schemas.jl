@@ -10,13 +10,13 @@ module SugarscapePrompts
 ###############################################################################
 
 """
-    get_system_prompt() -> String
+    get_system_prompt() -> Dict
 Returns the system prompt used for LLM decision-making in Sugarscape.
 """
 function get_system_prompt()
-  return """
+  return Dict("content" => """
   You are an AI controlling a single agent in a Sugarscape simulation. Your job is to make decisions for this specific agent based on its current situation and the standard Sugarscape rules.
-  """
+  """, "name" => "System")
 end
 
 """
@@ -45,10 +45,12 @@ function get_reproduction_system_prompt()
     - Either the agent or the partner has at least one empty neighboring site.
   - Reproduction occurs if:
     - At least one of the two agents has an empty adjacent site (i.e. an unoccupied neighboring cell).
+    - The agent has enough sugar to reproduce (sugar >= min_sugar_for_reproduction).
   - From the set of eligible partners (those who meet all criteria above), select up to max_partners partners for reproduction.
   - If no partners are eligible, do not reproduce.
   - Reproduction is only possible if at least one of the agent or the eligible partner has at least one empty neighboring site. Check both empty_nearby_positions for the agent and partner_empty_nearby_positions for each partner.
   - If no eligible partners are found, or no valid empty site exists for either the agent or the partner, no reproduction occurs.
+  - New child will receive half of each parent's sugar.
   """
 end
 
@@ -129,15 +131,15 @@ function get_reproduction_decision_schema(max_partners::Int)
         "type" => ["array", "null"],
         "items" => Dict("type" => "integer"),
         "maxItems" => max_partners,
-        "description" => "List of partner IDs for reproduction, null if not reproducing"
+        "description" => "List of partner IDs for reproduction, bust be null if reproduce is false"
       ),
       "reasoning_for_choice" => Dict(
-        "type" => ["string"],
-        "description" => "Reasoning for the choice of partners or, if not applicable, the reason for not reproducing, max 2 sentences."
+        "type" => "string",
+        "description" => "A clear, psychologically grounded explanation of the choice of partners or, if not applicable, the reason for not reproducing. First evaluate options, then justify final choice."
       )
     ),
     "required" => [
-      "agent_id", "reproduce", "partners"
+      "agent_id", "reproduce", "partners", "reasoning_for_choice"
     ],
     "additionalProperties" => false
   )
@@ -182,8 +184,8 @@ function get_culture_decision_schema()
         "description" => "Array of objects specifying which neighbouring agents to spread culture to and which tag index to modify; null if not spreading"
       ),
       "reasoning_for_choice" => Dict(
-        "type" => ["string"],
-        "description" => "Reasoning for the choice of who to spread culture to or, if not applicable, the reason for not spreading culture, max 2 sentences."
+        "type" => "string",
+        "description" => "Reasoning for the choice of who to spread culture to or, if not applicable, the reason for not spreading culture. First evaluate options, then justify final choice."
       )
     ),
     "required" => [

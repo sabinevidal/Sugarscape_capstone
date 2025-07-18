@@ -18,6 +18,7 @@ import ..Sugarscape
 
 # Import prompts and schemas
 using ..SugarscapePrompts
+using ..Sugarscape
 
 # Add time function for metrics
 import Base: time
@@ -109,13 +110,19 @@ end
 Low-level wrapper around the OpenAI Chat Completion endpoint for individual agent requests.
 Uses the individual response format and schema for single agent decisions.
 """
-function call_openai_api(context::Dict, model, rule_prompt, response_format)
+function call_openai_api(context::Dict, rule::String, model, rule_prompt, response_format)
     if isempty(model.llm_api_key)
         throw(LLMAPIError("LLM API key is empty but use_llm_decisions=true", nothing, nothing))
     end
 
-    system_prompt = SugarscapePrompts.get_system_prompt() * rule_prompt
-    user_prompt = "Agent context:\n" * JSON.json(context)
+    system_prompt = if model.use_big_five
+        big5_prompt = Sugarscape.get_big_five_system_prompt()
+        Dict("content" => big5_prompt["content"] * rule_prompt, "name" => big5_prompt["name"])
+    else
+        std_prompt = SugarscapePrompts.get_system_prompt()
+        Dict("content" => std_prompt["content"] * rule_prompt, "name" => std_prompt["name"])
+    end
+    user_prompt = Dict("content" => "Agent $(context["agent_id"]) context:\n" * JSON.json(context), "name" => rule)
 
     local j
     try
@@ -124,8 +131,8 @@ function call_openai_api(context::Dict, model, rule_prompt, response_format)
             model.llm_api_key,
             model.llm_model,
             [
-                Dict("role" => "system", "content" => system_prompt),
-                Dict("role" => "user", "content" => user_prompt),
+                Dict("role" => "system", "content" => system_prompt["content"], "name" => system_prompt["name"]),
+                Dict("role" => "user", "content" => user_prompt["content"], "name" => user_prompt["name"]),
             ];
             temperature=model.llm_temperature,
             response_format=response_format,
@@ -209,20 +216,21 @@ end
 function _parse_movement_decision(obj)
     move = get(obj, "move", false)
     move_coords = get(obj, "move_coords", nothing)
+    reasoning = get(obj, "reasoning_for_choice", nothing)
 
     # Convert vector to tuple if present
     if move_coords !== nothing && isa(move_coords, Vector) && length(move_coords) == 2 && all(isa(x, Number) for x in move_coords)
         move_coords = (Int(move_coords[1]), Int(move_coords[2]))
     end
 
-    return (move=move, move_coords=move_coords)
+    return (move=move, move_coords=move_coords, reasoning=reasoning)
 end
 
 function get_movement_decision(context::Dict, model)
     movement_response_format = SugarscapePrompts.get_movement_response_format()
     movement_prompt = SugarscapePrompts.get_movement_system_prompt()
     try
-        raw_response = call_openai_api(context, model, movement_prompt, movement_response_format)
+        raw_response = call_openai_api(context, "movement", model, movement_prompt, movement_response_format)
         decision = _parse_movement_decision(raw_response)
         return decision
     catch e
@@ -234,15 +242,16 @@ end
 function _parse_reproduction_decision(obj)
     reproduce = get(obj, "reproduce", false)
     partners = get(obj, "partners", nothing)
+    reasoning = get(obj, "reasoning_for_choice", nothing)
 
-    return (reproduce=reproduce, partners=partners)
+    return (reproduce=reproduce, partners=partners, reasoning=reasoning)
 end
 
 function get_reproduction_decision(context::Dict, model)
-    reproduction_response_format = SugarscapePrompts.get_reproduction_response_format(context[:max_partners])
+    reproduction_response_format = SugarscapePrompts.get_reproduction_response_format(context["max_partners"])
     reproduction_prompt = SugarscapePrompts.get_reproduction_system_prompt()
     try
-        raw_response = call_openai_api(context, model, reproduction_prompt, reproduction_response_format)
+        raw_response = call_openai_api(context, "reproduction", model, reproduction_prompt, reproduction_response_format)
         decision = _parse_reproduction_decision(raw_response)
         return decision
     catch e
@@ -255,15 +264,16 @@ function _parse_culture_decision(obj)
     # Culture decisions are expected to be a dictionary with culture tags
     spread_culture = get(obj, "spread_culture", false)
     transmit_to = get(obj, "transmit_to", nothing)
+    reasoning = get(obj, "reasoning_for_choice", nothing)
 
-    return (spread_culture=spread_culture, transmit_to=transmit_to)
+    return (spread_culture=spread_culture, transmit_to=transmit_to, reasoning=reasoning)
 end
 
 function get_culture_decision(context::Dict, model)
     culture_response_format = SugarscapePrompts.get_culture_response_format()
     culture_prompt = SugarscapePrompts.get_culture_system_prompt()
     try
-        raw_response = call_openai_api(context, model, culture_prompt, culture_response_format)
+        raw_response = call_openai_api(context, "culture", model, culture_prompt, culture_response_format)
         decision = _parse_culture_decision(raw_response)
         return decision
     catch e
@@ -280,7 +290,8 @@ Parser for credit lending decisions from LLM.
 function _parse_credit_lender_decision(obj)
     lend = get(obj, "lend", false)
     lend_to = get(obj, "lend_to", nothing)
-    return (lend=lend, lend_to=lend_to)
+    reasoning = get(obj, "reasoning_for_choice", nothing)
+    return (lend=lend, lend_to=lend_to, reasoning=reasoning)
 end
 
 """
@@ -290,7 +301,8 @@ Parser for credit borrowing decisions from LLM.
 function _parse_credit_borrower_decision(obj)
     borrow = get(obj, "borrow", false)
     borrow_from = get(obj, "borrow_from", nothing)
-    return (borrow=borrow, borrow_from=borrow_from)
+    reasoning = get(obj, "reasoning_for_choice", nothing)
+    return (borrow=borrow, borrow_from=borrow_from, reasoning=reasoning)
 end
 
 """
@@ -301,7 +313,7 @@ function get_credit_lender_decision(context::Dict, model)
     credit_response_format = SugarscapePrompts.get_credit_lender_response_format()
     credit_prompt = SugarscapePrompts.get_credit_lender_system_prompt()
     try
-        raw_response = call_openai_api(context, model, credit_prompt, credit_response_format)
+        raw_response = call_openai_api(context, "credit_lender", model, credit_prompt, credit_response_format)
         decision = _parse_credit_lender_decision(raw_response)
         return decision
     catch e
@@ -317,7 +329,7 @@ function get_credit_borrower_decision(context::Dict, model)
     credit_response_format = SugarscapePrompts.get_credit_borrower_response_format()
     credit_prompt = SugarscapePrompts.get_credit_borrower_system_prompt()
     try
-        raw_response = call_openai_api(context, model, credit_prompt, credit_response_format)
+        raw_response = call_openai_api(context, "credit_borrower", model, credit_prompt, credit_response_format)
         decision = _parse_credit_borrower_decision(raw_response)
         return decision
     catch e

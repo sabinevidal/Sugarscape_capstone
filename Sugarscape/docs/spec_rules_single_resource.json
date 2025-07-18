@@ -99,7 +99,7 @@
       "name": "death_replacement",
       "stage": "life_cycle",
       "description": "Remove agents with age==maxAge or sugar==0; optionally create replacement agents with random traits and STARTSUGARMIN–MAX sugar.",
-      "key_constants": ["w0_dist"],
+      "key_constants": ["initial_sugar_dist"],
       "reads_state": ["age", "maxAge", "agentSugar"],
       "writes_state": ["population", "position", "agentSugar", "loanBook"],
       "must_run_before": ["reproduction"],

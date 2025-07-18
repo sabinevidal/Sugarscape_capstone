@@ -153,6 +153,142 @@ function create_ai_dashboard(;
   return fig, abmobs
 end
 
+"""
+    create_big_five_dashboard(; kwargs...)
+
+Interactive dashboard specialised for **development and debugging of the Big Five
+Trait integration with LLM decisions**. This dashboard enables Big Five personality
+traits by default and provides a clean interface for observing agent behavior
+with trait-influenced decision making.
+
+Keyword arguments forward to `sugarscape` with sensible defaults that favour a
+rich, visually interesting simulation whilst remaining lightweight.
+"""
+function create_big_five_dashboard(;
+  # LLM-related
+  use_llm_decisions::Bool=true,
+  llm_api_key::AbstractString=get(ENV, "OPENAI_API_KEY", ""),
+  llm_temperature::Float64=0.2,
+  # Big Five integration - enabled by default
+  use_big_five::Bool=true,
+  # Model size & composition
+  N::Int=5,
+  dims::Tuple{Int,Int}=(15, 15),
+  # Rule toggles
+  enable_combat::Bool=false,
+  enable_reproduction::Bool=false,
+  enable_credit::Bool=false,
+  enable_culture::Bool=false,
+  seed::Int=42
+)
+  # -----------------------------------------------------------------------
+  # Construct model with Big Five traits enabled
+  # -----------------------------------------------------------------------
+  model = sugarscape(
+    use_llm_decisions=use_llm_decisions,
+    llm_api_key=llm_api_key,
+    llm_temperature=llm_temperature,
+    use_big_five=use_big_five,
+    N=N,
+    dims=dims,
+    sugar_peaks=((8, 8), (12, 10)),
+    enable_combat=enable_combat,
+    enable_reproduction=enable_reproduction,
+    enable_credit=enable_credit,
+    enable_culture=enable_culture,
+    seed=seed
+  )
+
+  # -----------------------------------------------------------------------
+  # Interactive parameters (sliders / toggles)
+  # -----------------------------------------------------------------------
+  params = Dict(
+    :enable_reproduction => [false, true],
+    :enable_combat => [false, true],
+    :enable_credit => [false, true],
+    :llm_temperature => 0.0:0.1:1.0,
+    :use_llm_decisions => [false, true]
+  )
+
+  # -----------------------------------------------------------------------
+  # Data collection helpers
+  # -----------------------------------------------------------------------
+  wealthy(a) = a.sugar > 20
+  medium_wealth(a) = 5 <= a.sugar <= 20
+  poor(a) = a.sugar < 5
+
+  adata = [
+    (wealthy, count),
+    (medium_wealth, count),
+    (poor, count)
+  ]
+
+  mdata = [
+    nagents,
+    :deaths_starvation,
+    :deaths_age,
+    :births
+  ]
+
+  # -----------------------------------------------------------------------
+  # Visual encodings - using the same as standard AI dashboard
+  # -----------------------------------------------------------------------
+  function agent_color(agent)
+    return agent.sugar > 20 ? :gold : (agent.sugar > 10 ? :orange : :darkred)
+  end
+
+  function agent_size(agent)
+    base = max(4, min(12, agent.sugar / 2))
+    return (use_llm_decisions && haskey(model.llm_decisions, agent.id)) ? base + 2 : base
+  end
+
+  function agent_marker(agent)
+    return :circle
+  end
+
+  # Sugar landscape heat-map helper
+  sugarmap(m) = m.sugar_values
+  heatkwargs = (
+    colormap=:thermal,
+    colorrange=(0.0, maximum(model.sugar_capacities))
+  )
+
+  # -----------------------------------------------------------------------
+  # Create dashboard via `Agents.abmplot`
+  # -----------------------------------------------------------------------
+  fig, ax, abmobs = abmplot(
+    model;
+    params=params,
+    adata=adata,
+    mdata=mdata,
+    alabels=["Wealthy", "Medium", "Poor"],
+    mlabels=["Agents", "Starvation", "Age Deaths", "Births"],
+    agent_color=agent_color,
+    agent_size=agent_size,
+    agent_marker=agent_marker,
+    heatarray=sugarmap,
+    heatkwargs=heatkwargs,
+    figure=(; size=(1400, 1000))
+  )
+
+  # Explanatory overlay
+  fig[1, 3] = Label(fig,
+    "Big Five Traits + LLM Dashboard\n" *
+    "LLM enabled: $(use_llm_decisions)\n" *
+    "Big Five enabled: $(use_big_five)\n" *
+    "\nLegend:\n" *
+    "red ● Combat intent\n" *
+    "blue ● Movement intent\n" *
+    "green ●Stay / Other",
+    tellheight=false,
+    fontsize=12,
+    halign=:left,
+    valign=:top
+  )
+
+  return fig, abmobs
+end
+
 # legend = vbox(
 #     Label(fig, "AI / LLM Development Dashboard", fontsize=12, halign=:left),
 #     Label(fig, "LLM enabled: $(use_llm_decisions)", fontsize=10, halign=:left),

@@ -15,7 +15,7 @@
 #   --peaks "x1,y1,x2,y2,..."  Comma-separated peak coordinates
 #                              (default "10,40,40,10")
 #   --max-sugar <Int>     Maximum sugar capacity at a peak (default 4)
-#   --dia <Int>           Distance divisor controlling hill steepness (default 6)
+#   --dia <Int>           Distance divisor controlling hill steepness (default 4)
 #
 # Example:
 #   julia scripts/generate_board.jl --width 30 --height 30 \
