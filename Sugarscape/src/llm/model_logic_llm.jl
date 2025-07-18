@@ -55,38 +55,6 @@ function idle!(agent, model)
   end
 end
 
-"""
-    llm_move!(agent, model, target_pos)
-
-Attempt to move `agent` to `target_pos` proposed by an LLM. The move is allowed
-only if the cell is empty, within the agent's vision and inside the grid
-bounds. If the target is invalid or `nothing`, the agent stays idle.
-"""
-function llm_move!(agent, model, target_pos)
-  # If no target specified, agent stays idle
-  pos_before = agent.pos
-
-  if target_pos === nothing
-    idle!(agent, model)
-    return
-  end
-
-  # Defensive: ensure we have a tuple of integers
-  if !(target_pos isa Tuple{Int,Int})
-    idle!(agent, model)
-    return
-  end
-
-  if isempty(target_pos, model) &&
-     euclidean_distance(agent.pos, target_pos) <= agent.vision &&
-     all(1 .<= target_pos .<= size(getfield(model, :space)))
-    _do_move!(agent, model, target_pos)
-  else
-    # Invalid target - agent stays idle
-    idle!(agent, model)
-  end
-end
-
 # -----------------------------------------------------------------------------
 # Constructor: sugarscape_llm                                                  |
 # -----------------------------------------------------------------------------
@@ -251,13 +219,7 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
       sex, has_reproduced, sugar, children, total_inheritance_received,
       culture, loans_given, loans_owed, diseases, immunity)
-
-    agents = allagents(model)
-    for agent in agents
-      println("Agent $(agent.id): $(agent.big_five_traits)")
-    end
   end
-
 
   return model
 end
@@ -321,11 +283,7 @@ function _agent_step_llm!(agent, model)
     # get_combat_decision (context, response format)
     # combat_action
   else
-    # movement_context
-    movement_context = build_agent_movement_context(agent, model)
-    movement_decision = SugarscapeLLM.get_movement_decision(movement_context, model)
-    println("Agent $(agent.id), step $(abmtime(model)): $(movement_decision.reasoning)")
-    llm_move!(agent, model, movement_decision.move_coords)
+    movement!(agent, model)
   end
 
 

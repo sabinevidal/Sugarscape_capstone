@@ -70,7 +70,12 @@ function sugarscape(;
   # Big Five
   use_big_five::Bool=false,
   big_five_traits_path::AbstractString="data/processed/big5-traits_raw.csv",
-  mvn_dist::Union{MvNormal,Nothing}=nothing,
+  big_fiv_mvn_dist::Union{MvNormal,Nothing}=nothing,
+
+  # Schwartz Values
+  use_schwartz_values::Bool=false,
+  schwartz_values_path::AbstractString="data/processed/schwartz-values-data-raw.csv",
+  schwartz_values_mvn_dist::Union{MvNormal,Nothing}=nothing,
 )
   # -------------------------------------------------------------------------
   # Grid initialisation
@@ -165,6 +170,11 @@ function sugarscape(;
     :use_big_five => use_big_five,
     :big_five_traits_path => big_five_traits_path,
     :big_five_mvn_dist => nothing,  # Will be set after traits preparation
+
+    # Schwartz Values
+    :use_schwartz_values => use_schwartz_values,
+    :schwartz_values_path => schwartz_values_path,
+    :schwartz_values_mvn_dist => nothing,
   )
 
 
@@ -187,7 +197,7 @@ function sugarscape(;
 
   # Prepare Big Five traits if needed
   traits_samples, big_five_mvn = if use_big_five
-    prepare_big_five_traits(big_five_traits_path, N, mvn_dist)
+    prepare_big_five_traits(big_five_traits_path, N, big_five_mvn_dist)
   else
     (nothing, nothing)
   end
@@ -195,6 +205,18 @@ function sugarscape(;
   # Store MVN distribution in model for runtime sampling during reproduction
   if use_big_five
     model.big_five_mvn_dist = big_five_mvn
+  end
+
+  # Prepare Schwartz values if needed
+  schwartz_values_samples, schwartz_values_mvn = if use_schwartz_values
+    prepare_schwartz_values(schwartz_values_path, N, schwartz_values_mvn_dist)
+  else
+    (nothing, nothing)
+  end
+
+  # Store MVN distribution in model for runtime sampling during reproduction
+  if use_schwartz_values
+    model.schwartz_values_mvn_dist = schwartz_values_mvn
   end
 
   for i in 1:N
@@ -227,8 +249,10 @@ function sugarscape(;
 
     if use_big_five
       traits_row = traits_samples[i, :]
-      # For Big Five agents, we need to include model in the args for create_big_five_agent!
       create_big_five_agent!(model, pos, agent_args..., traits_row)
+    elseif use_schwartz_values
+      values_row = schwartz_values_samples[i, :]
+      create_schwartz_values_agent!(model, pos, agent_args..., values_row)
     else
       add_agent!(pos, SugarscapeAgent, model, agent_args...)
     end

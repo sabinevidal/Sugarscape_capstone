@@ -10,21 +10,16 @@ function build_reproduction_context(agent, model, eligible_partners, max_partner
   eligible_partners_context = Vector{Dict{String,Any}}()
   for ep in eligible_partners
     if is_fertile(ep, model) && agent.sex != ep.sex
-      neighbour_big_five_traits = hasproperty(ep, :traits) ? Dict(string(k) => v for (k, v) in pairs(ep.traits)) : nothing
       push!(eligible_partners_context, Dict{String,Any}(
         "id" => ep.id,
         "sugar" => ep.sugar,
         "age" => ep.age,
         "sex" => ep.sex,
         "culture" => ep.culture,
-        "traits" => neighbour_big_five_traits,
         "empty_nearby_positions_for_partner" => collect(empty_nearby_positions(ep, model)),
       ))
     end
   end
-
-  # Big Five personality traits (if present)
-  big_five_traits = hasproperty(agent, :traits) ? Dict(string(k) => v for (k, v) in pairs(agent.traits)) : nothing
 
   reproduction_context = Dict{String,Any}(
     "agent_id" => agent.id,
@@ -35,7 +30,6 @@ function build_reproduction_context(agent, model, eligible_partners, max_partner
     "metabolism" => agent.metabolism,
     "vision" => agent.vision,
     "sex" => agent.sex,
-    "big_five_traits" => big_five_traits,
     "eligible_partners" => eligible_partners_context,
     "max_partners" => max_partners,
     # doesn't need to know values of empty_nearby_positions
@@ -74,7 +68,13 @@ function reproduction!(agent, model)
 
   if model.use_llm_decisions
     # llm specific reproduction logic
-    reproduction_context = build_reproduction_context(agent, model, eligible_partners, max_partners)
+    if model.use_big_five
+      reproduction_context = build_big_five_reproduction_context(agent, model, eligible_partners, max_partners)
+    elseif model.use_schwartz_values
+      reproduction_context = build_schwartz_values_reproduction_context(agent, model, eligible_partners, max_partners)
+    else
+      reproduction_context = build_reproduction_context(agent, model, eligible_partners, max_partners)
+    end
     reproduction_decision = SugarscapeLLM.get_reproduction_decision(reproduction_context, model)
     println("Agent $(agent.id) Reproduction: ", reproduction_decision.reasoning)
 
@@ -127,7 +127,6 @@ function create_child(parent1, parent2, pos, model)
 
   # Create child based on whether Big Five traits are enabled
   if model.use_big_five
-    # Generate new Big Five traits using sample_agents from the stored MVN distribution
     traits_sample = BigFiveProcessor.sample_agents(model.big_five_mvn_dist, 1)
     traits_row = traits_sample[1, :]
 
@@ -140,6 +139,20 @@ function create_child(parent1, parent2, pos, model)
     )
 
     child = add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, child_traits)
+
+  elseif model.use_schwartz_values
+    values_sample = SchwartzValuesProcessor.sample_agents(model.schwartz_values_mvn_dist, 1)
+    values_row = values_sample[1, :]
+
+    child_values = (
+      openness=values_row.Openness,
+      conscientiousness=values_row.Conscientiousness,
+      extraversion=values_row.Extraversion,
+      agreeableness=values_row.Agreeableness,
+      neuroticism=values_row.Neuroticism
+    )
+
+    child = add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, child_values)
   else
     child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity)
   end

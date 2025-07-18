@@ -16,15 +16,15 @@ For each agent:
 
 function build_culture_context(agent, model, neighbors)
   culture_context = Dict(
-    :agent_id => agent.id,
-    :agent_culture => agent.culture,
-    :neighbors => []
+    "agent_id" => agent.id,
+    "agent_culture" => agent.culture,
+    "neighbors" => []
   )
 
   for neighbor in neighbors
-    push!(culture_context[:neighbors], Dict(
-      :agent_id => neighbor.id,
-      :culture => neighbor.culture
+    push!(culture_context["neighbors"], Dict(
+      "agent_id" => neighbor.id,
+      "culture" => neighbor.culture
     ))
   end
 
@@ -38,7 +38,11 @@ function culture_spread!(agent, model, check_decision::Bool=false)
 
   if model.use_llm_decisions
 
-    culture_context = build_culture_context(agent, model, neighbors)
+    if model.use_big_five
+      culture_context = build_big_five_culture_context(agent, model, neighbors)
+    else
+      culture_context = build_culture_context(agent, model, neighbors)
+    end
     culture_decision = SugarscapeLLM.get_culture_decision(culture_context, model)
 
     if culture_decision.spread_culture === false || culture_decision.transmit_to === nothing

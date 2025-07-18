@@ -1,7 +1,13 @@
+module BigFive
+
 using Agents
 using Distributions
 
+# Include the core agent types
+include("../../core/agents.jl")
 include("big_five_prompts.jl")
+
+export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive
 
 @agent struct BigFiveSugarscapeAgent(SugarscapeAgent)
   traits::NamedTuple{
@@ -76,3 +82,5 @@ function sugarscape_llm_bigfive(;
     big_five_traits_path=big_five_traits_path,
     kwargs...)
 end
+
+end # module BigFive

@@ -8,6 +8,14 @@ include("core/environment.jl")
 # Personality trait agent definitions
 include("psychological_dimensions/big_five/big_five.jl")
 include("psychological_dimensions/big_five/big_five_processor.jl")
+include("psychological_dimensions/schwartz_values/schwartz_values.jl")
+include("psychological_dimensions/schwartz_values/schwartz_values_processor.jl")
+
+# Import the modules
+using .BigFive
+using .BigFiveProcessor
+using .SchwartzValues
+using .SchwartzValuesProcessor
 
 # Extensions that add functions used inside model logic
 include("rules/movement.jl")
@@ -63,8 +71,15 @@ export SugarscapeAgent
 export sugarscape
 
 # Export Big Five related functions
-export BigFiveSugarscapeAgent, BigFiveProcessor
-export prepare_big_five_traits, create_big_five_agent!, get_big_five_system_prompt
+export BigFive, BigFiveProcessor
+export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive
+export get_big_five_system_prompt, get_big_five_reproduction_system_prompt
+
+# Export Schwartz Values related functions
+export SchwartzValues, SchwartzValuesProcessor
+export SchwartzValuesSugarscapeAgent
+export get_schwartz_values_system_prompt, get_schwartz_values_reproduction_system_prompt
+export process_ess_schwartz_values, load_processed_schwartz_values
 
 export gini_coefficient, morans_i
 
@@ -77,7 +92,7 @@ export create_dashboard
 export create_simple_dashboard
 
 # Export Movement functions
-export build_agent_movement_context
+export build_movement_context
 
 # Export reproduction functions
 export reproduction!, is_fertile, is_fertile_by_age

@@ -118,6 +118,9 @@ function call_openai_api(context::Dict, rule::String, model, rule_prompt, respon
     system_prompt = if model.use_big_five
         big5_prompt = Sugarscape.get_big_five_system_prompt()
         Dict("content" => big5_prompt["content"] * rule_prompt, "name" => big5_prompt["name"])
+    elseif model.use_schwartz_values
+        schwartz_values_prompt = Sugarscape.get_schwartz_values_system_prompt()
+        Dict("content" => schwartz_values_prompt["content"] * rule_prompt, "name" => schwartz_values_prompt["name"])
     else
         std_prompt = SugarscapePrompts.get_system_prompt()
         Dict("content" => std_prompt["content"] * rule_prompt, "name" => std_prompt["name"])
@@ -251,6 +254,8 @@ function get_reproduction_decision(context::Dict, model)
     reproduction_response_format = SugarscapePrompts.get_reproduction_response_format(context["max_partners"])
     if model.use_big_five
         reproduction_prompt = get_big_five_reproduction_system_prompt()
+    elseif model.use_schwartz_values
+        reproduction_prompt = get_schwartz_values_reproduction_system_prompt()
     else
         reproduction_prompt = SugarscapePrompts.get_reproduction_system_prompt()
     end
