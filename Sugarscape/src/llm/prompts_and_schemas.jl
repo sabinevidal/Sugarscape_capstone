@@ -297,7 +297,7 @@ function get_credit_lender_decision_schema()
       ),
       "reasoning_for_choice" => Dict(
         "type" => ["string"],
-        "description" => "Reasoning for the choice of who to lend sugar to and the amount or, if not applicable, the reason for not lending sugar, max 2 sentences."
+        "description" => "A clear, psychologically grounded explanation of the choice of who to lend sugar to and the amount or, if not applicable, the reason for not lending sugar. First evaluate options, then justify final choice."
       )
     ),
     "required" => ["agent_id", "lend", "lend_to", "reasoning_for_choice"],
@@ -376,7 +376,7 @@ function get_credit_borrower_decision_schema()
       ),
       "reasoning_for_choice" => Dict(
         "type" => ["string"],
-        "description" => "Reasoning for the choice of who to borrow from and the amount requested or, if not applicable, the reason for not borrowing, max 2 sentences."
+        "description" => "A clear, psychologically grounded explanation of the choice of who to borrow from and the amount requested or, if not applicable, the reason for not borrowing. First evaluate options, then justify final choice."
       )
     ),
     "required" => ["agent_id", "borrow", "borrow_from", "reasoning_for_choice"],

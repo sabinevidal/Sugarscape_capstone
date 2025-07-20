@@ -8,33 +8,6 @@ between the two execution paths.
 """
 
 # -----------------------------------------------------------------------------
-# Welfare / distance helpers
-# -----------------------------------------------------------------------------
-
-"""
-    welfare(pos_tuple, model) -> Float64
-
-Compute the welfare at a grid position. When pollution is enabled, welfare is
-sugar ÷ (1 + pollution); otherwise it is simply the amount of sugar in the cell.
-The added constant `1.0` protects against division-by-zero and ensures the
-computation uses floating-point arithmetic.
-"""
-function welfare(pos_tuple, model)
-  sugar_at_pos = model.sugar_values[pos_tuple...]
-  pollution_at_pos = model.pollution[pos_tuple...]
-  return sugar_at_pos / (1.0 + pollution_at_pos)
-end
-
-"""
-    euclidean_distance(pos1, pos2) -> Float64
-
-Return the Euclidean distance between two lattice positions given as tuples.
-"""
-function euclidean_distance(pos1, pos2)
-  return sqrt(sum((pos1[i] - pos2[i])^2 for i in 1:length(pos1)))
-end
-
-# -----------------------------------------------------------------------------
 # Centralised death helper (shared by both logic paths)
 # -----------------------------------------------------------------------------
 
@@ -93,8 +66,26 @@ function death_replacement!(agent, model)
     diseases = BitVector[]
     immunity = falses(model.disease_immunity_length)
 
-    add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-      sex, has_reproduced, sugar, children, total_inheritance_received,
-      culture, loans_given, loans_owed, diseases, immunity)
+    # Check if this is a Big Five model and create appropriate agent type
+    if isa(agent, BigFiveSugarscapeAgent) && hasproperty(model, :big_five_mvn_dist) && !isnothing(model.big_five_mvn_dist)
+      # Create a BigFiveSugarscapeAgent with random traits from the MVN distribution
+      traits_sample = BigFiveProcessor.sample_agents(model.big_five_mvn_dist, 1)[1]
+      traits = (
+        openness=traits_sample.Openness,
+        conscientiousness=traits_sample.Conscientiousness,
+        extraversion=traits_sample.Extraversion,
+        agreeableness=traits_sample.Agreeableness,
+        neuroticism=traits_sample.Neuroticism,
+      )
+      
+      add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
+        sex, has_reproduced, sugar, children, total_inheritance_received,
+        culture, loans_given, loans_owed, diseases, immunity, traits)
+    else
+      # Create a regular SugarscapeAgent
+      add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
+        sex, has_reproduced, sugar, children, total_inheritance_received,
+        culture, loans_given, loans_owed, diseases, immunity)
+    end
   end
 end

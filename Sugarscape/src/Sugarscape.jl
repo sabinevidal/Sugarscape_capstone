@@ -6,8 +6,8 @@ using Agents, Random, CairoMakie, Observables, Statistics, Distributions
 include("core/agents.jl")
 include("core/environment.jl")
 # Personality trait agent definitions
-include("psychological_dimensions/big_five/big_five.jl")
 include("psychological_dimensions/big_five/big_five_processor.jl")
+include("psychological_dimensions/big_five/big_five.jl")
 include("psychological_dimensions/schwartz_values/schwartz_values.jl")
 include("psychological_dimensions/schwartz_values/schwartz_values_processor.jl")
 
@@ -72,8 +72,8 @@ export sugarscape
 
 # Export Big Five related functions
 export BigFive, BigFiveProcessor
-export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive
-export get_big_five_system_prompt, get_big_five_reproduction_system_prompt
+export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive, build_big_five_movement_context
+export get_big_five_system_prompt, get_big_five_reproduction_system_prompt, get_big_five_culture_system_prompt, get_big_five_movement_system_prompt, get_big_five_credit_lender_offer_system_prompt, get_big_five_credit_lender_respond_system_prompt, get_big_five_credit_borrower_request_system_prompt, get_big_five_credit_borrower_respond_system_prompt
 
 # Export Schwartz Values related functions
 export SchwartzValues, SchwartzValuesProcessor
@@ -110,7 +110,7 @@ export distribute_inheritance, get_inheritance_metrics, calculate_inheritance_co
 export disease_transmission!, immune_response!
 
 # Export credit functions
-export credit!, clear_loans_on_death!
+export credit!, clear_loans_on_death!, will_borrow, can_lend
 
 # Export LLM integration functions
 export get_decision, try_llm_move!, llm_move!
@@ -118,7 +118,7 @@ export LLMDecision
 export _agent_step_llm!, _model_step_llm!
 
 # export decision helpers
-export get_reproduction_decision, get_movement_decision, get_big_five_system_prompt, get_big_five_reproduction_system_prompt
+export get_reproduction_decision, get_movement_decision
 
 # Export testing functions
 export test_single_agent_llm_prompt, run_llm_prompt_test_interactive

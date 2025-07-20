@@ -45,7 +45,7 @@ function main()
     # ---------------------------------------------------------------------
     # Parse command-line arguments
     # ---------------------------------------------------------------------
-    n_steps = length(ARGS) ≥ 1 ? parse(Int, ARGS[1]) : 1_000
+    n_steps = length(ARGS) ≥ 1 ? parse(Int, ARGS[1]) : 1
     output_prefix = length(ARGS) ≥ 2 ? ARGS[2] : "sugarscape"
 
     println("🔧 Running Sugarscape for $n_steps steps …")
@@ -59,6 +59,8 @@ function main()
         use_big_five=true,
         N=4,
         enable_reproduction=false,
+        enable_culture=false,
+        enable_credit=true,
         dims=(4, 4),
         sugar_peaks=(2, 2),
         max_sugar=3,

@@ -39,7 +39,7 @@ function build_big_five_movement_context(agent, model)
     ))
   end
 
-  big_five_traits = hasproperty(agent, :big_five_traits) ? Dict(string(k) => v for (k, v) in pairs(agent.big_five_traits)) : nothing
+  big_five_traits = hasproperty(agent, :traits) ? Dict(string(k) => v for (k, v) in pairs(agent.traits)) : nothing
 
   return Dict(
     "agent_id" => agent.id,
@@ -69,7 +69,7 @@ function build_big_five_reproduction_context(agent, model, eligible_partners, ma
   eligible_partners_context = Vector{Dict{String,Any}}()
   for ep in eligible_partners
     if is_fertile(ep, model) && agent.sex != ep.sex
-      neighbour_big_five_traits = hasproperty(ep, :big_five_traits) ? Dict(string(k) => v for (k, v) in pairs(ep.big_five_traits)) : nothing
+      neighbour_big_five_traits = hasproperty(ep, :traits) ? Dict(string(k) => v for (k, v) in pairs(ep.traits)) : nothing
       push!(eligible_partners_context, Dict{String,Any}(
         "id" => ep.id,
         "sugar" => ep.sugar,
@@ -82,7 +82,7 @@ function build_big_five_reproduction_context(agent, model, eligible_partners, ma
     end
   end
 
-  big_five_traits = hasproperty(agent, :big_five_traits) ? Dict(string(k) => v for (k, v) in pairs(agent.big_five_traits)) : nothing
+  big_five_traits = hasproperty(agent, :traits) ? Dict(string(k) => v for (k, v) in pairs(agent.traits)) : nothing
 
   reproduction_context = Dict{String,Any}(
     "agent_id" => agent.id,
@@ -112,7 +112,7 @@ Build a big five culture context for the agent, including their own culture and 
 """
 function build_big_five_culture_context(agent, model, neighbors)
 
-  big_five_traits = hasproperty(agent, :big_five_traits) ? Dict(string(k) => v for (k, v) in pairs(agent.big_five_traits)) : nothing
+  big_five_traits = hasproperty(agent, :traits) ? Dict(string(k) => v for (k, v) in pairs(agent.traits)) : nothing
 
   culture_context = Dict(
     "agent_id" => agent.id,
@@ -123,7 +123,7 @@ function build_big_five_culture_context(agent, model, neighbors)
 
 
   for neighbor in neighbors
-    neighbour_big_five_traits = hasproperty(neighbor, :big_five_traits) ? Dict(string(k) => v for (k, v) in pairs(neighbor.big_five_traits)) : nothing
+    neighbour_big_five_traits = hasproperty(neighbor, :traits) ? Dict(string(k) => v for (k, v) in pairs(neighbor.traits)) : nothing
     push!(culture_context["neighbors"], Dict(
       "agent_id" => neighbor.id,
       "culture" => neighbor.culture,
@@ -146,29 +146,29 @@ function build_big_five_credit_lender_context(agent, model, neighbours, amount_a
     nbrs = [neighbours]
   end
 
-  big_five_traits = hasproperty(agent, :big_five_traits) ? Dict(string(k) => v for (k, v) in pairs(agent.big_five_traits)) : nothing
+  big_five_traits = hasproperty(agent, :traits) ? Dict(string(k) => v for (k, v) in pairs(agent.traits)) : nothing
 
   lender_context = Dict(
-    :agent_id => agent.id,
-    :sugar => agent.sugar,
-    :age => agent.age,
-    :big_five_traits => big_five_traits,
-    :can_lend => true,
-    :amount_available => amount_available,
-    :eligible_borrowers => [],
-    :culture => agent.culture,
+    "agent_id" => agent.id,
+    "sugar" => agent.sugar,
+    "age" => agent.age,
+    "big_five_traits" => big_five_traits,
+    "can_lend" => true,
+    "amount_available" => amount_available,
+    "eligible_borrowers" => [],
+    "culture" => agent.culture,
   )
 
   for neighbour in nbrs
-    neighbour_big_five_traits = hasproperty(neighbour, :big_five_traits) ? Dict(string(k) => v for (k, v) in pairs(neighbour.big_five_traits)) : nothing
-    push!(lender_context[:eligible_borrowers], Dict(
-      :agent_id => neighbour.id,
-      :sugar => neighbour.sugar,
-      :age => neighbour.age,
-      :big_five_traits => neighbour_big_five_traits,
-      :culture => neighbour.culture,
-      :will_borrow => will_borrow(neighbour, model).will_borrow,
-      :amount_required => will_borrow(neighbour, model).amount_required
+    neighbour_big_five_traits = hasproperty(neighbour, :traits) ? Dict(string(k) => v for (k, v) in pairs(neighbour.traits)) : nothing
+    push!(lender_context["eligible_borrowers"], Dict(
+      "agent_id" => neighbour.id,
+      "sugar" => neighbour.sugar,
+      "age" => neighbour.age,
+      "big_five_traits" => neighbour_big_five_traits,
+      "culture" => neighbour.culture,
+      "will_borrow" => Sugarscape.will_borrow(neighbour, model).will_borrow,
+      "amount_required" => Sugarscape.will_borrow(neighbour, model).amount_required
     ))
   end
 
@@ -186,30 +186,30 @@ function build_big_five_credit_borrower_context(agent, model, neighbours, amount
     nbrs = [neighbours]
   end
 
-  big_five_traits = hasproperty(agent, :big_five_traits) ? Dict(string(k) => v for (k, v) in pairs(agent.big_five_traits)) : nothing
+  big_five_traits = hasproperty(agent, :traits) ? Dict(string(k) => v for (k, v) in pairs(agent.traits)) : nothing
 
   borrower_context = Dict(
-    :agent_id => agent.id,
-    :sugar => agent.sugar,
-    :age => agent.age,
-    :big_five_traits => big_five_traits,
-    :will_borrow => will_borrow(agent, model).will_borrow,
-    :amount_to_borrow => amount_required,
-    :reproduction_threshold => agent.initial_sugar,
-    :culture => agent.culture,
-    :eligible_lenders => []
+    "agent_id" => agent.id,
+    "sugar" => agent.sugar,
+    "age" => agent.age,
+    "big_five_traits" => big_five_traits,
+    "will_borrow" => Sugarscape.will_borrow(agent, model).will_borrow,
+    "amount_to_borrow" => amount_required,
+    "reproduction_threshold" => agent.initial_sugar,
+    "culture" => agent.culture,
+    "eligible_lenders" => []
   )
 
   for neighbour in nbrs
-    big_five_traits = hasproperty(neighbour, :big_five_traits) ? Dict(string(k) => v for (k, v) in pairs(neighbour.big_five_traits)) : nothing
-    push!(borrower_context[:eligible_lenders], Dict(
-      :agent_id => neighbour.id,
-      :sugar => neighbour.sugar,
-      :age => neighbour.age,
-      :can_lend => can_lend(neighbour, model).can_lend,
-      :max_amount => can_lend(neighbour, model).max_amount,
-      :culture => neighbour.culture,
-      :big_five_traits => big_five_traits,
+    big_five_traits = hasproperty(neighbour, :traits) ? Dict(string(k) => v for (k, v) in pairs(neighbour.traits)) : nothing
+    push!(borrower_context["eligible_lenders"], Dict(
+      "agent_id" => neighbour.id,
+      "sugar" => neighbour.sugar,
+      "age" => neighbour.age,
+      "can_lend" => Sugarscape.can_lend(neighbour, model).can_lend,
+      "max_amount" => Sugarscape.can_lend(neighbour, model).max_amount,
+      "culture" => neighbour.culture,
+      "big_five_traits" => big_five_traits,
     ))
   end
 

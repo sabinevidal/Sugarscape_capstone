@@ -112,7 +112,28 @@ function llm_move!(agent, model, target_pos)
   end
 end
 
-# ----------
+"""
+    welfare(pos_tuple, model) -> Float64
+
+Compute the welfare at a grid position. When pollution is enabled, welfare is
+sugar ÷ (1 + pollution); otherwise it is simply the amount of sugar in the cell.
+The added constant `1.0` protects against division-by-zero and ensures the
+computation uses floating-point arithmetic.
+"""
+function welfare(pos_tuple, model)
+  sugar_at_pos = model.sugar_values[pos_tuple...]
+  pollution_at_pos = model.pollution[pos_tuple...]
+  return sugar_at_pos / (1.0 + pollution_at_pos)
+end
+
+"""
+    euclidean_distance(pos1, pos2) -> Float64
+
+Return the Euclidean distance between two lattice positions given as tuples.
+"""
+function euclidean_distance(pos1, pos2)
+  return sqrt(sum((pos1[i] - pos2[i])^2 for i in 1:length(pos1)))
+end
 
 """
     evaluate_nearby_positions(agent, model) -> Vector{Tuple{NTuple{2,Int}, Float64, Float64}}
@@ -198,7 +219,9 @@ function movement!(agent, model)
       movement_context = build_movement_context(agent, model)
     end
     movement_decision = SugarscapeLLM.get_movement_decision(movement_context, model)
-    println("Agent $(agent.id), step $(abmtime(model)): $(movement_decision.reasoning)")
+
+    println("Agent $(agent.id) Movement: ", movement_decision.reasoning)
+
     llm_move!(agent, model, movement_decision.move_coords)
   else
     best_positions = get_best_positions(agent, model)

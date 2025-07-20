@@ -70,7 +70,7 @@ function sugarscape(;
   # Big Five
   use_big_five::Bool=false,
   big_five_traits_path::AbstractString="data/processed/big5-traits_raw.csv",
-  big_fiv_mvn_dist::Union{MvNormal,Nothing}=nothing,
+  big_five_mvn_dist::Union{MvNormal,Nothing}=nothing,
 
   # Schwartz Values
   use_schwartz_values::Bool=false,

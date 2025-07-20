@@ -2,12 +2,16 @@ module BigFive
 
 using Agents
 using Distributions
+using ..BigFiveProcessor
+using ..Sugarscape
+
 
 # Include the core agent types
 include("../../core/agents.jl")
 include("big_five_prompts.jl")
+include("big_five_contexts.jl")
 
-export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive
+export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive, build_big_five_movement_context, build_big_five_credit_lender_context, build_big_five_culture_context, build_big_five_credit_borrower_context, build_big_five_reproduction_context
 
 @agent struct BigFiveSugarscapeAgent(SugarscapeAgent)
   traits::NamedTuple{
@@ -23,9 +27,9 @@ Prepare Big Five trait samples for N agents. Returns a tuple (traits_samples, mv
 If mvn_dist is provided, uses that distribution; otherwise fits one from the data.
 """
 function prepare_big_five_traits(big_five_traits_path::AbstractString, N::Int, mvn_dist::Union{MvNormal,Nothing}=nothing)
-  traits_df = BigFiveProcessor.load_processed_bigfive(big_five_traits_path)
-
   mvn = if mvn_dist === nothing
+    # Only load data if we need to fit a new distribution
+    traits_df = BigFiveProcessor.load_processed_bigfive(big_five_traits_path)
     BigFiveProcessor.fit_mvn_distribution(traits_df)
   else
     mvn_dist
@@ -57,6 +61,10 @@ function create_big_five_agent!(model, pos, vision, metabolism, sugar, age, max_
     initial_sugar, children, total_inheritance_received, culture,
     loans_given, loans_owed, diseases, immunity,
     traits)
+
+  # for agent in allagents(model)
+  #   println("Agent $(agent.id): $(agent.traits)")
+  # end
 end
 
 
@@ -74,8 +82,8 @@ function sugarscape_llm_bigfive(;
   kwargs...)
 
   # Always enable Big Five and LLM decisions for this constructor
-  sugarscape(;
-    mvn_dist=mvn_dist,
+  Sugarscape.sugarscape(;
+    big_five_mvn_dist=mvn_dist,
     use_big_five=true,
     use_llm_decisions=true,
     llm_api_key=llm_api_key,

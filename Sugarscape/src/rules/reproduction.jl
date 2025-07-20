@@ -79,7 +79,7 @@ function reproduction!(agent, model)
     println("Agent $(agent.id) Reproduction: ", reproduction_decision.reasoning)
 
     if reproduction_decision.reproduce === false || reproduction_decision.partners === nothing || isempty(reproduction_decision.partners)
-      # "No partners selected by LLM for reproduction."
+      @info "No partners selected by LLM for reproduction."
       return
     end
 

@@ -155,8 +155,14 @@ function attempt_borrow!(borrower, model, amount, neighbours)
 
     if model.use_llm_decisions
         # LLM-based borrowing decision
-        borrower_context = build_credit_borrower_context(borrower, model, neighbours, needed)
-        credit_decision = SugarscapeLLM.get_credit_borrower_decision(borrower_context, model)
+        if model.use_big_five
+            borrower_context = build_big_five_credit_borrower_context(borrower, model, neighbours, needed)
+        else
+            borrower_context = build_credit_borrower_context(borrower, model, neighbours, needed)
+        end
+        credit_decision = SugarscapeLLM.get_credit_borrower_request_decision(borrower_context, model)
+
+        println("Agent $(borrower.id) Borrower request Credit: ", credit_decision.reasoning)
 
         if !credit_decision.borrow || credit_decision.borrow_from === nothing
             return
@@ -168,8 +174,15 @@ function attempt_borrow!(borrower, model, amount, neighbours)
             if needed <= 0
                 break
             end
-            lender_context = build_credit_lender_context(lender, model, borrower, can_lend(lender, model).max_amount)
-            lender_decision = SugarscapeLLM.get_credit_lender_decision(lender_context, model)
+
+            if model.use_big_five
+                lender_context = build_big_five_credit_lender_context(lender, model, borrower, can_lend(lender, model).max_amount)
+            else
+                lender_context = build_credit_lender_context(lender, model, borrower, can_lend(lender, model).max_amount)
+            end
+            lender_decision = SugarscapeLLM.get_credit_lender_respond_decision(lender_context, model)
+
+            println("Agent $(lender.id) Lender respond Credit: ", lender_decision.reasoning)
 
             if !lender_decision.lend || lender_decision.lend_to === nothing
                 continue
@@ -259,8 +272,13 @@ function attempt_lend!(lender, model, amount, neighbours)
 
     if model.use_llm_decisions
         # LLM-based lending decision
-        lender_context = build_credit_lender_context(lender, model, neighbours, avail)
-        credit_decision = SugarscapeLLM.get_credit_lender_decision(lender_context, model)
+        if model.use_big_five
+            lender_context = build_big_five_credit_lender_context(lender, model, neighbours, avail)
+        else
+            lender_context = build_credit_lender_context(lender, model, neighbours, avail)
+        end
+        credit_decision = SugarscapeLLM.get_credit_lender_offer_decision(lender_context, model)
+        println("Agent $(lender.id) Lender offer Credit: ", credit_decision.reasoning)
 
         if !credit_decision.lend || credit_decision.lend_to === nothing
             return
@@ -272,8 +290,14 @@ function attempt_lend!(lender, model, amount, neighbours)
             if avail <= 0
                 break
             end
-            borrower_context = build_credit_borrower_context(borrower, model, lender, will_borrow(borrower, model).amount_required)
-            borrower_decision = SugarscapeLLM.get_credit_borrower_decision(borrower_context, model)
+            if model.use_big_five
+                borrower_context = build_big_five_credit_borrower_context(borrower, model, lender, will_borrow(borrower, model).amount_required)
+            else
+                borrower_context = build_credit_borrower_context(borrower, model, lender, will_borrow(borrower, model).amount_required)
+            end
+            borrower_decision = SugarscapeLLM.get_credit_borrower_respond_decision(borrower_context, model)
+
+            println("Agent $(borrower.id) Borrower respond Credit: ", borrower_decision.reasoning)
 
             if !borrower_decision.borrow || borrower_decision.borrow_from === nothing
                 continue
@@ -336,10 +360,12 @@ function credit!(agent, model)
     end
 
     if will_borrow(agent, model).will_borrow
+        println("Agent $(agent.id) will borrow $(will_borrow(agent, model).amount_required)")
         # attempt to borrow sugar
         attempt_borrow!(agent, model, will_borrow(agent, model).amount_required, neighbours)
 
     elseif can_lend(agent, model).can_lend
+        println("Agent $(agent.id) can lend $(can_lend(agent, model).max_amount)")
         # attempt to lend sugar
 
         attempt_lend!(agent, model, can_lend(agent, model).max_amount, neighbours)
@@ -357,6 +383,15 @@ Returns amount of extra income available to agent after accounting for metabolis
 """
 function check_income(agent::SugarscapeAgent)
     # Calculate income after metabolism and other obligations
+    total_loan_amount = sum(loan.amount for loan_list in values(agent.loans_owed) for loan in loan_list; init=0.0)
+    income = agent.sugar - agent.metabolism - total_loan_amount
+    return income > 0.0 ? income : 0.0
+end
+
+# Method for BigFiveSugarscapeAgent - implements same logic as SugarscapeAgent
+function check_income(agent::BigFiveSugarscapeAgent)
+    # Calculate income after metabolism and other obligations
+    # BigFiveSugarscapeAgent inherits all fields from SugarscapeAgent
     total_loan_amount = sum(loan.amount for loan_list in values(agent.loans_owed) for loan in loan_list; init=0.0)
     income = agent.sugar - agent.metabolism - total_loan_amount
     return income > 0.0 ? income : 0.0
@@ -437,7 +472,10 @@ end
     amt_req(agent::SugarscapeAgent)
 Return the amount of sugar agent needs to borrow.
 """
-amt_req(agent::SugarscapeAgent) = max(agent.initial_sugar - agent.sugar, 0)
+amt_req(agent) = max(agent.initial_sugar - agent.sugar, 0)
+
+# # Method for BigFiveSugarscapeAgent - implements same logic as SugarscapeAgent
+# amt_req(agent::BigFiveSugarscapeAgent) = max(agent.initial_sugar - agent.sugar, 0)
 
 function has_due_loans(agent, model)
     any(loan -> loan.time_due == abmtime(model),
@@ -455,6 +493,14 @@ function make_loan!(lender::SugarscapeAgent, borrower::SugarscapeAgent, amt::Flo
     loan = Loan(lender.id, amt, due, model.interest_rate)
     push!(get!(lender.loans_given, borrower.id, Loan[]), loan)
     push!(get!(borrower.loans_owed, lender.id, Loan[]), loan)
+end
+
+# Method for BigFiveSugarscapeAgent - implements same logic as SugarscapeAgent
+function make_loan!(lender::BigFiveSugarscapeAgent, borrower::BigFiveSugarscapeAgent, amt::Float64, model)
+    due = abmtime(model) + model.duration
+    loan = BigFive.Loan(lender.id, amt, due, model.interest_rate)
+    push!(get!(lender.loans_given, borrower.id, BigFive.Loan[]), loan)
+    push!(get!(borrower.loans_owed, lender.id, BigFive.Loan[]), loan)
 end
 
 

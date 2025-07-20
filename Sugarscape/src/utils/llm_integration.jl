@@ -231,7 +231,13 @@ end
 
 function get_movement_decision(context::Dict, model)
     movement_response_format = SugarscapePrompts.get_movement_response_format()
-    movement_prompt = SugarscapePrompts.get_movement_system_prompt()
+    if model.use_big_five
+        movement_prompt = get_big_five_movement_system_prompt()
+    elseif model.use_schwartz_values
+        movement_prompt = get_schwartz_values_movement_system_prompt()
+    else
+        movement_prompt = SugarscapePrompts.get_movement_system_prompt()
+    end
     try
         raw_response = call_openai_api(context, "movement", model, movement_prompt, movement_response_format)
         decision = _parse_movement_decision(raw_response)
@@ -280,7 +286,13 @@ end
 
 function get_culture_decision(context::Dict, model)
     culture_response_format = SugarscapePrompts.get_culture_response_format()
-    culture_prompt = SugarscapePrompts.get_culture_system_prompt()
+    if model.use_big_five
+        culture_prompt = get_big_five_culture_system_prompt()
+    elseif model.use_schwartz_values
+        culture_prompt = get_schwartz_values_culture_system_prompt()
+    else
+        culture_prompt = SugarscapePrompts.get_culture_system_prompt()
+    end
     try
         raw_response = call_openai_api(context, "culture", model, culture_prompt, culture_response_format)
         decision = _parse_culture_decision(raw_response)
@@ -315,12 +327,17 @@ function _parse_credit_borrower_decision(obj)
 end
 
 """
-    get_credit_lender_decision(context::Dict, model)
+    get_credit_lender_offer_decision(context::Dict, model)
 LLM integration for credit lending decisions.
 """
-function get_credit_lender_decision(context::Dict, model)
+function get_credit_lender_offer_decision(context::Dict, model)
     credit_response_format = SugarscapePrompts.get_credit_lender_response_format()
-    credit_prompt = SugarscapePrompts.get_credit_lender_system_prompt()
+
+    if model.use_big_five
+        credit_prompt = get_big_five_credit_lender_offer_system_prompt()
+    else
+        credit_prompt = SugarscapePrompts.get_credit_lender_system_prompt()
+    end
     try
         raw_response = call_openai_api(context, "credit_lender", model, credit_prompt, credit_response_format)
         decision = _parse_credit_lender_decision(raw_response)
@@ -331,12 +348,59 @@ function get_credit_lender_decision(context::Dict, model)
 end
 
 """
-    get_credit_borrower_decision(context::Dict, model)
+    get_credit_borrower_respond_decision(context::Dict, model)
 LLM integration for credit borrowing decisions.
 """
-function get_credit_borrower_decision(context::Dict, model)
+function get_credit_borrower_respond_decision(context::Dict, model)
     credit_response_format = SugarscapePrompts.get_credit_borrower_response_format()
-    credit_prompt = SugarscapePrompts.get_credit_borrower_system_prompt()
+
+    if model.use_big_five
+        credit_prompt = get_big_five_credit_borrower_respond_system_prompt()
+    else
+        credit_prompt = SugarscapePrompts.get_credit_borrower_system_prompt()
+    end
+    try
+        raw_response = call_openai_api(context, "credit_borrower", model, credit_prompt, credit_response_format)
+        decision = _parse_credit_borrower_decision(raw_response)
+        return decision
+    catch e
+        throw(LLMAPIError("Failed to get credit borrower decision: $(e)", nothing, nothing))
+    end
+end
+
+"""
+    get_credit_lender_respond_decision(context::Dict, model)
+LLM integration for credit lending decisions.
+"""
+function get_credit_lender_respond_decision(context::Dict, model)
+    credit_response_format = SugarscapePrompts.get_credit_lender_response_format()
+
+    if model.use_big_five
+        credit_prompt = get_big_five_credit_lender_respond_system_prompt()
+    else
+        credit_prompt = SugarscapePrompts.get_credit_lender_system_prompt()
+    end
+    try
+        raw_response = call_openai_api(context, "credit_lender", model, credit_prompt, credit_response_format)
+        decision = _parse_credit_lender_decision(raw_response)
+        return decision
+    catch e
+        throw(LLMAPIError("Failed to get credit lender decision: $(e)", nothing, nothing))
+    end
+end
+
+"""
+    get_credit_borrower_request_decision(context::Dict, model)
+LLM integration for credit borrowing decisions.
+"""
+function get_credit_borrower_request_decision(context::Dict, model)
+    credit_response_format = SugarscapePrompts.get_credit_borrower_response_format()
+
+    if model.use_big_five
+        credit_prompt = get_big_five_credit_borrower_request_system_prompt()
+    else
+        credit_prompt = SugarscapePrompts.get_credit_borrower_system_prompt()
+    end
     try
         raw_response = call_openai_api(context, "credit_borrower", model, credit_prompt, credit_response_format)
         decision = _parse_credit_borrower_decision(raw_response)
