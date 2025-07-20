@@ -8,8 +8,8 @@ include("core/environment.jl")
 # Personality trait agent definitions
 include("psychological_dimensions/big_five/big_five_processor.jl")
 include("psychological_dimensions/big_five/big_five.jl")
-include("psychological_dimensions/schwartz_values/schwartz_values.jl")
 include("psychological_dimensions/schwartz_values/schwartz_values_processor.jl")
+include("psychological_dimensions/schwartz_values/schwartz_values.jl")
 
 # Import the modules
 using .BigFive
@@ -77,8 +77,8 @@ export get_big_five_system_prompt, get_big_five_reproduction_system_prompt, get_
 
 # Export Schwartz Values related functions
 export SchwartzValues, SchwartzValuesProcessor
-export SchwartzValuesSugarscapeAgent
-export get_schwartz_values_system_prompt, get_schwartz_values_reproduction_system_prompt
+export SchwartzValuesSugarscapeAgent, build_schwartz_values_movement_context, build_schwartz_values_reproduction_context
+export get_schwartz_values_system_prompt, get_schwartz_values_movement_system_prompt, get_schwartz_values_reproduction_system_prompt
 export process_ess_schwartz_values, load_processed_schwartz_values
 
 export gini_coefficient, morans_i

@@ -169,7 +169,7 @@ function sugarscape(;
     # Big Five MvNormal for runtime sampling
     :use_big_five => use_big_five,
     :big_five_traits_path => big_five_traits_path,
-    :big_five_mvn_dist => nothing,  # Will be set after traits preparation
+    :big_five_mvn_dist => nothing,
 
     # Schwartz Values
     :use_schwartz_values => use_schwartz_values,
@@ -178,8 +178,14 @@ function sugarscape(;
   )
 
 
-  # Select agent type based on flag
-  agent_type = use_big_five ? BigFiveSugarscapeAgent : SugarscapeAgent
+  # Select agent type based on flags
+  agent_type = if use_big_five
+    BigFiveSugarscapeAgent
+  elseif use_schwartz_values
+    SchwartzValuesSugarscapeAgent
+  else
+    SugarscapeAgent
+  end
 
   model = StandardABM(
     agent_type,

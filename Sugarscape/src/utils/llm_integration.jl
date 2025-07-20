@@ -289,7 +289,7 @@ function get_culture_decision(context::Dict, model)
     if model.use_big_five
         culture_prompt = get_big_five_culture_system_prompt()
     elseif model.use_schwartz_values
-        culture_prompt = get_schwartz_values_culture_system_prompt()
+        culture_prompt = SchwartzValues.get_schwartz_values_culture_system_prompt()
     else
         culture_prompt = SugarscapePrompts.get_culture_system_prompt()
     end
@@ -334,7 +334,7 @@ function get_credit_lender_offer_decision(context::Dict, model)
     credit_response_format = SugarscapePrompts.get_credit_lender_response_format()
 
     if model.use_big_five
-        credit_prompt = get_big_five_credit_lender_offer_system_prompt()
+        credit_prompt = SchwartzValues.get_big_five_credit_lender_offer_system_prompt()
     else
         credit_prompt = SugarscapePrompts.get_credit_lender_system_prompt()
     end
@@ -355,7 +355,9 @@ function get_credit_borrower_respond_decision(context::Dict, model)
     credit_response_format = SugarscapePrompts.get_credit_borrower_response_format()
 
     if model.use_big_five
-        credit_prompt = get_big_five_credit_borrower_respond_system_prompt()
+        credit_prompt = SchwartzValues.get_big_five_credit_borrower_respond_system_prompt()
+    elseif model.use_schwartz_values
+        credit_prompt = SchwartzValues.get_schwartz_values_credit_borrower_respond_system_prompt()
     else
         credit_prompt = SugarscapePrompts.get_credit_borrower_system_prompt()
     end
@@ -376,7 +378,9 @@ function get_credit_lender_respond_decision(context::Dict, model)
     credit_response_format = SugarscapePrompts.get_credit_lender_response_format()
 
     if model.use_big_five
-        credit_prompt = get_big_five_credit_lender_respond_system_prompt()
+        credit_prompt = SchwartzValues.get_big_five_credit_lender_respond_system_prompt()
+    elseif model.use_schwartz_values
+        credit_prompt = SchwartzValues.get_schwartz_values_credit_lender_respond_system_prompt()
     else
         credit_prompt = SugarscapePrompts.get_credit_lender_system_prompt()
     end
@@ -397,7 +401,9 @@ function get_credit_borrower_request_decision(context::Dict, model)
     credit_response_format = SugarscapePrompts.get_credit_borrower_response_format()
 
     if model.use_big_five
-        credit_prompt = get_big_five_credit_borrower_request_system_prompt()
+        credit_prompt = SchwartzValues.get_big_five_credit_borrower_request_system_prompt()
+    elseif model.use_schwartz_values
+        credit_prompt = SchwartzValues.get_schwartz_values_credit_borrower_request_system_prompt()
     else
         credit_prompt = SugarscapePrompts.get_credit_borrower_system_prompt()
     end

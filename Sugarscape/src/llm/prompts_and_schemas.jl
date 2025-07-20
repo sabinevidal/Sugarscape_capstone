@@ -101,7 +101,7 @@ function get_movement_decision_schema()
       ),
       "reasoning_for_choice" => Dict(
         "type" => ["string"],
-        "description" => "Reasoning for the choice of movement coordinates, if not applicable, the reason for not moving, max 2 sentences."
+        "description" => "Reasoning for the choice of movement coordinates, if not applicable, the reason for not moving."
       )
     ),
     "required" => [

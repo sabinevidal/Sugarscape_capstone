@@ -145,11 +145,16 @@ function create_child(parent1, parent2, pos, model)
     values_row = values_sample[1, :]
 
     child_values = (
-      openness=values_row.Openness,
-      conscientiousness=values_row.Conscientiousness,
-      extraversion=values_row.Extraversion,
-      agreeableness=values_row.Agreeableness,
-      neuroticism=values_row.Neuroticism
+      self_direction=values_row.self_direction,
+      stimulation=values_row.stimulation,
+      hedonism=values_row.hedonism,
+      achievement=values_row.achievement,
+      power=values_row.power,
+      security=values_row.security,
+      conformity=values_row.conformity,
+      tradition=values_row.tradition,
+      benevolence=values_row.benevolence,
+      universalism=values_row.universalism
     )
 
     child = add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, child_values)

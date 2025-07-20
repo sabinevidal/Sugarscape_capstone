@@ -5,9 +5,9 @@ using Distributions
 using ..BigFiveProcessor
 using ..Sugarscape
 
+# Import necessary types from parent Sugarscape module
+import ..Sugarscape: SugarscapeAgent, Loan
 
-# Include the core agent types
-include("../../core/agents.jl")
 include("big_five_prompts.jl")
 include("big_five_contexts.jl")
 

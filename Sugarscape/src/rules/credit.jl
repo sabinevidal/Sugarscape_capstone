@@ -157,6 +157,8 @@ function attempt_borrow!(borrower, model, amount, neighbours)
         # LLM-based borrowing decision
         if model.use_big_five
             borrower_context = build_big_five_credit_borrower_context(borrower, model, neighbours, needed)
+        elseif model.use_schwartz_values
+            borrower_context = SchwartzValues.build_schwartz_values_credit_borrower_context(borrower, model, neighbours, needed)
         else
             borrower_context = build_credit_borrower_context(borrower, model, neighbours, needed)
         end
@@ -177,6 +179,8 @@ function attempt_borrow!(borrower, model, amount, neighbours)
 
             if model.use_big_five
                 lender_context = build_big_five_credit_lender_context(lender, model, borrower, can_lend(lender, model).max_amount)
+            elseif model.use_schwartz_values
+                lender_context = SchwartzValues.build_schwartz_values_credit_lender_context(lender, model, borrower, can_lend(lender, model).max_amount)
             else
                 lender_context = build_credit_lender_context(lender, model, borrower, can_lend(lender, model).max_amount)
             end
@@ -274,6 +278,8 @@ function attempt_lend!(lender, model, amount, neighbours)
         # LLM-based lending decision
         if model.use_big_five
             lender_context = build_big_five_credit_lender_context(lender, model, neighbours, avail)
+        elseif model.use_schwartz_values
+            lender_context = SchwartzValues.build_schwartz_values_credit_lender_context(lender, model, neighbours, avail)
         else
             lender_context = build_credit_lender_context(lender, model, neighbours, avail)
         end
@@ -292,6 +298,8 @@ function attempt_lend!(lender, model, amount, neighbours)
             end
             if model.use_big_five
                 borrower_context = build_big_five_credit_borrower_context(borrower, model, lender, will_borrow(borrower, model).amount_required)
+            elseif model.use_schwartz_values
+                borrower_context = SchwartzValues.build_schwartz_values_credit_borrower_context(borrower, model, lender, will_borrow(borrower, model).amount_required)
             else
                 borrower_context = build_credit_borrower_context(borrower, model, lender, will_borrow(borrower, model).amount_required)
             end
@@ -381,7 +389,7 @@ check_income(agent, model)
 Returns amount of extra income available to agent after accounting for metabolism and other obligations.
 (resources gathered, minus metabolism, minus other loan obligations)
 """
-function check_income(agent::SugarscapeAgent)
+function check_income(agent)
     # Calculate income after metabolism and other obligations
     total_loan_amount = sum(loan.amount for loan_list in values(agent.loans_owed) for loan in loan_list; init=0.0)
     income = agent.sugar - agent.metabolism - total_loan_amount
@@ -469,13 +477,10 @@ function total_owed()
 end
 
 """
-    amt_req(agent::SugarscapeAgent)
+    amt_req(agent)
 Return the amount of sugar agent needs to borrow.
 """
 amt_req(agent) = max(agent.initial_sugar - agent.sugar, 0)
-
-# # Method for BigFiveSugarscapeAgent - implements same logic as SugarscapeAgent
-# amt_req(agent::BigFiveSugarscapeAgent) = max(agent.initial_sugar - agent.sugar, 0)
 
 function has_due_loans(agent, model)
     any(loan -> loan.time_due == abmtime(model),
@@ -488,19 +493,11 @@ end
     Create a new loan of amount `amt` from `lender` to `borrower`.
     Records the loan in both agents' loans_given and loans_owed dictionaries.
 """
-function make_loan!(lender::SugarscapeAgent, borrower::SugarscapeAgent, amt::Float64, model)
+function make_loan!(lender, borrower, amt::Float64, model)
     due = abmtime(model) + model.duration
     loan = Loan(lender.id, amt, due, model.interest_rate)
     push!(get!(lender.loans_given, borrower.id, Loan[]), loan)
     push!(get!(borrower.loans_owed, lender.id, Loan[]), loan)
-end
-
-# Method for BigFiveSugarscapeAgent - implements same logic as SugarscapeAgent
-function make_loan!(lender::BigFiveSugarscapeAgent, borrower::BigFiveSugarscapeAgent, amt::Float64, model)
-    due = abmtime(model) + model.duration
-    loan = BigFive.Loan(lender.id, amt, due, model.interest_rate)
-    push!(get!(lender.loans_given, borrower.id, BigFive.Loan[]), loan)
-    push!(get!(borrower.loans_owed, lender.id, BigFive.Loan[]), loan)
 end
 
 
@@ -512,7 +509,7 @@ Clean up all loan records when an agent dies:
     - Borrower death: lenders take a loss
     - Finally clear the agent's own loan maps
 """
-function clear_loans_on_death!(agent::SugarscapeAgent, model)
+function clear_loans_on_death!(agent, model)
     # Lender death: borrowers are forgiven or reassign under inheritance rule I
     for (borrower_id, loan_list) in pairs(agent.loans_given)
         if hasid(model, borrower_id)

@@ -67,25 +67,53 @@ function death_replacement!(agent, model)
     immunity = falses(model.disease_immunity_length)
 
     # Check if this is a Big Five model and create appropriate agent type
-    if isa(agent, BigFiveSugarscapeAgent) && hasproperty(model, :big_five_mvn_dist) && !isnothing(model.big_five_mvn_dist)
-      # Create a BigFiveSugarscapeAgent with random traits from the MVN distribution
-      traits_sample = BigFiveProcessor.sample_agents(model.big_five_mvn_dist, 1)[1]
-      traits = (
-        openness=traits_sample.Openness,
-        conscientiousness=traits_sample.Conscientiousness,
-        extraversion=traits_sample.Extraversion,
-        agreeableness=traits_sample.Agreeableness,
-        neuroticism=traits_sample.Neuroticism,
-      )
-      
-      add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-        sex, has_reproduced, sugar, children, total_inheritance_received,
-        culture, loans_given, loans_owed, diseases, immunity, traits)
-    else
-      # Create a regular SugarscapeAgent
-      add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-        sex, has_reproduced, sugar, children, total_inheritance_received,
-        culture, loans_given, loans_owed, diseases, immunity)
+    if model.use_big_five
+      if isa(agent, BigFiveSugarscapeAgent) && hasproperty(model, :big_five_mvn_dist) && !isnothing(model.big_five_mvn_dist)
+        # Create a BigFiveSugarscapeAgent with random traits from the MVN distribution
+        traits_sample = BigFiveProcessor.sample_agents(model.big_five_mvn_dist, 1)[1]
+        traits = (
+          openness=traits_sample.Openness,
+          conscientiousness=traits_sample.Conscientiousness,
+          extraversion=traits_sample.Extraversion,
+          agreeableness=traits_sample.Agreeableness,
+          neuroticism=traits_sample.Neuroticism,
+        )
+
+        add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
+          sex, has_reproduced, sugar, children, total_inheritance_received,
+          culture, loans_given, loans_owed, diseases, immunity, traits)
+      else
+        # Create a regular SugarscapeAgent
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
+          sex, has_reproduced, sugar, children, total_inheritance_received,
+          culture, loans_given, loans_owed, diseases, immunity)
+      end
+    elseif model.use_schwartz_values
+      if isa(agent, SchwartzValuesSugarscapeAgent) && hasproperty(model, :schwartz_values_mvn_dist) && !isnothing(model.schwartz_values_mvn_dist)
+        # Create a SchwartzValuesSugarscapeAgent with random traits from the MVN distribution
+        traits_sample = SchwartzValuesProcessor.sample_agents(model.schwartz_values_mvn_dist, 1)[1]
+        schwartz_values = (
+          self_direction=traits_sample.SelfDirection,
+          stimulation=traits_sample.Stimulation,
+          hedonism=traits_sample.Hedonism,
+          achievement=traits_sample.Achievement,
+          power=traits_sample.Power,
+          security=traits_sample.Security,
+          conformity=traits_sample.Conformity,
+          tradition=traits_sample.Tradition,
+          benevolence=traits_sample.Benevolence,
+          universalism=traits_sample.Universalism,
+        )
+
+        add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
+          sex, has_reproduced, sugar, children, total_inheritance_received,
+          culture, loans_given, loans_owed, diseases, immunity, schwartz_values)
+      else
+        # Create a regular SugarscapeAgent
+        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
+          sex, has_reproduced, sugar, children, total_inheritance_received,
+          culture, loans_given, loans_owed, diseases, immunity)
+      end
     end
   end
 end

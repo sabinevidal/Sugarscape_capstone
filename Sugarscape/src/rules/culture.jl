@@ -40,6 +40,9 @@ function culture_spread!(agent, model, check_decision::Bool=false)
 
     if model.use_big_five
       culture_context = build_big_five_culture_context(agent, model, neighbors)
+
+    elseif model.use_schwartz_values
+      culture_context = SchwartzValues.build_schwartz_values_culture_context(agent, model, neighbors)
     else
       culture_context = build_culture_context(agent, model, neighbors)
     end
