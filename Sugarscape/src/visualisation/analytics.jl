@@ -215,7 +215,12 @@ function create_model_data_functions(model, analytics)
 
     # Spatial metrics
     model -> calculate_spatial_segregation(model),
-    model -> calculate_clustering_coefficient(model)
+    model -> calculate_clustering_coefficient(model),
+
+    # Big Five trait summary statistics
+    model -> calculate_trait_summary_stats(model),
+    model -> calculate_decision_entropy(model),
+    model -> calculate_trait_similarity_metrics(model)
   ]
 
   return mdata
@@ -273,15 +278,40 @@ function calculate_pareto_alpha(model)
   length(agents_list) < 10 && return NaN  # Need sufficient data
 
   wealths = [a.sugar for a in agents_list]
-  threshold = percentile(wealths, 80)  # Top 20%
-
-  tail_wealths = filter(w -> w >= threshold, wealths)
-  length(tail_wealths) < 5 && return NaN
-
-  # Estimate Pareto α using Hill estimator
-  log_ratios = log.(tail_wealths ./ threshold)
-  alpha = 1.0 / mean(log_ratios)
-
+  
+  # Remove zero or negative wealths
+  positive_wealths = filter(w -> w > 0, wealths)
+  length(positive_wealths) < 10 && return NaN
+  
+  # Sort in descending order and take top 20%
+  sorted_wealths = sort(positive_wealths, rev=true)
+  n_tail = max(5, div(length(sorted_wealths), 5))  # At least 5, or 20% of data
+  tail_wealths = sorted_wealths[1:n_tail]
+  
+  # Use minimum value in tail as threshold (proper Hill estimator)
+  x_min = minimum(tail_wealths)
+  
+  # Handle edge case where all tail values are the same
+  if maximum(tail_wealths) <= x_min + 1e-10
+    return NaN  # No variation in tail, Pareto doesn't apply
+  end
+  
+  # Hill estimator: α = 1 / mean(log(X_i / X_min))
+  log_ratios = log.(tail_wealths ./ x_min)
+  mean_log_ratio = mean(log_ratios)
+  
+  # Avoid division by zero
+  if abs(mean_log_ratio) < 1e-10
+    return NaN
+  end
+  
+  alpha = 1.0 / mean_log_ratio
+  
+  # Return NaN for unrealistic values (Pareto α should typically be > 1)
+  if alpha <= 0 || !isfinite(alpha)
+    return NaN
+  end
+  
   return alpha
 end
 
@@ -509,10 +539,27 @@ end
 Calculate network metrics for credit relationships.
 """
 function calculate_credit_network_metrics(model)
-  !model.enable_credit && return Dict()
+  # Always return consistent keys, even when credit is disabled or no agents exist
+  if !model.enable_credit
+    return Dict(
+      "n_nodes" => 0,
+      "n_edges" => 0,
+      "density" => 0.0,
+      "avg_degree" => 0.0,
+      "max_degree" => 0
+    )
+  end
 
   agents_list = collect(allagents(model))
-  length(agents_list) == 0 && return Dict()
+  if length(agents_list) == 0
+    return Dict(
+      "n_nodes" => 0,
+      "n_edges" => 0,
+      "density" => 0.0,
+      "avg_degree" => 0.0,
+      "max_degree" => 0
+    )
+  end
 
   # Build adjacency information
   edges = Set{Tuple{Int,Int}}()
@@ -520,11 +567,15 @@ function calculate_credit_network_metrics(model)
 
   for agent in agents_list
     node_degrees[agent.id] = 0
-    for loan in agent.loans
-      lender_id, borrower_id = loan[1], loan[2]
-      push!(edges, (lender_id, borrower_id))
-      node_degrees[lender_id] = get(node_degrees, lender_id, 0) + 1
-      node_degrees[borrower_id] = get(node_degrees, borrower_id, 0) + 1
+    
+    # Process loans given by this agent (agent is lender)
+    for (borrower_id, loans_to_borrower) in agent.loans_given
+      for loan in loans_to_borrower
+        lender_id = agent.id
+        push!(edges, (lender_id, borrower_id))
+        node_degrees[lender_id] = get(node_degrees, lender_id, 0) + 1
+        node_degrees[borrower_id] = get(node_degrees, borrower_id, 0) + 1
+      end
     end
   end
 
@@ -551,11 +602,24 @@ end
 Calculate network metrics for combat relationships.
 """
 function calculate_combat_network_metrics(model)
-  !model.enable_combat && return Dict()
+  # Always return consistent keys, even when combat is disabled or no agents exist
+  if !model.enable_combat
+    return Dict(
+      "potential_conflicts" => 0,
+      "conflict_rate" => 0.0,
+      "avg_cultural_distance" => 0.0
+    )
+  end
 
   # Combat creates temporary relationships, so we track cultural similarity
   agents_list = collect(allagents(model))
-  length(agents_list) == 0 && return Dict()
+  if length(agents_list) == 0
+    return Dict(
+      "potential_conflicts" => 0,
+      "conflict_rate" => 0.0,
+      "avg_cultural_distance" => 0.0
+    )
+  end
 
   # Count potential conflicts based on cultural differences
   potential_conflicts = 0
@@ -736,12 +800,15 @@ function calculate_total_credit_outstanding(model)
 
   total = 0.0
   for agent in allagents(model)
-    for loan in agent.loans
-      total += loan[3]  # Principal amount
+    # Sum up all loans given by this agent
+    for (borrower_id, loans_to_borrower) in agent.loans_given
+      for loan in loans_to_borrower
+        total += loan.amount  # Principal amount
+      end
     end
   end
 
-  return total / 2  # Divide by 2 since each loan is counted twice
+  return total  # No need to divide by 2 since we only count loans_given
 end
 
 """
@@ -757,12 +824,21 @@ function calculate_credit_default_rate(model)
   total_loans = 0
   risky_loans = 0
 
+  # Get all agents for borrower lookup
+  all_agents = Dict(agent.id => agent for agent in allagents(model))
+
   for agent in allagents(model)
-    for loan in agent.loans
-      total_loans += 1
-      # Consider loan risky if borrower has less than 2x the principal
-      if loan[2] == agent.id && agent.sugar < 2 * loan[3]
-        risky_loans += 1
+    # Check loans given by this agent
+    for (borrower_id, loans_to_borrower) in agent.loans_given
+      for loan in loans_to_borrower
+        total_loans += 1
+        # Consider loan risky if borrower has less than 2x the principal
+        if haskey(all_agents, borrower_id)
+          borrower = all_agents[borrower_id]
+          if borrower.sugar < 2 * loan.amount
+            risky_loans += 1
+          end
+        end
       end
     end
   end
@@ -844,11 +920,21 @@ function export_analytics_data(analytics::Analytics, step::Int, agent_data::Dict
     end
   end
 
-  # Flatten model data
+  # Flatten model data with proper numeric prefixes
   for (key, value) in model_data
     if isa(value, Dict)
-      for (subkey, subvalue) in value
-        metrics_dict["model_$(key)_$(subkey)"] = subvalue
+      # Extract metric number from key (e.g., "metric_15" -> "15")
+      key_str = string(key)
+      if startswith(key_str, "metric_")
+        metric_num = replace(key_str, "metric_" => "")
+        for (subkey, subvalue) in value
+          metrics_dict["model_metric_$(metric_num)_$(subkey)"] = subvalue
+        end
+      else
+        # Fallback for non-metric keys
+        for (subkey, subvalue) in value
+          metrics_dict["model_$(key)_$(subkey)"] = subvalue
+        end
       end
     else
       metrics_dict["model_$(key)"] = value
@@ -978,6 +1064,103 @@ function create_labels_for_dashboard()
     "Mean Wealth", "Wealth Std", "Max Wealth", "Min Wealth",
     "Mean Age", "Age Std", "Mean Lifespan (Deceased)"
   ]
+end
+
+# =============================================================================
+# BIG FIVE TRAIT ANALYSIS
+# =============================================================================
+
+"""
+    calculate_trait_summary_stats(model)
+
+Calculate mean and standard deviation of Big Five traits.
+"""
+function calculate_trait_summary_stats(model)
+  agents_list = collect(allagents(model))
+  
+  # Define default return structure for Big Five traits
+  default_result = Dict{String,Float64}(
+    "mean_openness" => 0.0,
+    "std_openness" => 0.0,
+    "mean_conscientiousness" => 0.0,
+    "std_conscientiousness" => 0.0,
+    "mean_extraversion" => 0.0,
+    "std_extraversion" => 0.0,
+    "mean_agreeableness" => 0.0,
+    "std_agreeableness" => 0.0,
+    "mean_neuroticism" => 0.0,
+    "std_neuroticism" => 0.0
+  )
+  
+  if length(agents_list) == 0
+    return default_result
+  end
+
+  # Filter agents that have traits (BigFive or SchwartzValues agents)
+  trait_agents = [a for a in agents_list if hasproperty(a, :traits)]
+  if length(trait_agents) == 0
+    return default_result
+  end
+
+  traits = [:openness, :conscientiousness, :extraversion, :agreeableness, :neuroticism]
+  result = Dict{String,Float64}()
+
+  for trait in traits
+    # Only process agents that have the specific trait field
+    trait_values = []
+    for a in trait_agents
+      if hasproperty(a.traits, trait)
+        push!(trait_values, getfield(a.traits, trait))
+      end
+    end
+    
+    if length(trait_values) > 0
+      result["mean_$trait"] = mean(trait_values)
+      result["std_$trait"] = length(trait_values) > 1 ? std(trait_values) : 0.0
+    end
+  end
+
+  return result
+end
+
+"""
+    calculate_decision_entropy(model)
+
+Estimate entropy of agent action types in the current step.
+"""
+function calculate_decision_entropy(model)
+  actions = model.last_actions
+  length(actions) == 0 && return 0.0
+
+  counts = countmap(actions)
+  total = sum(values(counts))
+  entropy = -sum((c / total) * log(c / total) for c in values(counts) if c > 0)
+
+  return entropy
+end
+
+"""
+    calculate_trait_similarity_metrics(model)
+
+Calculate average trait similarity for agent interactions (e.g., reproduction, lending).
+"""
+function calculate_trait_similarity_metrics(model)
+  pairs = model.last_trait_interactions
+  length(pairs) == 0 && return Dict("avg_similarity" => 0.0, "count" => 0)
+
+  similarities = Float64[]
+  for (id1, id2) in pairs
+    a1 = model[id1]
+    a2 = model[id2]
+    trait_diff = sum(abs(getfield(a1.traits, t) - getfield(a2.traits, t)) for t in fieldnames(typeof(a1.traits)))
+    similarity = 1.0 - (trait_diff / (5 * 5.0))  # Normalize difference to [0, 1]
+    push!(similarities, similarity)
+  end
+
+  return Dict(
+    "avg_similarity" => mean(similarities),
+    "count" => length(similarities)
+  )
 end
 
 # Export main functions

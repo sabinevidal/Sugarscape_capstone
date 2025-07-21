@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 
 """
-run_llm_sugarscape_export.jl
+run_llm_big5_sugarscape_export.jl
 ========================
 
 Simple command-line utility to run a Sugarscape simulation for a given number
@@ -10,7 +10,7 @@ to CSV files.
 
 Usage
 -----
-    julia run_llm_sugarscape_export.jl [N_STEPS] [OUTPUT_PREFIX]
+    julia run_llm_big5_sugarscape_export.jl [N_STEPS] [OUTPUT_PREFIX]
 
 Arguments
 ---------
@@ -58,10 +58,9 @@ function main()
         llm_temperature=0.4,
         use_big_five=true,
         N=4,
-        enable_reproduction=false,
-        enable_culture=false,
-        enable_credit=false,
-        enable_combat=true,
+        enable_reproduction=true,
+        enable_culture=true,
+        enable_credit=true,
         dims=(5, 5),
         sugar_peaks=(2, 2),
         max_sugar=3,

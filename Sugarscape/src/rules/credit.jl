@@ -516,14 +516,18 @@ function clear_loans_on_death!(agent, model)
             borrower = model[borrower_id]
             if model.enable_reproduction && !isempty(agent.children)
                 for child_id in agent.children
-                    child = model[child_id]
-                    get!(borrower.loans_owed, child_id, Loan[])
-                    get!(child.loans_given, borrower_id, Loan[])
-                    for loan in loan_list
-                        newloan = Loan(child_id, loan.amount, loan.time_due, loan.interest_rate)
-                        push!(borrower.loans_owed[child_id], newloan)
-                        push!(child.loans_given[borrower_id], newloan)
+                    # Only transfer loans to children that still exist in the model
+                    if hasid(model, child_id)
+                        child = model[child_id]
+                        get!(borrower.loans_owed, child_id, Loan[])
+                        get!(child.loans_given, borrower_id, Loan[])
+                        for loan in loan_list
+                            newloan = Loan(child_id, loan.amount, loan.time_due, loan.interest_rate)
+                            push!(borrower.loans_owed[child_id], newloan)
+                            push!(child.loans_given[borrower_id], newloan)
+                        end
                     end
+                    # If child is dead, the loan is simply forgiven (no transfer)
                 end
             end
             delete!(borrower.loans_owed, agent.id)

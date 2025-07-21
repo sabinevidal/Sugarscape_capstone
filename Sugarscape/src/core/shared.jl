@@ -86,7 +86,7 @@ function death_replacement!(agent, model)
         # Create a regular SugarscapeAgent
         add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
           sex, has_reproduced, sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity)
+          culture, loans_given, loans_owed, diseases, immunity, nothing, nothing)
       end
     elseif model.use_schwartz_values
       if isa(agent, SchwartzValuesSugarscapeAgent) && hasproperty(model, :schwartz_values_mvn_dist) && !isnothing(model.schwartz_values_mvn_dist)
@@ -112,7 +112,7 @@ function death_replacement!(agent, model)
         # Create a regular SugarscapeAgent
         add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
           sex, has_reproduced, sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity)
+          culture, loans_given, loans_owed, diseases, immunity, nothing, nothing)
       end
     end
   end

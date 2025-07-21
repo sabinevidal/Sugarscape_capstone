@@ -9,6 +9,10 @@ using Agents, Random, Distributions, DataFrames
 # Model-level scheduler step (rule-only)
 # =============================================================================
 function _model_step!(model)
+
+  model.last_actions = String[]
+  model.last_trait_interactions = Tuple{Int,Int}[]
+
   # --- Resource growback (seasonal or regular)
   if model.enable_seasonality
     seasonal_growback!(model)
@@ -71,6 +75,28 @@ function _agent_step!(agent, model)
   # Credit phase
   if model.enable_credit
     credit!(agent, model)
+  end
+
+  # ---------------------------------------------------------
+  # Log actions
+  # ---------------------------------------------------------
+  # last_actions and last_trait_interactions are initialized in model step
+
+  # Log movement/combat
+  push!(model.last_actions, model.enable_combat ? "combat" : "move")
+
+  # Log reproduction
+  if model.enable_reproduction && agent.has_reproduced
+    push!(model.last_actions, "reproduce")
+    if hasproperty(agent, :last_partner_id) && !isnothing(agent.last_partner_id)
+      push!(model.last_trait_interactions, (agent.id, agent.last_partner_id))
+    end
+  end
+
+  # Log credit
+  if model.enable_credit && hasproperty(agent, :last_credit_partner) && !isnothing(agent.last_credit_partner)
+    push!(model.last_actions, "credit")
+    push!(model.last_trait_interactions, (agent.id, agent.last_credit_partner))
   end
 
 

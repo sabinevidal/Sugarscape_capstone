@@ -9,8 +9,9 @@ function sugarscape(;
   seed=42,
   # environment
   dims=(50, 50),
+  dia=5,
   gridspace_metric::Symbol=:manhattan,
-  sugar_peaks=((10, 40), (40, 10)),
+  sugar_peaks=((15, 40), (35, 10)),
   growth_rate=1, enable_seasonality::Bool=false,
   season_duration::Int=20,
   winter_growth_divisor::Int=4,
@@ -90,6 +91,7 @@ function sugarscape(;
   properties = Dict(
     # Environment / growback
     :growth_rate => growth_rate,
+    :dia => dia,
     :season_duration => season_duration,
     :winter_growth_divisor => winter_growth_divisor,
     :is_summer_top => true,
@@ -175,6 +177,10 @@ function sugarscape(;
     :use_schwartz_values => use_schwartz_values,
     :schwartz_values_path => schwartz_values_path,
     :schwartz_values_mvn_dist => nothing,
+
+    # Action logging
+    :last_actions => String[],
+    :last_trait_interactions => Tuple{Int,Int}[],
   )
 
 
@@ -250,7 +256,7 @@ function sugarscape(;
     agent_args = (
       vision, metabolism, sugar, age, max_age, sex, has_reproduced,
       sugar, children, total_inheritance_received, BitVector(culture),
-      loans_given, loans_owed, diseases, immunity
+      loans_given, loans_owed, diseases, immunity, nothing, nothing
     )
 
     if use_big_five

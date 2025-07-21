@@ -23,4 +23,6 @@ end
     loans_owed::Dict{Int,Vector{Loan}}
     diseases::Vector{BitVector}
     immunity::BitVector
+    last_partner_id::Union{Nothing,Int}
+    last_credit_partner::Union{Nothing,Int}
 end

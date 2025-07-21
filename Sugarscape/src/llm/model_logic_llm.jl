@@ -185,6 +185,10 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     :llm_model => llm_model,
     :llm_temperature => llm_temperature,
     :llm_max_tokens => llm_max_tokens,
+
+    # Action logging
+    :last_actions => String[],
+    :last_trait_interactions => Tuple{Int,Int}[],
   )
 
   model = StandardABM(
@@ -218,7 +222,7 @@ function sugarscape_llm(;  # signature mirrors original for brevity
 
     add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
       sex, has_reproduced, sugar, children, total_inheritance_received,
-      culture, loans_given, loans_owed, diseases, immunity)
+      culture, loans_given, loans_owed, diseases, immunity, nothing, nothing)
   end
 
   return model
@@ -230,10 +234,9 @@ end
 function _model_step_llm!(model)
   # Individual LLM requests are handled inside each agent step
 
-  # Delegate remaining logic to shared rule implementation
-  # (copy from core but keep identical — duplication avoided for clarity)
+  model.last_actions = String[]
+  model.last_trait_interactions = Tuple{Int,Int}[]
 
-  println("Model step $(abmtime(model))")
   if model.enable_seasonality
     seasonal_growback!(model)
     model.current_season_steps += 1
@@ -323,6 +326,25 @@ function _agent_step_llm!(agent, model)
   if model.enable_credit
     # LLM or rule-based credit action
     credit!(agent, model)
+  end
+
+  # ---------------------------------------------------------
+  # Log actions
+  # ---------------------------------------------------------
+  # last_actions and last_trait_interactions are initialized in model step
+
+  push!(model.last_actions, model.enable_combat ? "combat" : "move")
+
+  if model.enable_reproduction && agent.has_reproduced
+    push!(model.last_actions, "reproduce")
+    if hasproperty(agent, :last_partner_id) && !isnothing(agent.last_partner_id)
+      push!(model.last_trait_interactions, (agent.id, agent.last_partner_id))
+    end
+  end
+
+  if model.enable_credit && hasproperty(agent, :last_credit_partner) && !isnothing(agent.last_credit_partner)
+    push!(model.last_actions, "credit")
+    push!(model.last_trait_interactions, (agent.id, agent.last_credit_partner))
   end
 
 end

@@ -42,15 +42,15 @@ function main()
     # ---------------------------------------------------------------------
     # Parse command-line arguments
     # ---------------------------------------------------------------------
-    n_steps       = length(ARGS) ≥ 1 ? parse(Int, ARGS[1]) : 1_000
-    output_prefix = length(ARGS) ≥ 2 ? ARGS[2]              : "sugarscape"
+    n_steps = length(ARGS) ≥ 1 ? parse(Int, ARGS[1]) : 100
+    output_prefix = length(ARGS) ≥ 2 ? ARGS[2] : "sugarscape"
 
     println("🔧 Running Sugarscape for $n_steps steps …")
 
     # ---------------------------------------------------------------------
     # Initialise model (pure rule-based by default)
     # ---------------------------------------------------------------------
-    model = Sugarscape.sugarscape()
+    model = Sugarscape.sugarscape(enable_combat=true)
 
     # ---------------------------------------------------------------------
     # Define data to collect
@@ -63,11 +63,11 @@ function main()
         :age,
         :max_age
     ]
-    
+
     # Model data collection
     mdata = [
         m -> length(allagents(m)),
-        m -> mean(a.sugar for a in allagents(m)),
+        m -> length(allagents(m)) > 0 ? mean(a.sugar for a in allagents(m)) : 0.0,
         m -> sum(a.sugar for a in allagents(m))
     ]
 
@@ -80,10 +80,10 @@ function main()
     # Create results directory if it doesn't exist
     results_dir = joinpath(@__DIR__, "results")
     mkpath(results_dir)
-    
+
     # Generate timestamp for filenames
     timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
-    
+
     # Define output file paths with timestamp
     adata_file = joinpath(results_dir, "$(timestamp)_$(output_prefix)_adata.csv")
     mdata_file = joinpath(results_dir, "$(timestamp)_$(output_prefix)_mdata.csv")
