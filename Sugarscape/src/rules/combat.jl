@@ -67,114 +67,125 @@ end
 """
     combat!(model)
 
-Execute the Combat Rule for all agents in the model.
-Agents scan their vision for valid targets and attack the most rewarding one.
-
-Combat conditions:
-- Target must be weaker (less sugar)
-- Target must be culturally different
-- Target's position must be unoccupied by other agents
-- Reward = min(target.sugar, combat_limit)
+**Deprecated.** The combat rule now executes asynchronously via
+`maybe_combat!(agent, model)` inside each agent step.  This
+function is kept for backwards compatibility but simply iterates over
+all agents and calls `maybe_combat!`.
 """
 function combat!(model)
-  # Skip if combat disabled
   !model.enable_combat && return
 
-  # Process agents in random order (Combat Rule preamble)
-  agents_list = collect(allagents(model))
-  shuffle!(abmrng(model), agents_list)
-
-  for attacker in agents_list
-    # LLM gating only when enabled; otherwise always allow
-    if model.use_llm_decisions
-      should_act(attacker, model, Val(:combat)) || continue
-    end
-
-    # If the attacker has been removed earlier in this combat step (e.g. it
-    # was killed by a different agent) we skip it.
-    attacker in allagents(model) || continue
-
-    candidates = Vector{Tuple{Tuple{Int,Int},Union{SugarscapeAgent,Nothing},Float64,Float64}}()
-    # (position, occupant_or_nothing, reward, distance)
-
-    for pos in visible_positions(attacker, model)
-      occupants = get_agents_at_position(model, pos)
-      occupant = isempty(occupants) ? nothing : first(occupants)
-
-      if model.use_llm_decisions
-        # If an explicit LLM target is provided, enforce it
-        llm_target = get_decision(attacker, model).combat_target
-        if llm_target !== nothing
-          if occupant === nothing || occupant.id != llm_target
-            continue  # skip positions that are not the desired target
-          end
-        end
-      end
-
-      # === Rule C-α 2: Discard illegal sites ===
-      if occupant !== nothing
-        # Same tribe → discard
-        same_tribe(attacker, occupant) && continue
-        # Target wealth ≥ attacker wealth → discard
-        occupant.sugar >= attacker.sugar && continue
-      end
-
-      # === Rule C-α 3: Compute reward ===
-      site_sugar = model.sugar_values[pos...]
-      occupant_sugar_component = occupant === nothing ? 0.0 : min(occupant.sugar, model.combat_limit)
-      reward = site_sugar + occupant_sugar_component
-      reward == 0.0 && continue  # This site cannot yield anything
-
-      # === Rule C-α 4: Retaliation check ===
-      potential_future_wealth = attacker.sugar + reward
-      exposed_to_retaliation(model; attacker, target_pos=pos, future=potential_future_wealth) && continue
-
-      distance = euclidean_distance(attacker.pos, pos)
-      push!(candidates, (pos, occupant, reward, distance))
-    end
-
-    isempty(candidates) && continue  # No legal targets
-
-    # === Rule C-α 5: Choose among maximal reward sites ===
-    max_reward = maximum(c[3] for c in candidates)
-    best_reward_sites = filter(c -> c[3] == max_reward, candidates)
-
-    # Nearest distance first, then random tie-break
-    min_distance = minimum(c[4] for c in best_reward_sites)
-    nearest_sites = filter(c -> c[4] == min_distance, best_reward_sites)
-    chosen = rand(abmrng(model), nearest_sites)
-    target_pos, victim, _, _ = chosen
-
-    # === Rule C-α 6&7: Execute combat ===
-    site_sugar = model.sugar_values[target_pos...]
-    stolen = victim === nothing ? 0.0 : min(victim.sugar, model.combat_limit)
-    collected = site_sugar + stolen
-
-    if victim !== nothing
-      death!(victim, model, :combat)
-      model.combat_kills += 1
-    end
-
-    # Move attacker to the target square and update state
-    move_agent!(attacker, target_pos, model)
-    attacker.sugar += collected - attacker.metabolism  # collect & metabolise
-    attacker.age += 1  # movement increments age just like M-rule
-
-    # Pollution production (reuse M-rule logic)
-    if model.enable_pollution
-      produced_pollution = model.production_rate * site_sugar + model.consumption_rate * attacker.metabolism
-      model.pollution[target_pos...] += produced_pollution
-    end
-
-    # Clear the sugar from the site (Rule C-α 6)
-    model.sugar_values[target_pos...] = 0.0
-
-    # Statistics
-    model.combat_sugar_stolen += stolen
-
-    # Mark attacker so that the M-rule is skipped later this tick (C-α 5)
-    push!(model.agents_moved_combat, attacker.id)
+  for ag in allagents(model)
+    maybe_combat!(ag, model)
   end
+end
+
+"""
+    build_combat_context(agent, model)
+
+Construct the context sent to the LLM for combat decisions.  It
+includes a list of eligible target agents (id, position and sugar).
+"""
+function build_combat_context(agent, model)
+  targets = Vector{Dict{String,Any}}()
+  for pos in visible_positions(agent, model)
+    occs = get_agents_at_position(model, pos)
+    length(occs) == 1 || continue
+    victim = first(occs)
+    culturally_different(agent, victim) || continue
+    victim.sugar < agent.sugar || continue
+    push!(targets, Dict(
+      "id" => victim.id,
+      "position" => victim.pos,
+      "sugar" => victim.sugar,
+    ))
+  end
+  return Dict(
+    "agent_id" => agent.id,
+    "position" => agent.pos,
+    "sugar" => agent.sugar,
+    "vision" => agent.vision,
+    "eligible_targets" => targets,
+  )
+end
+
+"""
+    maybe_combat!(attacker, model)
+
+Asynchronous combat rule.  The agent evaluates eligible targets and
+either attacks one (based on an LLM decision when enabled) or falls
+back to movement via the M-rule.
+"""
+function maybe_combat!(attacker, model)
+  if !model.enable_combat
+    movement!(attacker, model)
+    return
+  end
+
+  candidates = Vector{Tuple{Tuple{Int,Int},SugarscapeAgent,Float64,Float64}}()
+  for pos in visible_positions(attacker, model)
+    occs = get_agents_at_position(model, pos)
+    length(occs) == 1 || continue
+    victim = first(occs)
+    culturally_different(attacker, victim) || continue
+    victim.sugar < attacker.sugar || continue
+
+    site_sugar = model.sugar_values[pos...]
+    reward = site_sugar + min(victim.sugar, model.combat_limit)
+    reward == 0.0 && continue
+
+    exposed_to_retaliation(model; attacker, target_pos=pos,
+                           future=attacker.sugar + reward) && continue
+
+    dist = euclidean_distance(attacker.pos, pos)
+    push!(candidates, (pos, victim, reward, dist))
+  end
+
+  if model.use_llm_decisions
+    decision = get_decision(attacker, model)
+    should_attack = decision.combat
+    target_id = decision.combat_target
+
+    valid = should_attack && target_id !== nothing &&
+            any(c -> c[2].id == target_id, candidates)
+
+    if !valid
+      movement!(attacker, model)
+      return
+    end
+
+    idx = findfirst(c -> c[2].id == target_id, candidates)
+    target_pos, victim, reward, _ = candidates[idx]
+  else
+    isempty(candidates) && return movement!(attacker, model)
+
+    max_reward = maximum(c[3] for c in candidates)
+    best = filter(c -> c[3] == max_reward, candidates)
+    min_dist = minimum(c[4] for c in best)
+    chosen = filter(c -> c[4] == min_dist, best)
+    target_pos, victim, reward, _ = rand(abmrng(model), chosen)
+  end
+
+  site_sugar = model.sugar_values[target_pos...]
+  stolen = min(victim.sugar, model.combat_limit)
+  collected = site_sugar + stolen
+
+  death!(victim, model, :combat)
+  model.combat_kills += 1
+
+  move_agent!(attacker, target_pos, model)
+  attacker.sugar += collected - attacker.metabolism
+  attacker.age += 1
+
+  if model.enable_pollution
+    produced_pollution = model.production_rate * site_sugar +
+                         model.consumption_rate * attacker.metabolism
+    model.pollution[target_pos...] += produced_pollution
+  end
+
+  model.sugar_values[target_pos...] = 0.0
+  model.combat_sugar_stolen += stolen
+  push!(model.agents_moved_combat, attacker.id)
 end
 
 """

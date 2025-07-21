@@ -245,8 +245,8 @@ function _model_step_llm!(model)
     growback!(model)
   end
 
+  # Reset combat registry (combat handled asynchronously per agent)
   model.agents_moved_combat = Set{Int}()
-  model.enable_combat && combat!(model)
 
   if model.enable_pollution
     model.current_pollution_diffusion_steps += 1
@@ -278,10 +278,7 @@ function _agent_step_llm!(agent, model)
   # ---------------------------------------------------------
 
   if model.enable_combat
-    # TO BE IMPLEMENTED
-    # combat_context
-    # get_combat_decision (context, response format)
-    # combat_action
+    maybe_combat!(agent, model)
   else
     movement!(agent, model)
   end

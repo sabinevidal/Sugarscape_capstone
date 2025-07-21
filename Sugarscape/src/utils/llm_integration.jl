@@ -302,6 +302,26 @@ function get_culture_decision(context::Dict, model)
     end
 end
 
+########################### Combat helpers ############################
+function _parse_combat_decision(obj)
+    combat = get(obj, "combat", false)
+    target = get(obj, "combat_target", nothing)
+    reasoning = get(obj, "reasoning_for_choice", nothing)
+    return (combat=combat, combat_target=target, reasoning=reasoning)
+end
+
+function get_combat_decision(context::Dict, model)
+    combat_response_format = SugarscapePrompts.get_combat_response_format()
+    combat_prompt = SugarscapePrompts.get_combat_system_prompt()
+    try
+        raw_response = call_openai_api(context, "combat", model, combat_prompt, combat_response_format)
+        decision = _parse_combat_decision(raw_response)
+        return decision
+    catch e
+        throw(LLMAPIError("Failed to get combat decision: $(e)", nothing, nothing))
+    end
+end
+
 
 ########################### Credit helpers ############################
 """
