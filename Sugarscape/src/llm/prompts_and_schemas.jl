@@ -77,6 +77,22 @@ function get_culture_system_prompt()
 end
 
 """
+    get_combat_system_prompt() -> String
+Returns the system prompt used for LLM combat decisions in Sugarscape.
+"""
+function get_combat_system_prompt()
+  return """
+  COMBAT RULE:
+  - You may attack a visible agent only if they are weaker (less sugar),
+    culturally different, and alone on their cell.
+  - If you attack, you move onto their position, steal up to `combat_limit`
+    sugar and the target dies.
+  Decide whether to attack one of the provided eligible targets and
+  specify the target's id.
+  """
+end
+
+"""
     get_movement_decision_schema() -> Dict
 Returns the structured schema definition for a movement decision.
 """
@@ -235,6 +251,39 @@ function get_culture_response_format()
     "json_schema" => Dict(
       "name" => "culture_response",
       "schema" => get_culture_decision_schema(),
+      "strict" => true
+    ),
+  )
+end
+
+"""
+    get_combat_decision_schema() -> Dict
+Returns the structured schema definition for a combat decision.
+"""
+function get_combat_decision_schema()
+  return Dict(
+    "type" => "object",
+    "properties" => Dict(
+      "agent_id" => Dict("type" => "integer", "description" => "Unique identifier for the agent"),
+      "combat" => Dict("type" => "boolean", "description" => "Whether to attack"),
+      "combat_target" => Dict("type" => ["integer", "null"], "description" => "ID of the target agent"),
+      "reasoning_for_choice" => Dict("type" => "string", "description" => "Reasoning for the decision")
+    ),
+    "required" => ["agent_id", "combat", "combat_target", "reasoning_for_choice"],
+    "additionalProperties" => false
+  )
+end
+
+"""
+    get_combat_response_format() -> Dict
+Returns the OpenAI response format configuration for combat decisions.
+"""
+function get_combat_response_format()
+  return Dict(
+    "type" => "json_schema",
+    "json_schema" => Dict(
+      "name" => "combat_response",
+      "schema" => get_combat_decision_schema(),
       "strict" => true
     ),
   )

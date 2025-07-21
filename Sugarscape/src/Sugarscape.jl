@@ -101,7 +101,7 @@ export reproduction!, is_fertile, is_fertile_by_age
 export culture_spread!, cultural_entropy, unique_cultures, mean_hamming_distance, cultural_islands
 
 # Export combat functions
-export combat!, combat_death_rate, average_combat_reward, cultural_conflict_intensity, wealth_based_dominance
+export maybe_combat!, combat_death_rate, average_combat_reward, cultural_conflict_intensity, wealth_based_dominance
 
 # Export inheritance functions
 export distribute_inheritance, get_inheritance_metrics, calculate_inheritance_concentration
@@ -118,7 +118,7 @@ export LLMDecision
 export _agent_step_llm!, _model_step_llm!
 
 # export decision helpers
-export get_reproduction_decision, get_movement_decision
+export get_reproduction_decision, get_movement_decision, get_combat_decision
 
 # Export testing functions
 export test_single_agent_llm_prompt, run_llm_prompt_test_interactive

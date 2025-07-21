@@ -483,7 +483,7 @@ end
   attacker = add_custom_agent!(model, (2, 2); sugar=10, culture_bits=[false, false, true], metabolism=1)  # blue, metabolism 1
   victim = add_custom_agent!(model, (4, 2); sugar=5, culture_bits=[false, true, false], vision=0, metabolism=1)   # red but stronger, cannot see attacker
 
-  Sugarscape.combat!(model)
+  Sugarscape.maybe_combat!(attacker, model)
 
   # Both agents should still exist, no sugar stolen
   @test length(allagents(model)) == 2
@@ -503,7 +503,7 @@ end
   attacker = add_custom_agent!(model, (2, 2); sugar=5, culture_bits=[false, false, true], vision=3, metabolism=1)   # blue
   victim = add_custom_agent!(model, (4, 2); sugar=10, culture_bits=[true, true, false], vision=0, metabolism=1)    # red but stronger, cannot see attacker
 
-  Sugarscape.combat!(model)
+  Sugarscape.maybe_combat!(attacker, model)
 
   @test length(allagents(model)) == 2  # nobody killed
   @test attacker.sugar == 5            # unchanged
@@ -526,7 +526,7 @@ end
 
   pre_kills = model.combat_kills
 
-  Sugarscape.combat!(model)
+  Sugarscape.maybe_combat!(attacker, model)
 
   @test model.combat_kills == pre_kills + 1
   @test length(allagents(model)) == 1                       # victim removed

@@ -21,9 +21,8 @@ function _model_step!(model)
     growback!(model)
   end
 
-  # Reset combat movement registry and execute combat if enabled
-  # model.agents_moved_combat = Set{Int}()
-  # model.enable_combat && combat!(model)
+  # Reset combat movement registry (asynchronous combat handled per agent)
+  model.agents_moved_combat = Set{Int}()
 
   # Pollution diffusion
   if model.enable_pollution
@@ -48,7 +47,7 @@ end
 # =============================================================================
 function _agent_step!(agent, model)
   if model.enable_combat
-    # TO BE IMPLEMENTED
+    maybe_combat!(agent, model)
   else
     movement!(agent, model)
   end
