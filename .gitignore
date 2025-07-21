@@ -2,3 +2,10 @@
 .cursor/
 Sugarscape/src/.DS_Store
 Sugarscape/.github/copilot-instructions.md
+.specstory
+Sugarscape/data/raw/*
+Sugarscape/data/processed/*
+.github/*
+.windsurf/*
+.env
+Sugarscape/data/results/*
