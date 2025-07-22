@@ -1,3 +1,5 @@
+using Distributions
+
 """
     sugarscape(; kwargs...) -> StandardABM
 

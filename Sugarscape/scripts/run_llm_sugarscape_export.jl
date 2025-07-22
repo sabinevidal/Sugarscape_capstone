@@ -53,10 +53,9 @@ function main()
     # ---------------------------------------------------------------------
     # Initialise model (pure rule-based by default)
     # ---------------------------------------------------------------------
-    model = Sugarscape.sugarscape_llm_bigfive(
+    model = Sugarscape.sugarscape(
         use_llm_decisions=true,
         llm_temperature=0.4,
-        use_big_five=true,
         N=4,
         enable_reproduction=false,
         enable_culture=false,
@@ -99,7 +98,7 @@ function main()
     mkpath(results_dir)
 
     # Generate timestamp for filenames
-    timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
+    timestamp = Dates.format(now(), "yymmdd_HHMM")
 
     # Define output file paths with timestamp
     adata_file = joinpath(results_dir, "$(timestamp)_$(output_prefix)_adata.csv")

@@ -82,7 +82,7 @@ function main()
     mkpath(results_dir)
 
     # Generate timestamp for filenames
-    timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
+    timestamp = Dates.format(now(), "yymmdd_HHMM")
 
     # Define output file paths with timestamp
     adata_file = joinpath(results_dir, "$(timestamp)_$(output_prefix)_adata.csv")

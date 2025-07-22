@@ -353,7 +353,7 @@ export_performance_results(results, "performance_test_results.csv")
 function export_performance_results(results::Vector{PerformanceTestResult}, filename::String="")
 
   if isempty(filename)
-    timestamp = Dates.format(Dates.now(), "yyyymmdd_HHMMSS")
+    timestamp = Dates.format(Dates.now(), "yymmdd_HHMM")
     filename = "performance_test_$(timestamp).csv"
   end
 

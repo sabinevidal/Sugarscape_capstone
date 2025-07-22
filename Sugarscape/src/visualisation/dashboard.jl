@@ -251,7 +251,7 @@ function create_dashboard()
   # CSV export functionality - create agent data directly from model
   on(export_agents_btn.clicks) do _
     try
-      timestamp = Dates.format(Dates.now(), "yyyymmdd_HHMMSS")
+      timestamp = Dates.format(Dates.now(), "yymmdd_HHMM")
       model = abmobs.model[]
       agent_list = collect(allagents(model))
       loans_given_total(a) = begin
@@ -336,7 +336,7 @@ function create_dashboard()
 
   on(export_model_btn.clicks) do _
     if !isempty(abmobs.mdf[])
-      timestamp = Dates.format(Dates.now(), "yyyymmdd_HHMMSS")
+      timestamp = Dates.format(Dates.now(), "yymmdd_HHMM")
       filename = joinpath(results_dir, "sugarscape_model_$(timestamp)_step_$(current_step[]).csv")
       CSV.write(filename, abmobs.mdf[])
       @info "Model data exported to $(abspath(filename))"

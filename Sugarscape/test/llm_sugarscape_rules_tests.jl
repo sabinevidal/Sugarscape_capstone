@@ -69,7 +69,7 @@ function add_custom_agent!(model, pos; sugar, initial_sugar=sugar, vision=2, met
   ag = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age,
     max_age, sex, has_reproduced, initial_sugar, children,
     total_inheritance_received, culture, loans_given, loans_owed,
-    diseases, immunity)
+    diseases, immunity, nothing, nothing)
 
   return ag
 end
@@ -77,7 +77,7 @@ end
 ################################################################################
 # Movement Rule (M) – Specification Conformance Tests
 ################################################################################
-# # Seed for deterministic behaviour across all tests in this set
+# Seed for deterministic behaviour across all tests in this set
 rng_seed = 0x20240622
 @testset "Movement Rule (M)" begin
   @info "🏃 Starting Movement Rule tests..."
@@ -473,6 +473,7 @@ end
   ##########################################################################
   # 1. Cannot attack same-tribe target
   ##########################################################################
+  @info "🥊 Testing: Cannot attack same-tribe target"
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_combat=true, enable_culture=false,
     culture_tag_length=3, combat_limit=50,
@@ -483,16 +484,20 @@ end
   attacker = add_custom_agent!(model, (2, 2); sugar=10, culture_bits=[false, false, true], metabolism=1)  # blue, metabolism 1
   victim = add_custom_agent!(model, (4, 2); sugar=5, culture_bits=[false, true, false], vision=0, metabolism=1)   # red but stronger, cannot see attacker
 
+  initial_attacker_sugar = attacker.sugar
+  initial_victim_sugar = victim.sugar
+
   Sugarscape.maybe_combat!(attacker, model)
 
-  # Both agents should still exist, no sugar stolen
-  @test length(allagents(model)) == 2
-  @test attacker.sugar == 10  # unchanged
-  @test victim.sugar == 5
+  # Both agents should still exist, attacker sugar reduced by metabolism only
+  @test log_test_step("Both agents still exist", length(allagents(model)) == 2, 2, length(allagents(model)))
+  @test log_test_step("Attacker sugar reduced by metabolism only", attacker.sugar == initial_attacker_sugar - 1, initial_attacker_sugar - 1, attacker.sugar)
+  @test log_test_step("Victim sugar unchanged", victim.sugar == initial_victim_sugar, initial_victim_sugar, victim.sugar)
 
   ##########################################################################
   # 2. Cannot attack stronger other-tribe target
   ##########################################################################
+  @info "🥊 Testing: Cannot attack stronger other-tribe target"
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_combat=true, enable_culture=false,
     culture_tag_length=3, combat_limit=50,
@@ -503,14 +508,19 @@ end
   attacker = add_custom_agent!(model, (2, 2); sugar=5, culture_bits=[false, false, true], vision=3, metabolism=1)   # blue
   victim = add_custom_agent!(model, (4, 2); sugar=10, culture_bits=[true, true, false], vision=0, metabolism=1)    # red but stronger, cannot see attacker
 
+  initial_attacker_sugar = attacker.sugar
+  initial_victim_sugar = victim.sugar
+
   Sugarscape.maybe_combat!(attacker, model)
 
-  @test length(allagents(model)) == 2  # nobody killed
-  @test attacker.sugar == 5            # unchanged
+  @test log_test_step("Both agents still exist", length(allagents(model)) == 2, 2, length(allagents(model)))
+  @test log_test_step("Attacker sugar reduced by metabolism only", attacker.sugar == initial_attacker_sugar - 1, initial_attacker_sugar - 1, attacker.sugar)
+  @test log_test_step("Victim sugar unchanged", victim.sugar == initial_victim_sugar, initial_victim_sugar, victim.sugar)
 
   ##########################################################################
   # 3. Successful attack on weaker other-tribe target
   ##########################################################################
+  @info "🥊 Testing: Successful attack on weaker other-tribe target"
   model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
     enable_combat=true, enable_culture=false,
     culture_tag_length=3, combat_limit=50,
@@ -525,16 +535,19 @@ end
   victim = add_custom_agent!(model, (4, 2); sugar=6, culture_bits=[true, true, false], metabolism=1)   # red, weaker, metabolism 1
 
   pre_kills = model.combat_kills
+  initial_attacker_sugar = attacker.sugar
+  initial_victim_sugar = victim.sugar
+  site_sugar = model.sugar_values[4, 2]
 
   Sugarscape.maybe_combat!(attacker, model)
 
-  @test model.combat_kills == pre_kills + 1
-  @test length(allagents(model)) == 1                       # victim removed
+  @test log_test_step("Combat kills increased", model.combat_kills == pre_kills + 1, pre_kills + 1, model.combat_kills)
+  @test log_test_step("Victim removed from model", length(allagents(model)) == 1, 1, length(allagents(model)))
 
   atk = first(allagents(model))
-  expected_sugar = 10 + 6 + 4 - 1  # initial + stolen + site - metabolism
-  @test isapprox(atk.sugar, expected_sugar; atol=1e-8)
-  @test atk.pos == (4, 2)            # moved into victim site
+  expected_sugar = initial_attacker_sugar + initial_victim_sugar + site_sugar - 1  # initial + stolen + site - metabolism
+  @test log_test_step("Attacker sugar correct after combat", isapprox(atk.sugar, expected_sugar; atol=1e-8), expected_sugar, atk.sugar)
+  @test log_test_step("Attacker moved to victim position", atk.pos == (4, 2), (4, 2), atk.pos)
 end
 
 ################################################################################

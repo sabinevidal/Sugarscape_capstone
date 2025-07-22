@@ -264,10 +264,22 @@ function get_combat_decision_schema()
   return Dict(
     "type" => "object",
     "properties" => Dict(
-      "agent_id" => Dict("type" => "integer", "description" => "Unique identifier for the agent"),
-      "combat" => Dict("type" => "boolean", "description" => "Whether to attack"),
-      "combat_target" => Dict("type" => ["integer", "null"], "description" => "ID of the target agent"),
-      "reasoning_for_choice" => Dict("type" => "string", "description" => "Reasoning for the decision")
+      "agent_id" => Dict(
+        "type" => "integer",
+        "description" => "Unique identifier for the agent"
+      ),
+      "combat" => Dict(
+        "type" => "boolean",
+        "description" => "Whether to attack"
+      ),
+      "combat_target" => Dict(
+        "type" => ["integer", "null"],
+        "description" => "ID of the target agent"
+      ),
+      "reasoning_for_choice" => Dict(
+        "type" => ["string"],
+        "description" => "A clear, psychologically grounded explanation of the choice of who to attack and, if not applicable, the reason for not attacking. First evaluate options, then justify final choice."
+      )
     ),
     "required" => ["agent_id", "combat", "combat_target", "reasoning_for_choice"],
     "additionalProperties" => false

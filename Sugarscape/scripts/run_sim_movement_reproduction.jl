@@ -4,13 +4,9 @@ using Random
 using Agents
 using CSV
 using DataFrames
-
-include("../src/core/model.jl")
-include("../src/psychological_dimensions/big_five/big_five.jl")
-include("../src/psychological_dimensions/schwartz_values/schwartz_values.jl")
-include("../src/visualisation/analytics.jl")
-include("../src/utils/metrics.jl")
-include("../src/utils/metrics_sets.jl")
+using Dates
+include("../src/Sugarscape.jl")
+using .Sugarscape
 
 if length(ARGS) == 0
     error("Architecture argument required: rule, llm, bigfive, or schwartz")
@@ -18,7 +14,7 @@ end
 
 architecture = ARGS[1]
 scenario = "movement_reproduction"
-n_steps = 1000
+n_steps = 50
 seed = 42
 
 # ---------------------- Initialise Model ---------------------- #
@@ -35,23 +31,69 @@ else
 end
 
 # ---------------------- Analytics Setup ---------------------- #
+# Generate timestamp for filenames
+timestamp = Dates.format(now(), "yymmdd_HHMM")
 output_dir = "data/results/simulations/$(scenario)"
 mkpath(output_dir)
 output_prefix = "sugarscape_$(scenario)_$(architecture)"
-metrics_file = joinpath(output_dir, "$(output_prefix)_metrics.csv")
+metrics_file = joinpath(output_dir, "$(output_prefix)_metrics_$(timestamp).csv")
+agents_file = joinpath(output_dir, "$(output_prefix)_agents_$(timestamp).csv")
+initial_agents_file = joinpath(output_dir, "$(output_prefix)_initial_agents_$(timestamp).csv")
 
 mdata = reproduction_metrics
-adata = []
+adata = if architecture == "bigfive"
+    # Include traits for Big Five agents
+    [
+        :pos, :sugar, :age, :vision, :metabolism, :sex,
+        :culture, :children, :last_partner_id,
+        :traits
+    ]
+else
+    # Standard agent data for other architectures
+    [
+        :pos, :sugar, :age, :vision, :metabolism, :sex,
+        :culture, :children, :last_partner_id,
+    ]
+end
 
-analytics = Analytics(; export_dir=output_dir, export_prefix=output_prefix,
-    collect_individual_data=false, collect_distributions=false,
-    collect_network_metrics=false)
+AgentsIO.dump_to_csv(initial_agents_file, allagents(model);
+    transform=(c, v) -> v === nothing ? missing : v)
 
 # ---------------------- Run Simulation ---------------------- #
-run!(model, agent_step!, n_steps; mdata=mdata, adata=adata)
+adf, mdf = run!(model, n_steps; adata=adata, mdata=mdata)
 
-# ---------------------- Export Metrics ---------------------- #
-export_to_csv(analytics)
+# ---------------------- Rename Metrics Columns ---------------------- #
+# Map numeric column names to human-readable names for reproduction_metrics
+# Note: nagents (first function) already gets its proper name, anonymous functions start from #77
+metric_name_map = Dict(
+    "#77" => "births",
+    "#78" => "deaths_age",
+    "#79" => "deaths_starvation",
+    "#80" => "gini_coefficient",
+    "#81" => "wealth_percentiles",
+    "#82" => "pareto_alpha",
+    "#83" => "mean_lifespan",
+    "#84" => "lifespan_inequality"
+)
+
+# Rename columns in the metrics DataFrame
+println("📊 Original column names: ", names(mdf))
+for (old_name, new_name) in metric_name_map
+    if old_name in names(mdf)
+        println("🔄 Renaming $old_name to $new_name")
+        rename!(mdf, old_name => new_name)
+    else
+        println("⚠️  Column $old_name not found in DataFrame")
+    end
+end
+println("📊 Final column names: ", names(mdf))
+
+# ---------------------- Export Data ---------------------- #
+CSV.write(metrics_file, mdf;
+    transform=(c, v) -> v === nothing ? missing : v)
+CSV.write(agents_file, adf;
+    transform=(c, v) -> v === nothing ? missing : v)
 
 println("✅ Simulation complete for architecture: $architecture")
-println("📁 Results saved to: $(metrics_file)")
+println("📁 Model metrics saved to: $(metrics_file)")
+println("📁 Agent data saved to: $(agents_file)")

@@ -510,73 +510,72 @@ end
 ################################################################################
 
 @testset "Combat Rule (Cα)" begin
-  # rng_seed = 0x20240622
 
-  # ##########################################################################
-  # # 1. Cannot attack same-tribe target
-  # ##########################################################################
-  # model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
-  #   enable_combat=true, enable_culture=false,
-  #   culture_tag_length=3, combat_limit=50,
-  #   vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
-  #   initial_sugar_dist=(5, 5), growth_rate=0)
-  # model.sugar_values .= 0.0
+  ##########################################################################
+  # 1. Cannot attack same-tribe target
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+    enable_combat=true, enable_culture=false,
+    culture_tag_length=3, combat_limit=50,
+    vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
+    initial_sugar_dist=(5, 5), growth_rate=0)
+  model.sugar_values .= 0.0
 
-  # attacker = add_custom_agent!(model, (2, 2); sugar=10, culture_bits=[false, false, true], metabolism=1)  # blue, metabolism 1
-  # victim = add_custom_agent!(model, (4, 2); sugar=5, culture_bits=[false, true, false], vision=0, metabolism=1)   # red but stronger, cannot see attacker
+  attacker = add_custom_agent!(model, (2, 2); sugar=10, culture_bits=[false, false, true], metabolism=1)  # blue, metabolism 1
+  victim = add_custom_agent!(model, (4, 2); sugar=5, culture_bits=[false, true, false], vision=0, metabolism=1)   # red but stronger, cannot see attacker
 
-  # Sugarscape.combat!(model)
+  Sugarscape.combat!(model)
 
-  # # Both agents should still exist, no sugar stolen
-  # @test length(allagents(model)) == 2
-  # @test attacker.sugar == 10  # unchanged
-  # @test victim.sugar == 5
+  # Both agents should still exist, no sugar stolen
+  @test length(allagents(model)) == 2
+  @test attacker.sugar == 10  # unchanged
+  @test victim.sugar == 5
 
-  # ##########################################################################
-  # # 2. Cannot attack stronger other-tribe target
-  # ##########################################################################
-  # model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
-  #   enable_combat=true, enable_culture=false,
-  #   culture_tag_length=3, combat_limit=50,
-  #   vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
-  #   initial_sugar_dist=(5, 5), growth_rate=0)
-  # model.sugar_values .= 0.0
+  ##########################################################################
+  # 2. Cannot attack stronger other-tribe target
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+    enable_combat=true, enable_culture=false,
+    culture_tag_length=3, combat_limit=50,
+    vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
+    initial_sugar_dist=(5, 5), growth_rate=0)
+  model.sugar_values .= 0.0
 
-  # attacker = add_custom_agent!(model, (2, 2); sugar=5, culture_bits=[false, false, true], vision=3, metabolism=1)   # blue
-  # victim = add_custom_agent!(model, (4, 2); sugar=10, culture_bits=[true, true, false], vision=0, metabolism=1)    # red but stronger, cannot see attacker
+  attacker = add_custom_agent!(model, (2, 2); sugar=5, culture_bits=[false, false, true], vision=3, metabolism=1)   # blue
+  victim = add_custom_agent!(model, (4, 2); sugar=10, culture_bits=[true, true, false], vision=0, metabolism=1)    # red but stronger, cannot see attacker
 
-  # Sugarscape.combat!(model)
+  Sugarscape.combat!(model)
 
-  # @test length(allagents(model)) == 2  # nobody killed
-  # @test attacker.sugar == 5            # unchanged
+  @test length(allagents(model)) == 2  # nobody killed
+  @test attacker.sugar == 5            # unchanged
 
-  # ##########################################################################
-  # # 3. Successful attack on weaker other-tribe target
-  # ##########################################################################
-  # model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
-  #   enable_combat=true, enable_culture=false,
-  #   culture_tag_length=3, combat_limit=50,
-  #   vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
-  #   initial_sugar_dist=(5, 5), growth_rate=0)
-  # model.sugar_values .= 0.0
+  ##########################################################################
+  # 3. Successful attack on weaker other-tribe target
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(5, 5), N=0, seed=rng_seed,
+    enable_combat=true, enable_culture=false,
+    culture_tag_length=3, combat_limit=50,
+    vision_dist=(3, 3), metabolic_rate_dist=(1, 1),
+    initial_sugar_dist=(5, 5), growth_rate=0)
+  model.sugar_values .= 0.0
 
-  # # Place sugar at victim location for additional reward
-  # model.sugar_values[4, 2] = 4.0
+  # Place sugar at victim location for additional reward
+  model.sugar_values[4, 2] = 4.0
 
-  # attacker = add_custom_agent!(model, (2, 2); sugar=10, culture_bits=[false, false, true], metabolism=1)  # blue, metabolism 1
-  # victim = add_custom_agent!(model, (4, 2); sugar=6, culture_bits=[true, true, false], metabolism=1)   # red, weaker, metabolism 1
+  attacker = add_custom_agent!(model, (2, 2); sugar=10, culture_bits=[false, false, true], metabolism=1)  # blue, metabolism 1
+  victim = add_custom_agent!(model, (4, 2); sugar=6, culture_bits=[true, true, false], metabolism=1)   # red, weaker, metabolism 1
 
-  # pre_kills = model.combat_kills
+  pre_kills = model.combat_kills
 
-  # Sugarscape.combat!(model)
+  Sugarscape.combat!(model)
 
-  # @test model.combat_kills == pre_kills + 1
-  # @test length(allagents(model)) == 1                       # victim removed
+  @test model.combat_kills == pre_kills + 1
+  @test length(allagents(model)) == 1                       # victim removed
 
-  # atk = first(allagents(model))
-  # expected_sugar = 10 + 6 + 4 - 1  # initial + stolen + site - metabolism
-  # @test isapprox(atk.sugar, expected_sugar; atol=1e-8)
-  # @test atk.pos == (4, 2)            # moved into victim site
+  atk = first(allagents(model))
+  expected_sugar = 10 + 6 + 4 - 1  # initial + stolen + site - metabolism
+  @test isapprox(atk.sugar, expected_sugar; atol=1e-8)
+  @test atk.pos == (4, 2)            # moved into victim site
 end
 
 ################################################################################
@@ -769,57 +768,57 @@ end
 
 @testset "Disease Rule (E)" begin
 
-  # # Helper disease bitvector
-  # disease = BitVector([true, false, true])
+  # Helper disease bitvector
+  disease = BitVector([true, false, true])
 
-  # ##########################################################################
-  # # 1. Immunity substring – no sugar penalty
-  # ##########################################################################
-  # model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
-  #   enable_disease=true, disease_immunity_length=6,
-  #   growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
+  ##########################################################################
+  # 1. Immunity substring – no sugar penalty
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+    enable_disease=true, disease_immunity_length=6,
+    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
 
-  # immune_bits = BitVector([false, true, false, true, false, true])   # disease is subseq
-  # ag = add_custom_agent!(model, (2, 2); sugar=20)
-  # ag.immunity = copy(immune_bits)
-  # push!(ag.diseases, disease)
+  immune_bits = BitVector([false, true, false, true, false, true])   # disease is subseq
+  ag = add_custom_agent!(model, (2, 2); sugar=20)
+  ag.immunity = copy(immune_bits)
+  push!(ag.diseases, disease)
 
-  # Sugarscape.immune_response!(model)
-  # @test ag.sugar == 20                       # no penalty
+  Sugarscape.immune_response!(model)
+  @test ag.sugar == 20                       # no penalty
 
-  # ##########################################################################
-  # # 2. Immune response flips bit when not immune (penalty once)
-  # ##########################################################################
-  # model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
-  #   enable_disease=true, disease_immunity_length=6,
-  #   growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
+  ##########################################################################
+  # 2. Immune response flips bit when not immune (penalty once)
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+    enable_disease=true, disease_immunity_length=6,
+    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
 
-  # ag = add_custom_agent!(model, (2, 2); sugar=20)
-  # before_imm = BitVector([false, false, false, false, false, false])
-  # ag.immunity = copy(before_imm)
-  # push!(ag.diseases, disease)
+  ag = add_custom_agent!(model, (2, 2); sugar=20)
+  before_imm = BitVector([false, false, false, false, false, false])
+  ag.immunity = copy(before_imm)
+  push!(ag.diseases, disease)
 
-  # Sugarscape.immune_response!(model)
+  Sugarscape.immune_response!(model)
 
-  # # One unit sugar penalty applied
-  # @test ag.sugar == 19
-  # # Exactly one bit should have flipped in the immunity string
-  # changed = sum(before_imm .!= ag.immunity)
-  # @test changed == 1
-  # # Disease is still not a full substring after single flip
-  # @test !Sugarscape._subseq(disease, ag.immunity)
+  # One unit sugar penalty applied
+  @test ag.sugar == 19
+  # Exactly one bit should have flipped in the immunity string
+  changed = sum(before_imm .!= ag.immunity)
+  @test changed == 1
+  # Disease is still not a full substring after single flip
+  @test !Sugarscape._subseq(disease, ag.immunity)
 
-  # ##########################################################################
-  # # 3. Disease transmission adds disease to neighbour
-  # ##########################################################################
-  # model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
-  #   enable_disease=true, disease_immunity_length=6,
-  #   growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
+  ##########################################################################
+  # 3. Disease transmission adds disease to neighbour
+  ##########################################################################
+  model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed,
+    enable_disease=true, disease_immunity_length=6,
+    growth_rate=0, vision_dist=(1, 1), metabolic_rate_dist=(0, 0), initial_sugar_dist=(0, 0))
 
-  # src = add_custom_agent!(model, (2, 2); sugar=10)
-  # dst = add_custom_agent!(model, (2, 3); sugar=10)
-  # push!(src.diseases, disease)
+  src = add_custom_agent!(model, (2, 2); sugar=10)
+  dst = add_custom_agent!(model, (2, 3); sugar=10)
+  push!(src.diseases, disease)
 
-  # Sugarscape.disease_transmission!(model)
-  # @test any(isequal(disease), dst.diseases)
+  Sugarscape.disease_transmission!(model)
+  @test any(isequal(disease), dst.diseases)
 end

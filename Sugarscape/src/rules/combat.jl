@@ -86,18 +86,16 @@ end
 Construct the context sent to the LLM for combat decisions.  It
 includes a list of eligible target agents (id, position and sugar).
 """
-function build_combat_context(agent, model)
+function build_combat_context(agent, model, candidates)
   targets = Vector{Dict{String,Any}}()
-  for pos in visible_positions(agent, model)
-    occs = get_agents_at_position(model, pos)
-    length(occs) == 1 || continue
-    victim = first(occs)
-    culturally_different(agent, victim) || continue
-    victim.sugar < agent.sugar || continue
+  for candidate in candidates
+    # candidate is a tuple: (position, agent, sugar, distance)
+    pos, target_agent, sugar, distance = candidate
     push!(targets, Dict(
-      "id" => victim.id,
-      "position" => victim.pos,
-      "sugar" => victim.sugar,
+      "id" => target_agent.id,
+      "position" => target_agent.pos,
+      "sugar" => target_agent.sugar,
+      "culture" => target_agent.culture
     ))
   end
   return Dict(
@@ -105,6 +103,8 @@ function build_combat_context(agent, model)
     "position" => agent.pos,
     "sugar" => agent.sugar,
     "vision" => agent.vision,
+    "metabolism" => agent.metabolism,
+    "culture" => agent.culture,
     "eligible_targets" => targets,
   )
 end
@@ -135,16 +135,21 @@ function maybe_combat!(attacker, model)
     reward == 0.0 && continue
 
     exposed_to_retaliation(model; attacker, target_pos=pos,
-                           future=attacker.sugar + reward) && continue
+      future=attacker.sugar + reward) && continue
 
     dist = euclidean_distance(attacker.pos, pos)
     push!(candidates, (pos, victim, reward, dist))
   end
 
   if model.use_llm_decisions
-    decision = get_decision(attacker, model)
-    should_attack = decision.combat
-    target_id = decision.combat_target
+    # combat context
+    combat_context = build_combat_context(attacker, model, candidates)
+    # get combat decision
+    combat_decision = SugarscapeLLM.get_combat_decision(combat_context, model)
+
+    println("Agent $(attacker.id) Combat: ", combat_decision.reasoning)
+    should_attack = combat_decision.combat
+    target_id = combat_decision.combat_target
 
     valid = should_attack && target_id !== nothing &&
             any(c -> c[2].id == target_id, candidates)

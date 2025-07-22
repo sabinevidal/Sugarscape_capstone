@@ -28,6 +28,8 @@ include("rules/inheritance.jl")
 
 # Order of includes matters if files depend on each other.
 include("utils/metrics.jl")
+include("utils/metrics_sets.jl")
+include("visualisation/analytics.jl")
 
 # ---------------------------------------------------------------------------
 #  New split model logic: shared utilities + core rules + LLM-enabled logic  #
@@ -71,17 +73,25 @@ export SugarscapeAgent
 export sugarscape
 
 # Export Big Five related functions
-export BigFive, BigFiveProcessor
+# export BigFive, BigFiveProcessor
 export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive, build_big_five_movement_context
 export get_big_five_system_prompt, get_big_five_reproduction_system_prompt, get_big_five_culture_system_prompt, get_big_five_movement_system_prompt, get_big_five_credit_lender_offer_system_prompt, get_big_five_credit_lender_respond_system_prompt, get_big_five_credit_borrower_request_system_prompt, get_big_five_credit_borrower_respond_system_prompt
 
 # Export Schwartz Values related functions
-export SchwartzValues, SchwartzValuesProcessor
+# export SchwartzValues, SchwartzValuesProcessor
 export SchwartzValuesSugarscapeAgent, build_schwartz_values_movement_context, build_schwartz_values_reproduction_context
 export get_schwartz_values_system_prompt, get_schwartz_values_movement_system_prompt, get_schwartz_values_reproduction_system_prompt
 export process_ess_schwartz_values, load_processed_schwartz_values
 
 export gini_coefficient, morans_i
+
+# Export metrics sets
+export reproduction_metrics, combat_metrics, culture_metrics, credit_metrics
+export reproduction_combat_metrics, reproduction_culture_metrics, credit_reproduction_metrics
+export culture_credit_metrics, full_stack_metrics
+
+# Export analytics
+export Analytics, export_to_csv, create_analytics_pipeline
 
 # Export visualization and recording functions
 export run_sugarscape_visualization

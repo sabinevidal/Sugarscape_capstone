@@ -20,8 +20,6 @@ using StatsBase
 using Random
 using Dates
 
-# Include the metrics module to use existing functions
-include("../utils/metrics.jl")
 
 # =============================================================================
 # CORE ANALYTICS PIPELINE
@@ -50,7 +48,7 @@ mutable struct Analytics
 
   function Analytics(;
     export_dir::String="data/results",
-    export_prefix::String="sugarscape_$(Dates.format(now(), "yyyymmdd_HHMMSS"))",
+    export_prefix::String="sugarscape_$(Dates.format(now(), "yymmdd_HHMM"))",
     collect_individual_data::Bool=false,
     collect_distributions::Bool=true,
     collect_network_metrics::Bool=true
@@ -249,22 +247,16 @@ end
 Calculate key wealth percentiles (25th, 50th, 75th, 90th, 95th, 99th).
 """
 function calculate_wealth_percentiles(model)
-  agents_list = collect(allagents(model))
-  percentiles = [25, 50, 75, 90, 95, 99]
-
-  result = Dict()
-  for p in percentiles
-    result["p$p"] = 0.0  # Default value
-  end
-
-  if length(agents_list) > 0
-    wealths = [a.sugar for a in agents_list]
-    for p in percentiles
-      result["p$p"] = percentile(wealths, p)
-    end
-  end
-
-  return result
+  ws = [a.sugar for a in allagents(model)]
+  length(ws) == 0 && return Dict(:p25 => 0.0, :p50 => 0.0, :p75 => 0.0, :p90 => 0.0, :p95 => 0.0, :p99 => 0.0)
+  return Dict(
+    :p25 => percentile(ws, 25),
+    :p50 => percentile(ws, 50),
+    :p75 => percentile(ws, 75),
+    :p90 => percentile(ws, 90),
+    :p95 => percentile(ws, 95),
+    :p99 => percentile(ws, 99)
+  )
 end
 
 """
@@ -278,40 +270,40 @@ function calculate_pareto_alpha(model)
   length(agents_list) < 10 && return NaN  # Need sufficient data
 
   wealths = [a.sugar for a in agents_list]
-  
+
   # Remove zero or negative wealths
   positive_wealths = filter(w -> w > 0, wealths)
   length(positive_wealths) < 10 && return NaN
-  
+
   # Sort in descending order and take top 20%
   sorted_wealths = sort(positive_wealths, rev=true)
   n_tail = max(5, div(length(sorted_wealths), 5))  # At least 5, or 20% of data
   tail_wealths = sorted_wealths[1:n_tail]
-  
+
   # Use minimum value in tail as threshold (proper Hill estimator)
   x_min = minimum(tail_wealths)
-  
+
   # Handle edge case where all tail values are the same
   if maximum(tail_wealths) <= x_min + 1e-10
     return NaN  # No variation in tail, Pareto doesn't apply
   end
-  
+
   # Hill estimator: α = 1 / mean(log(X_i / X_min))
   log_ratios = log.(tail_wealths ./ x_min)
   mean_log_ratio = mean(log_ratios)
-  
+
   # Avoid division by zero
   if abs(mean_log_ratio) < 1e-10
     return NaN
   end
-  
+
   alpha = 1.0 / mean_log_ratio
-  
+
   # Return NaN for unrealistic values (Pareto α should typically be > 1)
   if alpha <= 0 || !isfinite(alpha)
     return NaN
   end
-  
+
   return alpha
 end
 
@@ -417,7 +409,20 @@ end
 """
     calculate_lifespan_inequality(model)
 
-Calculate inequality in lifespans using Gini coefficient.
+Compute the inequality in agent lifespans using the Gini coefficient.
+
+This function measures how unevenly lifespans are distributed among all agents
+currently in the model. It does so by extracting each agent’s `age` field and
+calculating the Gini coefficient — a standard metric for inequality ranging
+from 0 (perfect equality) to 1 (maximum inequality).
+
+This metric is particularly useful for evaluating differences in survival
+outcomes across agent populations, especially when testing the effects of
+heterogeneous traits, resource access, or decision-making strategies.
+
+Returns:
+- A Float64 representing the Gini coefficient of agent ages.
+  Returns 0.0 if no agents are present.
 """
 function calculate_lifespan_inequality(model)
   agents_list = collect(allagents(model))
@@ -430,7 +435,12 @@ end
 """
     calculate_age_distribution_moments(model)
 
-Calculate the first four moments of the age distribution.
+Compute the first four statistical moments (mean, variance, skewness, kurtosis) of the age distribution for all agents currently in the model.
+
+This function extracts the `age` field from each agent, then calculates and returns a dictionary of descriptive statistics. These moments are useful for analyzing the shape and spread of the population's age structure, identifying aging trends, and comparing demographic effects across scenarios.
+
+Returns:
+- A `Dict{String, Float64}` with keys: "mean", "variance", "skewness", and "kurtosis". All values are 0.0 if no agents are present.
 """
 function calculate_age_distribution_moments(model)
   agents_list = collect(allagents(model))
@@ -456,7 +466,12 @@ end
 """
     calculate_cultural_entropy(model)
 
-Calculate cultural entropy across all agents.
+Compute the entropy of cultural patterns across all agents in the model.
+
+This function measures the diversity and unpredictability of cultural configurations by counting the frequency of unique cultural bit vectors among agents and applying the Shannon entropy formula. High entropy indicates a highly diverse or fragmented culture, while low entropy suggests homogeneity. Returns 0.0 if culture is disabled or no agents are present.
+
+Returns:
+- A `Float64` representing the Shannon entropy of cultural patterns among agents.
 """
 function calculate_cultural_entropy(model)
   !model.enable_culture && return 0.0
@@ -490,7 +505,15 @@ end
 """
     calculate_cultural_diversity(model)
 
-Calculate cultural diversity metrics.
+Calculate metrics describing the diversity of cultural patterns among agents.
+
+This function counts the number of unique cultural bit vectors, computes the maximum possible diversity given the tag length, and calculates the ratio of observed to possible cultures. Useful for tracking cultural convergence, fragmentation, or the effect of culture-related model parameters.
+
+Returns:
+- A `Dict` with keys:
+    - "unique_cultures": Number of distinct cultural patterns present
+    - "max_possible": Theoretical maximum number of cultures (2^tag_length)
+    - "diversity_ratio": Fraction of possible cultures observed (0.0–1.0)
 """
 function calculate_cultural_diversity(model)
   # Default values
@@ -536,7 +559,17 @@ end
 """
     calculate_credit_network_metrics(model)
 
-Calculate network metrics for credit relationships.
+Compute summary statistics for the network of credit (loan) relationships among agents.
+
+This function constructs a network where nodes are agents and edges represent lending/borrowing relationships. It calculates node and edge counts, density, average and maximum degree, and always returns a dictionary with all keys present (even if credit is disabled or no agents exist). Useful for analyzing the structure and evolution of credit networks in the model.
+
+Returns:
+- A `Dict` with keys:
+    - "n_nodes": Number of agents (nodes)
+    - "n_edges": Number of unique lender-borrower pairs (edges)
+    - "density": Network density (0.0–1.0)
+    - "avg_degree": Mean degree per node
+    - "max_degree": Maximum degree among all nodes
 """
 function calculate_credit_network_metrics(model)
   # Always return consistent keys, even when credit is disabled or no agents exist
@@ -567,7 +600,7 @@ function calculate_credit_network_metrics(model)
 
   for agent in agents_list
     node_degrees[agent.id] = 0
-    
+
     # Process loans given by this agent (agent is lender)
     for (borrower_id, loans_to_borrower) in agent.loans_given
       for loan in loans_to_borrower
@@ -599,7 +632,15 @@ end
 """
     calculate_combat_network_metrics(model)
 
-Calculate network metrics for combat relationships.
+Compute summary statistics for potential conflict (combat) relationships among agents, based on cultural differences.
+
+This function examines all agent pairs, counts those with nonzero Hamming distance in culture (potential conflicts), and computes the average cultural distance. Returns a dictionary with all keys present, even if combat is disabled or no agents exist. Useful for understanding the potential for conflict and the cultural landscape of the agent population.
+
+Returns:
+- A `Dict` with keys:
+    - "potential_conflicts": Number of agent pairs with cultural differences
+    - "conflict_rate": Fraction of pairs with potential conflict (0.0–1.0)
+    - "avg_cultural_distance": Mean Hamming distance across all pairs
 """
 function calculate_combat_network_metrics(model)
   # Always return consistent keys, even when combat is disabled or no agents exist
@@ -654,7 +695,12 @@ end
 """
     hamming_distance(culture1, culture2)
 
-Calculate Hamming distance between two cultural bit vectors.
+Calculate the Hamming distance between two cultural bit vectors.
+
+This function returns the number of positions at which the corresponding elements of two culture arrays differ. If the vectors are of unequal length, returns their combined length as a penalty. Used to quantify cultural similarity or difference between agents.
+
+Returns:
+- An `Int` representing the number of differing bits (or sum of lengths if vectors differ in size).
 """
 function hamming_distance(culture1, culture2)
   length(culture1) != length(culture2) && return length(culture1) + length(culture2)
@@ -668,7 +714,15 @@ end
 """
     calculate_resource_depletion(model)
 
-Calculate resource depletion metrics.
+Compute metrics describing the depletion of environmental resources (e.g., sugar) in the model.
+
+This function sums the current and maximum possible sugar on the landscape, then calculates the depletion rate as the fraction of resource used. Useful for tracking resource scarcity and ecological pressure on agents.
+
+Returns:
+- A `Dict` with keys:
+    - "current_sugar": Total sugar currently available
+    - "max_sugar": Total maximum sugar capacity
+    - "depletion_rate": Fraction of resource depleted (0.0–1.0)
 """
 function calculate_resource_depletion(model)
   current_sugar = sum(model.sugar_values)
@@ -686,7 +740,12 @@ end
 """
     calculate_spatial_segregation(model)
 
-Calculate spatial segregation using Moran's I.
+Compute spatial segregation of agents using Moran's I statistic.
+
+This function calls `morans_i(model)` to measure the degree of spatial autocorrelation in agent distribution. If calculation fails (e.g., due to insufficient data), returns 0.0. Useful for detecting clustering or segregation in the spatial arrangement of agents.
+
+Returns:
+- A `Float64` representing Moran's I for the current agent distribution (0.0 if not computable).
 """
 function calculate_spatial_segregation(model)
   try
@@ -699,7 +758,12 @@ end
 """
     calculate_clustering_coefficient(model)
 
-Calculate clustering coefficient for spatial distribution.
+Compute the average local clustering coefficient for agents based on their spatial neighbors.
+
+For each agent with at least two neighbors (distance 1), this function counts the number of connections among neighbors and computes the ratio of actual to possible connections, then averages across all such agents. Returns 0.0 if fewer than three agents are present. Useful for analyzing local group structure or spatial cohesion.
+
+Returns:
+- A `Float64` representing the average local clustering coefficient (0.0 if not computable).
 """
 function calculate_clustering_coefficient(model)
   agents_list = collect(allagents(model))
@@ -737,7 +801,12 @@ end
 """
     calculate_disease_prevalence(model)
 
-Calculate disease prevalence metrics.
+Compute the prevalence of disease among agents in the model.
+
+This function calculates the fraction of agents currently infected with at least one disease. Returns 0.0 if disease is disabled or no agents are present. Useful for tracking epidemic spread and evaluating disease control strategies.
+
+Returns:
+- A `Float64` representing the fraction of infected agents (0.0–1.0).
 """
 function calculate_disease_prevalence(model)
   !model.enable_disease && return 0.0
@@ -752,7 +821,14 @@ end
 """
     calculate_disease_diversity(model)
 
-Calculate disease diversity metrics.
+Calculate metrics describing the diversity of diseases present among agents.
+
+Counts the number of unique disease patterns (bit vectors) and the number of agents infected, returning a dictionary with these statistics. Useful for analyzing pathogen diversity and the complexity of the disease landscape.
+
+Returns:
+- A `Dict` with keys:
+    - "unique_diseases": Number of distinct disease patterns
+    - "infected_agents": Number of agents currently infected
 """
 function calculate_disease_diversity(model)
   # Default values
@@ -793,7 +869,12 @@ end
 """
     calculate_total_credit_outstanding(model)
 
-Calculate total credit outstanding in the system.
+Compute the total amount of outstanding credit (loan principal) in the agent population.
+
+Sums the principal of all loans currently given by agents, returning the aggregate value. Returns 0.0 if credit is disabled. Useful for monitoring the scale and growth of the credit economy in the simulation.
+
+Returns:
+- A `Float64` representing the sum of all outstanding loan principal among agents.
 """
 function calculate_total_credit_outstanding(model)
   !model.enable_credit && return 0.0
@@ -1077,7 +1158,7 @@ Calculate mean and standard deviation of Big Five traits.
 """
 function calculate_trait_summary_stats(model)
   agents_list = collect(allagents(model))
-  
+
   # Define default return structure for Big Five traits
   default_result = Dict{String,Float64}(
     "mean_openness" => 0.0,
@@ -1091,7 +1172,7 @@ function calculate_trait_summary_stats(model)
     "mean_neuroticism" => 0.0,
     "std_neuroticism" => 0.0
   )
-  
+
   if length(agents_list) == 0
     return default_result
   end
@@ -1113,7 +1194,7 @@ function calculate_trait_summary_stats(model)
         push!(trait_values, getfield(a.traits, trait))
       end
     end
-    
+
     if length(trait_values) > 0
       result["mean_$trait"] = mean(trait_values)
       result["std_$trait"] = length(trait_values) > 1 ? std(trait_values) : 0.0
