@@ -28,7 +28,7 @@ function sugarscape(;
   metabolic_rate_dist=(1, 4),
   vision_dist=(1, 6),
   max_age_dist=(60, 100),
-  max_sugar=5,
+  max_sugar=4,
 
   # reproduction
   enable_reproduction::Bool=false,
@@ -253,12 +253,14 @@ function sugarscape(;
     loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
     diseases = BitVector[]
     immunity = falses(model.disease_immunity_length)
+    last_partner_id = Int[]
+    last_credit_partner = Int[]
 
     # Create agent arguments for add_agent! (pos, AgentType, model, ...args)
     agent_args = (
       vision, metabolism, sugar, age, max_age, sex, has_reproduced,
       sugar, children, total_inheritance_received, BitVector(culture),
-      loans_given, loans_owed, diseases, immunity, nothing, nothing
+      loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner
     )
 
     if use_big_five

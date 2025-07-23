@@ -219,10 +219,12 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
     diseases = BitVector[]
     immunity = falses(model.disease_immunity_length)
+    last_partner_id = Int[]
+    last_credit_partner = Int[]
 
     add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
       sex, has_reproduced, sugar, children, total_inheritance_received,
-      culture, loans_given, loans_owed, diseases, immunity, nothing, nothing)
+      culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
   end
 
   return model
@@ -272,6 +274,17 @@ end
 # Agent-level step                                           |
 # ----------------------------------------------------------------------------
 function _agent_step_llm!(agent, model)
+  # Reset per-step tracking arrays and flags at the beginning of each step
+  if hasproperty(agent, :last_partner_id)
+    empty!(agent.last_partner_id)
+  end
+  if hasproperty(agent, :last_credit_partner)
+    empty!(agent.last_credit_partner)
+  end
+  if hasproperty(agent, :has_reproduced)
+    agent.has_reproduced = false
+  end
+
   # ---------------------------------------------------------
   # Movement Phase
   # Either combat or movement
@@ -337,14 +350,18 @@ function _agent_step_llm!(agent, model)
 
   if model.enable_reproduction && agent.has_reproduced
     push!(model.last_actions, "reproduce")
-    if hasproperty(agent, :last_partner_id) && !isnothing(agent.last_partner_id)
-      push!(model.last_trait_interactions, (agent.id, agent.last_partner_id))
+    if hasproperty(agent, :last_partner_id) && !isempty(agent.last_partner_id)
+      for partner_id in agent.last_partner_id
+        push!(model.last_trait_interactions, (agent.id, partner_id))
+      end
     end
   end
 
-  if model.enable_credit && hasproperty(agent, :last_credit_partner) && !isnothing(agent.last_credit_partner)
+  if model.enable_credit && hasproperty(agent, :last_credit_partner) && !isempty(agent.last_credit_partner)
     push!(model.last_actions, "credit")
-    push!(model.last_trait_interactions, (agent.id, agent.last_credit_partner))
+    for partner_id in agent.last_credit_partner
+      push!(model.last_trait_interactions, (agent.id, partner_id))
+    end
   end
 
 end

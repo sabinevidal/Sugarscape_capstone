@@ -65,6 +65,8 @@ function death_replacement!(agent, model)
     loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
     diseases = BitVector[]
     immunity = falses(model.disease_immunity_length)
+    last_partner_id = Int[]
+    last_credit_partner = Int[]
 
     # Check if this is a Big Five model and create appropriate agent type
     if model.use_big_five
@@ -81,12 +83,12 @@ function death_replacement!(agent, model)
 
         add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
           sex, has_reproduced, sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity, traits)
+          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, traits)
       else
         # Create a regular SugarscapeAgent
         add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
           sex, has_reproduced, sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity, nothing, nothing)
+          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
       end
     elseif model.use_schwartz_values
       if isa(agent, SchwartzValuesSugarscapeAgent) && hasproperty(model, :schwartz_values_mvn_dist) && !isnothing(model.schwartz_values_mvn_dist)
@@ -107,12 +109,12 @@ function death_replacement!(agent, model)
 
         add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
           sex, has_reproduced, sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity, schwartz_values)
+          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, schwartz_values)
       else
         # Create a regular SugarscapeAgent
         add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
           sex, has_reproduced, sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity, nothing, nothing)
+          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
       end
     end
   end

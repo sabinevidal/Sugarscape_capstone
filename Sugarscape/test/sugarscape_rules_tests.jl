@@ -736,7 +736,7 @@ end
   ##########################################################################
   model = Sugarscape.sugarscape(; dims=(3, 3), N=0, seed=rng_seed)
   agent = add_custom_agent!(model, (1, 1); sugar=30, initial_sugar=25, sex=:female, age=30)
-  will_borrow_result = Sugarscape.will_borrow(agent, model)
+  will_borrow_result = will_borrow(agent, model)
   @test !will_borrow_result.will_borrow
 
   ##########################################################################

@@ -124,6 +124,8 @@ function create_child(parent1, parent2, pos, model)
   loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
   diseases = BitVector[]
   immunity = falses(model.disease_immunity_length)
+  last_partner_id = Int[]
+  last_credit_partner = Int[]
 
   # Create child based on whether Big Five traits are enabled
   if model.use_big_five
@@ -157,9 +159,9 @@ function create_child(parent1, parent2, pos, model)
       universalism=values_row.universalism
     )
 
-    child = add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, child_values)
+    child = add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, child_values)
   else
-    child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, nothing, nothing)
+    child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
   end
 
   # Track birth in model statistics
@@ -228,6 +230,8 @@ function attempt_reproduction!(agent, partner, model)
   free_cells = union(collect(empty_nearby_positions(agent, model)), collect(empty_nearby_positions(partner, model)))
   isempty(free_cells) && return nothing
 
+  println("Step: $(abmtime(model)): Agent $(agent.id) Reproduction: $(partner.id)")
+
   child_pos = rand(abmrng(model), free_cells)
   child_id = create_child(agent, partner, child_pos, model)
 
@@ -236,6 +240,10 @@ function attempt_reproduction!(agent, partner, model)
 
   agent.has_reproduced = true
   partner.has_reproduced = true
+
+  # Add partner IDs to track reproduction partners in this step
+  push!(agent.last_partner_id, partner.id)
+  push!(partner.last_partner_id, agent.id)
 
   # Increment per-step reproduction counters stored in the model
   model.reproduction_counts_step[agent.id] = get(model.reproduction_counts_step, agent.id, 0) + 1

@@ -68,33 +68,35 @@ include("visualisation/performance.jl")
 # AI dashboards
 include("visualisation/ai_dashboards.jl")
 
-# Public API
-export SugarscapeAgent
-export sugarscape
+# Core Types and Functions
+export SugarscapeAgent, sugarscape
 
-# Export Big Five related functions
-# export BigFive, BigFiveProcessor
+# Psychological Dimensions
+## Big Five
 export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive, build_big_five_movement_context
-export get_big_five_system_prompt, get_big_five_reproduction_system_prompt, get_big_five_culture_system_prompt, get_big_five_movement_system_prompt, get_big_five_credit_lender_offer_system_prompt, get_big_five_credit_lender_respond_system_prompt, get_big_five_credit_borrower_request_system_prompt, get_big_five_credit_borrower_respond_system_prompt
+export get_big_five_system_prompt, get_big_five_reproduction_system_prompt, get_big_five_culture_system_prompt
+export get_big_five_movement_system_prompt, get_big_five_credit_lender_offer_system_prompt
+export get_big_five_credit_lender_respond_system_prompt, get_big_five_credit_borrower_request_system_prompt
 
-# Export Schwartz Values related functions
-# export SchwartzValues, SchwartzValuesProcessor
+export get_big_five_credit_borrower_respond_system_prompt
+
+## Schwartz Values
 export SchwartzValuesSugarscapeAgent, build_schwartz_values_movement_context, build_schwartz_values_reproduction_context
-export get_schwartz_values_system_prompt, get_schwartz_values_movement_system_prompt, get_schwartz_values_reproduction_system_prompt
-export process_ess_schwartz_values, load_processed_schwartz_values
+export get_schwartz_values_system_prompt, get_schwartz_values_movement_system_prompt
+export get_schwartz_values_reproduction_system_prompt, process_ess_schwartz_values, load_processed_schwartz_values
 
+# Utility Functions
 export gini_coefficient, morans_i
 
-# Export metrics sets
+# Metrics
 export reproduction_metrics, combat_metrics, culture_metrics, credit_metrics
 export reproduction_combat_metrics, reproduction_culture_metrics, credit_reproduction_metrics
 export culture_credit_metrics, full_stack_metrics
 
-# Export analytics
+# Analytics
 export Analytics, export_to_csv, create_analytics_pipeline
 
 # Export visualization and recording functions
-export run_sugarscape_visualization
 export record_wealth_hist_animation
 export create_custom_dashboard
 export create_reproduction_dashboard
@@ -102,7 +104,6 @@ export create_dashboard
 export create_simple_dashboard
 
 # Export Movement functions
-export build_movement_context
 
 # Export reproduction functions
 export reproduction!, is_fertile, is_fertile_by_age
@@ -123,11 +124,11 @@ export disease_transmission!, immune_response!
 export credit!, clear_loans_on_death!, will_borrow, can_lend
 
 # Export LLM integration functions
-export get_decision, try_llm_move!, llm_move!
+export get_decision
 export LLMDecision
 export _agent_step_llm!, _model_step_llm!
 
-# export decision helpers
+# Decision Helpers
 export get_reproduction_decision, get_movement_decision, get_combat_decision
 
 # Export testing functions

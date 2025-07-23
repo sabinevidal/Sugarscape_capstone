@@ -170,7 +170,7 @@ function create_dashboard()
 
   # Update agent state display - access agents directly from model
   on(abmobs.model) do model
-    current_step[] += 1
+    current_step[] = abmtime(model)
     agents_data = []
 
     # Get individual agent data directly from the model
@@ -417,7 +417,7 @@ function create_simple_dashboard()
   initial_model = sugarscape(;
     dims=(50, 50),
     N=100,
-    enable_reproduction=false,
+    enable_reproduction=true,
     enable_culture=false,
     enable_combat=false,
     enable_pollution=false,
@@ -464,18 +464,19 @@ function create_simple_dashboard()
     figure=(; size=(800, 600))
   )
 
-  # Add only a step counter
+  # Add step counter and agent count
   current_step = Observable(0)
-  step_text = Observable("Step: 0")
+  step_and_agent_text = Observable("Step: 0 | Agents: 0")
 
-  # Update step counter
+  # Update step counter and agent count
   on(abmobs.model) do model
-    current_step[] += 1
-    step_text[] = "Step: $(current_step[])"
+    current_step[] = abmtime(model)
+    agent_count = length(allagents(model))
+    step_and_agent_text[] = "Step: $(current_step[]) | Agents: $(agent_count)"
   end
 
-  # Display step counter at the top
-  Label(fig[0, 1], step_text, tellwidth=false, font=:bold, fontsize=16)
+  # Display step counter and agent count at the top
+  Label(fig[0, 1], step_and_agent_text, tellwidth=false, font=:bold, fontsize=16)
 
   # Initialize the display
   notify(abmobs.model)

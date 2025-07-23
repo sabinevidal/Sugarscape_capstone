@@ -498,6 +498,14 @@ function make_loan!(lender, borrower, amt::Float64, model)
     loan = Loan(lender.id, amt, due, model.interest_rate)
     push!(get!(lender.loans_given, borrower.id, Loan[]), loan)
     push!(get!(borrower.loans_owed, lender.id, Loan[]), loan)
+    
+    # Track credit partners for this step
+    if hasproperty(lender, :last_credit_partner)
+        push!(lender.last_credit_partner, borrower.id)
+    end
+    if hasproperty(borrower, :last_credit_partner)
+        push!(borrower.last_credit_partner, lender.id)
+    end
 end
 
 

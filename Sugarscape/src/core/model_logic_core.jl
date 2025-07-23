@@ -50,6 +50,17 @@ end
 # Agent-level step
 # =============================================================================
 function _agent_step!(agent, model)
+  # Reset per-step tracking arrays and flags at the beginning of each step
+  if hasproperty(agent, :last_partner_id)
+    empty!(agent.last_partner_id)
+  end
+  if hasproperty(agent, :last_credit_partner)
+    empty!(agent.last_credit_partner)
+  end
+  if hasproperty(agent, :has_reproduced)
+    agent.has_reproduced = false
+  end
+
   if model.enable_combat
     maybe_combat!(agent, model)
   else
@@ -88,15 +99,19 @@ function _agent_step!(agent, model)
   # Log reproduction
   if model.enable_reproduction && agent.has_reproduced
     push!(model.last_actions, "reproduce")
-    if hasproperty(agent, :last_partner_id) && !isnothing(agent.last_partner_id)
-      push!(model.last_trait_interactions, (agent.id, agent.last_partner_id))
+    if hasproperty(agent, :last_partner_id) && !isempty(agent.last_partner_id)
+      for partner_id in agent.last_partner_id
+        push!(model.last_trait_interactions, (agent.id, partner_id))
+      end
     end
   end
 
   # Log credit
-  if model.enable_credit && hasproperty(agent, :last_credit_partner) && !isnothing(agent.last_credit_partner)
+  if model.enable_credit && hasproperty(agent, :last_credit_partner) && !isempty(agent.last_credit_partner)
     push!(model.last_actions, "credit")
-    push!(model.last_trait_interactions, (agent.id, agent.last_credit_partner))
+    for partner_id in agent.last_credit_partner
+      push!(model.last_trait_interactions, (agent.id, partner_id))
+    end
   end
 
 
