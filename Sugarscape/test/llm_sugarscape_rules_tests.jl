@@ -69,7 +69,7 @@ function add_custom_agent!(model, pos; sugar, initial_sugar=sugar, vision=2, met
   ag = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age,
     max_age, sex, has_reproduced, initial_sugar, children,
     total_inheritance_received, culture, loans_given, loans_owed,
-    diseases, immunity, nothing, nothing)
+    diseases, immunity, Int[], Int[])
 
   return ag
 end

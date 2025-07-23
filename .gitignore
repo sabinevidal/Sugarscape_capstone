@@ -8,3 +8,4 @@ Sugarscape/data/processed/*
 .github/*
 .windsurf/*
 .env
+Sugarscape/data/logs/*

@@ -28,8 +28,8 @@ Log a decision made by an LLM agent to a CSV file.
 - `reasoning`: The LLM's reasoning for the decision
 """
 function log_decision!(model, agent_id, step, rule, decision, reasoning)
-    # logdir = model.llm_log_dir
-    logdir = "data/logs/$(Dates.format(now(), "yymmdd_HHMM"))"
+    run_name = model.run_name || "fun_run"
+    logdir = "data/logs/$(run_name)"
     mkpath(logdir)
     logfile = joinpath(logdir, "llm_decisions.csv")
 
@@ -139,10 +139,79 @@ end
 ##############################  API interaction  ##############################
 
 """
+    safe_llm_call(api_call_func, args...; retries=3) -> Any
+Retry wrapper for OpenAI API calls with exponential backoff.
+Handles transient errors like 520 server errors with configurable retry attempts.
+
+# Arguments
+- `api_call_func`: Function to call (should be the actual OpenAI API call)
+- `args...`: Arguments to pass to the API call function
+- `retries`: Maximum number of retry attempts (default: 3)
+
+# Returns
+- Result of successful API call
+
+# Throws
+- Re-throws the last exception if all retries are exhausted
+"""
+function safe_llm_call(api_call_func, args...; retries=3)
+    delay = 5.0
+    last_error = nothing
+
+    for i in 1:retries
+        try
+            return api_call_func(args...)
+        catch e
+            last_error = e
+            error_str = sprint(showerror, e)
+
+            # Check for specific error conditions that warrant retry
+            should_retry = (
+                occursin("520", error_str) ||  # Server error
+                occursin("502", error_str) ||  # Bad gateway
+                occursin("503", error_str) ||  # Service unavailable
+                occursin("504", error_str) ||  # Gateway timeout
+                occursin("429", error_str) ||  # Rate limit
+                occursin("timeout", lowercase(error_str)) ||
+                occursin("connection", lowercase(error_str))
+            )
+
+            if should_retry && i < retries
+                @warn "OpenAI API error (attempt $i/$retries). Retrying in $(delay) seconds..." exception = e
+                sleep(delay)
+                delay *= 2  # Exponential backoff
+            else
+                # Either not a retryable error or we've exhausted retries
+                if i == retries
+                    @error "OpenAI API call failed after $retries attempts" exception = e
+                end
+                rethrow(e)
+            end
+        end
+    end
+
+    # This should never be reached, but just in case
+    throw(last_error)
+end
+
+"""
     call_openai_api_individual(context::Dict, model) -> Dict
 Low-level wrapper around the OpenAI Chat Completion endpoint for individual agent requests.
 Uses the individual response format and schema for single agent decisions.
 """
+# Helper function for the actual OpenAI API call (to be wrapped with retry logic)
+function _make_openai_call(api_key, llm_model, messages, temperature, response_format, metadata)
+    response = OpenAI.create_chat(
+        api_key,
+        llm_model,
+        messages;
+        temperature=temperature,
+        response_format=response_format,
+        metadata=metadata,
+    )
+    return response.response
+end
+
 function call_openai_api(context::Dict, rule::String, model, rule_prompt, response_format)
     if isempty(model.llm_api_key)
         throw(LLMAPIError("LLM API key is empty but use_llm_decisions=true", nothing, nothing))
@@ -160,22 +229,23 @@ function call_openai_api(context::Dict, rule::String, model, rule_prompt, respon
     end
     user_prompt = Dict("content" => "Agent $(context["agent_id"]) context:\n" * JSON.json(context), "name" => rule)
 
+    messages = [
+        Dict("role" => "system", "content" => system_prompt["content"], "name" => system_prompt["name"]),
+        Dict("role" => "user", "content" => user_prompt["content"], "name" => user_prompt["name"]),
+    ]
+
     local j
     try
-        # Call the OpenAI Chat Completion endpoint via OpenAI.jl helper
-        response = OpenAI.create_chat(
+        # Use the retry wrapper for the OpenAI API call
+        j = safe_llm_call(
+            _make_openai_call,
             model.llm_api_key,
             model.llm_model,
-            [
-                Dict("role" => "system", "content" => system_prompt["content"], "name" => system_prompt["name"]),
-                Dict("role" => "user", "content" => user_prompt["content"], "name" => user_prompt["name"]),
-            ];
-            temperature=model.llm_temperature,
-            response_format=response_format,
-            metadata=model.llm_metadata,
+            messages,
+            model.llm_temperature,
+            response_format,
+            model.llm_metadata
         )
-        # `response.response` already contains the parsed JSON returned by the API
-        j = response.response
     catch err
         throw(LLMAPIError("Failed to call OpenAI API: $(err)", nothing, nothing))
     end
