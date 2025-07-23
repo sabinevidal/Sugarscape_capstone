@@ -6,6 +6,9 @@ using CSV
 using DataFrames
 using Dates
 using Sugarscape
+using DotEnv
+
+DotEnv.load!()
 
 if length(ARGS) == 0
     error("Architecture argument required: rule, llm, bigfive, or schwartz")
@@ -13,20 +16,25 @@ end
 
 architecture = ARGS[1]
 scenario = "movement_reproduction"
-n_steps = 5
-seed = 42
+n_steps = 250
+seed = 28
+llm_metadata = Dict{String,Any}("sugarscape" => "$(scenario)-$(architecture)")
 
 # ---------------------- Initialise Model ---------------------- #
 model = if architecture == "rule"
-    sugarscape(; seed=seed, enable_reproduction=true)
+    sugarscape(; seed=seed, enable_reproduction=true, llm_metadata=llm_metadata)
 elseif architecture == "llm"
-    sugarscape(; seed=seed, enable_reproduction=true, use_llm_decisions=true)
+    sugarscape(; seed=seed, enable_reproduction=true, use_llm_decisions=true, llm_metadata=llm_metadata)
 elseif architecture == "bigfive"
-    sugarscape_llm_bigfive(; seed=seed, enable_reproduction=true)
+    sugarscape_llm_bigfive(; seed=seed, enable_reproduction=true, llm_metadata=llm_metadata)
 elseif architecture == "schwartz"
-    sugarscape_llm_schwartz(; seed=seed, enable_reproduction=true)
+    sugarscape_llm_schwartz(; seed=seed, enable_reproduction=true, llm_metadata=llm_metadata)
 else
     error("Unsupported architecture: $architecture")
+end
+
+if isempty(model.llm_api_key)
+    model.llm_api_key = get(ENV, "OPENAI_API_KEY", "")
 end
 
 # ---------------------- Analytics Setup ---------------------- #

@@ -147,7 +147,6 @@ function maybe_combat!(attacker, model)
     # get combat decision
     combat_decision = SugarscapeLLM.get_combat_decision(combat_context, model)
 
-    println("Agent $(attacker.id) Combat: ", combat_decision.reasoning)
     should_attack = combat_decision.combat
     target_id = combat_decision.combat_target
 

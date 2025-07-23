@@ -164,8 +164,6 @@ function attempt_borrow!(borrower, model, amount, neighbours)
         end
         credit_decision = SugarscapeLLM.get_credit_borrower_request_decision(borrower_context, model)
 
-        println("Agent $(borrower.id) Borrower request Credit: ", credit_decision.reasoning)
-
         if !credit_decision.borrow || credit_decision.borrow_from === nothing
             return
         end
@@ -185,8 +183,6 @@ function attempt_borrow!(borrower, model, amount, neighbours)
                 lender_context = build_credit_lender_context(lender, model, borrower, can_lend(lender, model).max_amount)
             end
             lender_decision = SugarscapeLLM.get_credit_lender_respond_decision(lender_context, model)
-
-            println("Agent $(lender.id) Lender respond Credit: ", lender_decision.reasoning)
 
             if !lender_decision.lend || lender_decision.lend_to === nothing
                 continue
@@ -284,7 +280,6 @@ function attempt_lend!(lender, model, amount, neighbours)
             lender_context = build_credit_lender_context(lender, model, neighbours, avail)
         end
         credit_decision = SugarscapeLLM.get_credit_lender_offer_decision(lender_context, model)
-        println("Agent $(lender.id) Lender offer Credit: ", credit_decision.reasoning)
 
         if !credit_decision.lend || credit_decision.lend_to === nothing
             return
@@ -368,12 +363,10 @@ function credit!(agent, model)
     end
 
     if will_borrow(agent, model).will_borrow
-        println("Agent $(agent.id) will borrow $(will_borrow(agent, model).amount_required)")
         # attempt to borrow sugar
         attempt_borrow!(agent, model, will_borrow(agent, model).amount_required, neighbours)
 
     elseif can_lend(agent, model).can_lend
-        println("Agent $(agent.id) can lend $(can_lend(agent, model).max_amount)")
         # attempt to lend sugar
 
         attempt_lend!(agent, model, can_lend(agent, model).max_amount, neighbours)
@@ -498,7 +491,7 @@ function make_loan!(lender, borrower, amt::Float64, model)
     loan = Loan(lender.id, amt, due, model.interest_rate)
     push!(get!(lender.loans_given, borrower.id, Loan[]), loan)
     push!(get!(borrower.loans_owed, lender.id, Loan[]), loan)
-    
+
     # Track credit partners for this step
     if hasproperty(lender, :last_credit_partner)
         push!(lender.last_credit_partner, borrower.id)

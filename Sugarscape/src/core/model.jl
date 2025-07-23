@@ -69,6 +69,7 @@ function sugarscape(;
   llm_temperature::Float64=0.0,
   llm_max_tokens::Int=1000,
   llm_metadata::AbstractDict=Dict{String,Any}(),
+  # llm_log_dir::AbstractString="data/logs",
 
   # Big Five
   use_big_five::Bool=false,
@@ -169,6 +170,7 @@ function sugarscape(;
     :llm_temperature => llm_temperature,
     :llm_max_tokens => llm_max_tokens,
     :llm_metadata => llm_metadata,
+    # :llm_log_dir => llm_log_dir,
 
     # Big Five MvNormal for runtime sampling
     :use_big_five => use_big_five,

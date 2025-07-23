@@ -230,8 +230,6 @@ function attempt_reproduction!(agent, partner, model)
   free_cells = union(collect(empty_nearby_positions(agent, model)), collect(empty_nearby_positions(partner, model)))
   isempty(free_cells) && return nothing
 
-  println("Step: $(abmtime(model)): Agent $(agent.id) Reproduction: $(partner.id)")
-
   child_pos = rand(abmrng(model), free_cells)
   child_id = create_child(agent, partner, child_pos, model)
 

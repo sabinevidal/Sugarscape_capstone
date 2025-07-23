@@ -10,8 +10,41 @@ module SugarscapeLLM
 # Individual agent decision-making implementation.                           #
 ###############################################################################
 
-using HTTP, JSON, Logging, OpenAI
-using ..Agents: nearby_positions, nearby_agents, allagents, isempty
+using HTTP, JSON, Logging, OpenAI, Dates
+using ..Agents: nearby_positions, nearby_agents, allagents, isempty, abmtime
+
+# LLM Decision Logger functionality
+"""
+    log_decision!(model, agent_id, step, rule, decision::NamedTuple, reasoning)
+
+Log a decision made by an LLM agent to a CSV file.
+
+# Arguments
+- `model`: The Sugarscape model
+- `agent_id`: ID of the agent making the decision
+- `step`: Current simulation step
+- `rule`: The rule/decision type (e.g., "movement", "reproduction")
+- `decision`: A NamedTuple containing the decision details
+- `reasoning`: The LLM's reasoning for the decision
+"""
+function log_decision!(model, agent_id, step, rule, decision, reasoning)
+    # logdir = model.llm_log_dir
+    logdir = "data/logs/$(Dates.format(now(), "yymmdd_HHMM"))"
+    mkpath(logdir)
+    logfile = joinpath(logdir, "llm_decisions.csv")
+
+    # Create CSV with headers if it doesn't exist
+    if !isfile(logfile)
+        open(logfile, "w") do io
+            println(io, "step,agent_id,rule,decision,reasoning")
+        end
+    end
+
+    # Append new decision
+    open(logfile, "a") do io
+        println(io, "$(step),$(agent_id),$(rule),$(JSON.json(decision)),\"$(replace(reasoning, '\n' => " "))\"")
+    end
+end
 
 # Parent module alias for convenience
 import ..Sugarscape
@@ -241,6 +274,7 @@ function get_movement_decision(context::Dict, model)
     try
         raw_response = call_openai_api(context, "movement", model, movement_prompt, movement_response_format)
         decision = _parse_movement_decision(raw_response)
+        log_decision!(model, context["agent_id"], abmtime(model), "movement", decision.move_coords, decision.reasoning)
         return decision
     catch e
         throw(LLMAPIError("Failed to get movement decision: $(e)", nothing, nothing))
@@ -268,6 +302,7 @@ function get_reproduction_decision(context::Dict, model)
     try
         raw_response = call_openai_api(context, "reproduction", model, reproduction_prompt, reproduction_response_format)
         decision = _parse_reproduction_decision(raw_response)
+        log_decision!(model, context["agent_id"], abmtime(model), "reproduction", decision.partners, decision.reasoning)
         return decision
     catch e
         throw(LLMAPIError("Failed to get reproduction decision: $(e)", nothing, nothing))
@@ -296,6 +331,7 @@ function get_culture_decision(context::Dict, model)
     try
         raw_response = call_openai_api(context, "culture", model, culture_prompt, culture_response_format)
         decision = _parse_culture_decision(raw_response)
+        log_decision!(model, context["agent_id"], abmtime(model), "culture", decision.transmit_to, decision.reasoning)
         return decision
     catch e
         throw(LLMAPIError("Failed to get culture decision: $(e)", nothing, nothing))
@@ -316,6 +352,7 @@ function get_combat_decision(context::Dict, model)
     try
         raw_response = call_openai_api(context, "combat", model, combat_prompt, combat_response_format)
         decision = _parse_combat_decision(raw_response)
+        log_decision!(model, context["agent_id"], abmtime(model), "combat", decision.target, decision.reasoning)
         return decision
     catch e
         throw(LLMAPIError("Failed to get combat decision: $(e)", nothing, nothing))
@@ -361,6 +398,7 @@ function get_credit_lender_offer_decision(context::Dict, model)
     try
         raw_response = call_openai_api(context, "credit_lender", model, credit_prompt, credit_response_format)
         decision = _parse_credit_lender_decision(raw_response)
+        log_decision!(model, context["agent_id"], abmtime(model), "credit_lender_offer", decision.lend_to, decision.reasoning)
         return decision
     catch e
         throw(LLMAPIError("Failed to get credit lender decision: $(e)", nothing, nothing))
@@ -384,6 +422,7 @@ function get_credit_borrower_respond_decision(context::Dict, model)
     try
         raw_response = call_openai_api(context, "credit_borrower", model, credit_prompt, credit_response_format)
         decision = _parse_credit_borrower_decision(raw_response)
+        log_decision!(model, context["agent_id"], abmtime(model), "credit_borrower_respond", decision.borrow_from, decision.reasoning)
         return decision
     catch e
         throw(LLMAPIError("Failed to get credit borrower decision: $(e)", nothing, nothing))
@@ -407,6 +446,7 @@ function get_credit_lender_respond_decision(context::Dict, model)
     try
         raw_response = call_openai_api(context, "credit_lender", model, credit_prompt, credit_response_format)
         decision = _parse_credit_lender_decision(raw_response)
+        log_decision!(model, context["agent_id"], abmtime(model), "credit_lender_respond", decision.lend_to, decision.reasoning)
         return decision
     catch e
         throw(LLMAPIError("Failed to get credit lender decision: $(e)", nothing, nothing))
@@ -430,6 +470,7 @@ function get_credit_borrower_request_decision(context::Dict, model)
     try
         raw_response = call_openai_api(context, "credit_borrower", model, credit_prompt, credit_response_format)
         decision = _parse_credit_borrower_decision(raw_response)
+        log_decision!(model, context["agent_id"], abmtime(model), "credit_borrower_request", decision.borrow_from, decision.reasoning)
         return decision
     catch e
         throw(LLMAPIError("Failed to get credit borrower decision: $(e)", nothing, nothing))
