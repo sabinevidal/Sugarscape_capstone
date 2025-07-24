@@ -23,7 +23,7 @@ function sugarscape(;
   pollution_diffusion_interval::Int=10,
 
   # agents
-  N=100,
+  N=50,
   initial_sugar_dist=(5, 25),
   metabolic_rate_dist=(1, 4),
   vision_dist=(1, 6),

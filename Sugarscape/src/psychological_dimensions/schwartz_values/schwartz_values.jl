@@ -49,23 +49,23 @@ Create and add a SchwartzValuesSugarscapeAgent to the model with the given param
 """
 function create_schwartz_values_agent!(model, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced,
   initial_sugar, children, total_inheritance_received, culture,
-  loans_given, loans_owed, diseases, immunity, values_row)
+  loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, values_row)
   schwartz_values = (
-    self_direction=values_row.SelfDirection,
-    stimulation=values_row.Stimulation,
-    hedonism=values_row.Hedonism,
-    achievement=values_row.Achievement,
-    power=values_row.Power,
-    security=values_row.Security,
-    conformity=values_row.Conformity,
-    tradition=values_row.Tradition,
-    benevolence=values_row.Benevolence,
-    universalism=values_row.Universalism,
+    self_direction=values_row.self_direction,
+    stimulation=values_row.stimulation,
+    hedonism=values_row.hedonism,
+    achievement=values_row.achievement,
+    power=values_row.power,
+    security=values_row.security,
+    conformity=values_row.conformity,
+    tradition=values_row.tradition,
+    benevolence=values_row.benevolence,
+    universalism=values_row.universalism,
   )
 
   add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced,
     initial_sugar, children, total_inheritance_received, culture,
-    loans_given, loans_owed, diseases, immunity,
+    loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner,
     schwartz_values)
 
   # for agent in allagents(model)

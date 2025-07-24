@@ -45,26 +45,22 @@ Returns a DataFrame with the five scored traits.
 #    averages, and returns a DataFrame with the 5 Big-Five columns.
 ###########################################################################
 function process_raw_bigfive(path::String; sample_size::Int=0)
-  # Load the file with automatic delimiter detection
-  df = CSV.read(path, DataFrame)
-  df = dropmissing(df)
-
-
-  # ---------------------------------------------------------------------
-  # Otherwise assume raw questionnaire items in tab-separated format
-  # ---------------------------------------------------------------------
   # Combine item lists and define type map for numeric parsing
   all_items = vcat(EXT_items, EST_items, AGR_items, CSN_items, OPN_items)
   types_map = Dict(Symbol(item) => Union{Missing,Float64} for item in all_items)
 
-  # Re-read with explicit types and tab delimiter
+  # Load the file with explicit tab delimiter and numeric types
   df = CSV.read(path, DataFrame; delim='\t', types=types_map)
+  
+  # Remove rows with any missing values
   df = dropmissing(df)
-  if sample_size > 0
+  
+  # Optionally subsample
+  if sample_size > 0 && sample_size < nrow(df)
     df = df[1:sample_size, :]
   end
 
-  # Reverse-key responses
+  # Reverse-key responses for appropriate items
   reverse_score!(df, EXT_rev)
   reverse_score!(df, EST_rev)
   reverse_score!(df, AGR_rev)
@@ -72,33 +68,6 @@ function process_raw_bigfive(path::String; sample_size::Int=0)
   reverse_score!(df, OPN_rev)
 
   # Score traits from items
-  scored = DataFrame(
-    Extraversion=score_trait(df, EXT_items),
-    Neuroticism=score_trait(df, EST_items),
-    Agreeableness=score_trait(df, AGR_items),
-    Conscientiousness=score_trait(df, CSN_items),
-    Openness=score_trait(df, OPN_items)
-  )
-
-  return scored
-  all_items = vcat(EXT_items, EST_items, AGR_items, CSN_items, OPN_items)
-  types_map = Dict(Symbol(item) => Union{Missing,Float64} for item in all_items)
-  df = CSV.read(path, DataFrame; delim='\t', types=types_map)
-  df = dropmissing(df)
-  if sample_size > 0
-    df = df[1:sample_size, :]
-  end
-
-
-
-  # Reverse-key responses
-  reverse_score!(df, EXT_rev)
-  reverse_score!(df, EST_rev)
-  reverse_score!(df, AGR_rev)
-  reverse_score!(df, CSN_rev)
-  reverse_score!(df, OPN_rev)
-
-  # Score traits
   scored = DataFrame(
     Extraversion=score_trait(df, EXT_items),
     Neuroticism=score_trait(df, EST_items),

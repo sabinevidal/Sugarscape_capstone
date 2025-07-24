@@ -259,6 +259,7 @@ function _make_openai_call(api_key, llm_model, messages, temperature, response_f
         temperature=temperature,
         response_format=response_format,
         metadata=metadata,
+        max_completion_tokens=700,
     )
     return response.response
 end

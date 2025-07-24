@@ -1,20 +1,20 @@
 #!/usr/bin/env julia
 
 """
-Test script for Schwartz Human Values ESS data processing pipeline.
+Process Schwartz Human Values ESS data through complete pipeline.
 
-This script demonstrates how to use the SchwartzValuesProcessor module to:
-1. Process raw ESS data with Schwartz Human Values items
-2. Clean and reverse-scale the data
-3. Aggregate into 10 value dimensions
-4. Apply ipsatization (optional)
-5. Fit distributions and sample synthetic agents
+This script processes real ESS data with Schwartz Human Values items through:
+1. Data cleaning and validation
+2. Scale reversal (higher = greater endorsement)
+3. Aggregation into 10 value dimensions
+4. Optional ipsatization (centering)
+5. Distribution fitting for agent sampling
 
 Usage:
-    julia schwartz_values_test.jl [path_to_ess_data.csv]
+    julia generate_schwartz_values.jl [path_to_ess_data.csv]
 
 If no path is provided, it will use the default raw data file:
-    ../data/raw/schwarts-values-data-raw.csv
+    ../data/raw/schwartz-values-data-raw.csv
 """
 
 using Pkg
@@ -76,7 +76,7 @@ function inspect_ess_data(data_path::String; sample_rows::Int=10)
   return df_sample
 end
 
-# Synthetic data creation removed - script now uses only real ESS data
+
 
 function test_pipeline_functions(data_path::String=DEFAULT_ESS_DATA_PATH)
   """Test individual pipeline functions with real ESS data."""
@@ -130,10 +130,10 @@ function test_pipeline_functions(data_path::String=DEFAULT_ESS_DATA_PATH)
   println("\nIndividual function tests completed successfully!")
 end
 
-function test_full_pipeline(data_path::Union{String,Nothing}=nothing; sample_size::Int=10000)
-  """Test the complete pipeline with real ESS data and output processed CSV."""
-  println("\n" * "="^60)
-  println("TESTING COMPLETE PIPELINE WITH REAL ESS DATA")
+function process_schwartz_values(data_path::Union{String,Nothing}=nothing; sample_size::Int=0)
+  """Process complete ESS Schwartz Human Values dataset and save results."""
+  println("="^60)
+  println("PROCESSING ESS SCHWARTZ HUMAN VALUES DATA")
   println("="^60)
 
   # Use real ESS data - no fallback to synthetic data
@@ -160,8 +160,8 @@ function test_full_pipeline(data_path::Union{String,Nothing}=nothing; sample_siz
   end
 
   try
-    # Test full pipeline with real ESS data
-    println("\nRunning complete pipeline on real ESS data...")
+    # Process complete ESS dataset
+    println("\nProcessing complete ESS Schwartz Human Values dataset...")
     result_df = SchwartzValuesProcessor.process_ess_schwartz_values(
       data_path;
       respondent_id_col="idno",
@@ -170,7 +170,7 @@ function test_full_pipeline(data_path::Union{String,Nothing}=nothing; sample_siz
     )
 
     # Save processed data to CSV
-    output_path = joinpath(processed_dir, "schwartz_values_processed.csv")
+    output_path = joinpath(processed_dir, "schwartz-values-processed.csv")
     CSV.write(output_path, result_df)
     println("\nProcessed data saved to: $output_path")
 
@@ -182,65 +182,14 @@ function test_full_pipeline(data_path::Union{String,Nothing}=nothing; sample_siz
     println("\nSample of processed data:")
     println(first(result_df, 5))
 
-    # Test additional functions
-    println("\n" * "-"^40)
-    println("Testing additional functions...")
-
-    # Test z-scores
-    println("\n4. Testing z-score computation...")
-    zscored_df = SchwartzValuesProcessor.compute_zscores(result_df)
-    println("  Z-scored data shape: $(nrow(zscored_df)) × $(ncol(zscored_df))")
-
-    # Show z-score statistics
-    value_cols = [string(name) for name in SchwartzValuesProcessor.VALUE_NAMES]
-    existing_cols = filter(col -> col in names(zscored_df), value_cols)
-
-    for col in existing_cols[1:3]  # Show first 3 for brevity
-      col_data = filter(!ismissing, zscored_df[!, col])
-      if !isempty(col_data)
-        println("  $col z-scores: mean = $(round(mean(col_data), digits=3)), std = $(round(std(col_data), digits=3))")
-      end
-    end
-
-    # Test correlation matrix
-    println("\n5. Testing correlation computation...")
-    corr_df = SchwartzValuesProcessor.compute_value_correlation(result_df)
-    println("  Correlation matrix shape: $(nrow(corr_df)) × $(ncol(corr_df))")
-
-    # Show sample correlations
-    if ncol(corr_df) >= 3
-      println("  Sample correlations between first 3 values:")
-      println(corr_df[1:3, 1:3])
-    end
-
-    # Test MVN distribution fitting and sampling
-    println("\n6. Testing MVN distribution fitting and sampling...")
-    mvn_dist = SchwartzValuesProcessor.fit_mvn_distribution(result_df)
-    println("  Fitted MVN distribution with $(length(mvn_dist.μ)) dimensions")
-    println("  Mean values: $(round.(mvn_dist.μ, digits=2))")
-
-    # Sample synthetic agents
-    synthetic_agents = SchwartzValuesProcessor.sample_agents(mvn_dist, 10)
-    println("  Generated $(nrow(synthetic_agents)) synthetic agents")
-    println("  Sample synthetic agent:")
-    println(first(synthetic_agents, 1))
-
-    # Test loading processed data
-    println("\n7. Testing processed data loading...")
-    loaded_df = SchwartzValuesProcessor.load_processed_schwartz_values(output_path; sample_size=100)
-    println("  Loaded processed data shape: $(nrow(loaded_df)) × $(ncol(loaded_df))")
-
-    # No temporary files to clean up - using real data only
-
     println("\n" * "="^60)
-    println("ALL TESTS COMPLETED SUCCESSFULLY!")
+    println("SCHWARTZ VALUES PROCESSING COMPLETED SUCCESSFULLY!")
     println("="^60)
 
     return result_df
-
   catch e
-    println("Error during pipeline testing: $e")
-    rethrow(e)
+    println("\nError processing data: $e")
+    return nothing
   end
 end
 
@@ -322,20 +271,16 @@ function main()
   else
     println("No data path provided. Will use default ESS data file.")
   end
-
   try
     # Determine the actual data path to use
-    actual_data_path = data_path === nothing ? DEFAULT_ESS_DATA_PATH : data_path
+    actual_data_path = length(ARGS) > 0 ? ARGS[1] : DEFAULT_ESS_DATA_PATH
 
-    # Run tests with real ESS data only
-    test_pipeline_functions(actual_data_path)
-    result_df = test_full_pipeline(actual_data_path; sample_size=10000)  # Use 10K sample for testing
-    demonstrate_usage_examples()
-
-    println("\n" * "="^60)
-    println("SUMMARY")
-    println("="^60)
-    println("✓ All pipeline functions implemented and tested")
+    # Default: process complete dataset
+    if length(ARGS) > 0
+      process_schwartz_values(ARGS[1])
+    else
+      process_schwartz_values()
+    end
     println("✓ Data cleaning: handles invalid values (7-9, 66-99) → missing")
     println("✓ Scale reversal: 1→6, 2→5, ..., 6→1 for higher endorsement")
     println("✓ Value aggregation: mean of available items per dimension")

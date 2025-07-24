@@ -117,7 +117,8 @@ function get_movement_decision_schema()
       ),
       "reasoning_for_choice" => Dict(
         "type" => ["string"],
-        "description" => "Reasoning for the choice of movement coordinates, if not applicable, the reason for not moving."
+        "maxLength" => 1000,
+        "description" => "Reasoning for the choice of movement coordinates, if not applicable, the reason for not moving. Max 4 sentences."
       )
     ),
     "required" => [
@@ -151,7 +152,8 @@ function get_reproduction_decision_schema(max_partners::Int)
       ),
       "reasoning_for_choice" => Dict(
         "type" => "string",
-        "description" => "A clear, psychologically grounded explanation of the choice of partners or, if not applicable, the reason for not reproducing. First evaluate options, then justify final choice."
+        "maxLength" => 1000,
+        "description" => "A clear, psychologically grounded explanation of the choice of partners or, if not applicable, the reason for not reproducing. First evaluate options, then justify final choice. Max 4 sentences."
       )
     ),
     "required" => [
@@ -201,7 +203,8 @@ function get_culture_decision_schema()
       ),
       "reasoning_for_choice" => Dict(
         "type" => "string",
-        "description" => "Reasoning for the choice of who to spread culture to or, if not applicable, the reason for not spreading culture. First evaluate options, then justify final choice."
+        "maxLength" => 1000,
+        "description" => "Reasoning for the choice of who to spread culture to or, if not applicable, the reason for not spreading culture. First evaluate options, then justify final choice.  Max 4 sentences."
       )
     ),
     "required" => [
@@ -278,7 +281,8 @@ function get_combat_decision_schema()
       ),
       "reasoning_for_choice" => Dict(
         "type" => ["string"],
-        "description" => "A clear, psychologically grounded explanation of the choice of who to attack and, if not applicable, the reason for not attacking. First evaluate options, then justify final choice."
+        "maxLength" => 1000,
+        "description" => "A clear, psychologically grounded explanation of the choice of who to attack and, if not applicable, the reason for not attacking. First evaluate options, then justify final choice. Max 4 sentences."
       )
     ),
     "required" => ["agent_id", "combat", "combat_target", "reasoning_for_choice"],
@@ -358,7 +362,8 @@ function get_credit_lender_decision_schema()
       ),
       "reasoning_for_choice" => Dict(
         "type" => ["string"],
-        "description" => "A clear, psychologically grounded explanation of the choice of who to lend sugar to and the amount or, if not applicable, the reason for not lending sugar. First evaluate options, then justify final choice."
+        "maxLength" => 1000,
+        "description" => "A clear, psychologically grounded explanation of the choice of who to lend sugar to and the amount or, if not applicable, the reason for not lending sugar. First evaluate options, then justify final choice.  Max 4 sentences."
       )
     ),
     "required" => ["agent_id", "lend", "lend_to", "reasoning_for_choice"],
@@ -437,7 +442,8 @@ function get_credit_borrower_decision_schema()
       ),
       "reasoning_for_choice" => Dict(
         "type" => ["string"],
-        "description" => "A clear, psychologically grounded explanation of the choice of who to borrow from and the amount requested or, if not applicable, the reason for not borrowing. First evaluate options, then justify final choice."
+        "maxLength" => 1000,
+        "description" => "A clear, psychologically grounded explanation of the choice of who to borrow from and the amount requested or, if not applicable, the reason for not borrowing. First evaluate options, then justify final choice.  Max 4 sentences."
       )
     ),
     "required" => ["agent_id", "borrow", "borrow_from", "reasoning_for_choice"],
