@@ -12,21 +12,21 @@ function build_credit_lender_context(agent, model, neighbours, amount_available)
     end
 
     lender_context = Dict(
-        :agent_id => agent.id,
-        :sugar => agent.sugar,
-        :age => agent.age,
-        :can_lend => true,
-        :amount_available => amount_available,
-        :eligible_borrowers => []
+        "agent_id" => agent.id,
+        "sugar" => agent.sugar,
+        "age" => agent.age,
+        "can_lend" => true,
+        "amount_available" => amount_available,
+        "eligible_borrowers" => []
     )
 
     for neighbour in nbrs
-        push!(lender_context[:eligible_borrowers], Dict(
-            :agent_id => neighbour.id,
-            :sugar => neighbour.sugar,
-            :age => neighbour.age,
-            :will_borrow => will_borrow(neighbour, model).will_borrow,
-            :amount_required => will_borrow(neighbour, model).amount_required
+        push!(lender_context["eligible_borrowers"], Dict(
+            "agent_id" => neighbour.id,
+            "sugar" => neighbour.sugar,
+            "age" => neighbour.age,
+            "will_borrow" => will_borrow(neighbour, model).will_borrow,
+            "amount_required" => will_borrow(neighbour, model).amount_required
         ))
     end
 
@@ -45,22 +45,22 @@ function build_credit_borrower_context(agent, model, neighbours, amount_required
     end
 
     borrower_context = Dict(
-        :agent_id => agent.id,
-        :sugar => agent.sugar,
-        :age => agent.age,
-        :will_borrow => will_borrow(agent, model).will_borrow,
-        :amount_to_borrow => amount_required,
-        :reproduction_threshold => agent.initial_sugar,
-        :eligible_lenders => []
+        "agent_id" => agent.id,
+        "sugar" => agent.sugar,
+        "age" => agent.age,
+        "will_borrow" => will_borrow(agent, model).will_borrow,
+        "amount_to_borrow" => amount_required,
+        "reproduction_threshold" => agent.initial_sugar,
+        "eligible_lenders" => []
     )
 
     for neighbour in nbrs
-        push!(borrower_context[:eligible_lenders], Dict(
-            :agent_id => neighbour.id,
-            :sugar => neighbour.sugar,
-            :age => neighbour.age,
-            :can_lend => can_lend(neighbour, model).can_lend,
-            :max_amount => can_lend(neighbour, model).max_amount
+        push!(borrower_context["eligible_lenders"], Dict(
+            "agent_id" => neighbour.id,
+            "sugar" => neighbour.sugar,
+            "age" => neighbour.age,
+            "can_lend" => can_lend(neighbour, model).can_lend,
+            "max_amount" => can_lend(neighbour, model).max_amount
         ))
     end
 

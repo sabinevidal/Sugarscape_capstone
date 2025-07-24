@@ -116,6 +116,11 @@ function death_replacement!(agent, model)
           sex, has_reproduced, sugar, children, total_inheritance_received,
           culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
       end
+    else
+      # Create a regular SugarscapeAgent when neither use_big_five nor use_schwartz_values is enabled
+      add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
+        sex, has_reproduced, sugar, children, total_inheritance_received,
+        culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
     end
   end
 end

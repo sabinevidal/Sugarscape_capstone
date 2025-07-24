@@ -4,13 +4,12 @@ using Random
 using Agents
 using CSV
 using DataFrames
+using Dates
+using Sugarscape
+using DotEnv
+using Agents.AgentsIO
 
-include("../src/core/model.jl")
-include("../src/psychological_dimensions/big_five/big_five.jl")
-include("../src/psychological_dimensions/schwartz_values/schwartz_values.jl")
-include("../src/visualisation/analytics.jl")
-include("../src/utils/metrics.jl")
-include("../src/utils/metrics_sets.jl")
+DotEnv.load!()
 
 if length(ARGS) == 0
     error("Architecture argument required: rule, llm, bigfive, or schwartz")
@@ -18,42 +17,103 @@ end
 
 architecture = ARGS[1]
 scenario = "full_stack"
-n_steps = 1000
-seed = 42
+n_steps = 150
+seed = 28
+llm_metadata = Dict{String,Any}("sugarscape" => "$(scenario)-$(architecture)")
+run_number = 2
+run_name = "$(scenario)_$(architecture)_run_$(run_number)"
 
 # ---------------------- Initialise Model ---------------------- #
-model = if architecture == "rule" || architecture == "llm"
+model = if architecture == "rule"
     sugarscape(; seed=seed, enable_reproduction=true, enable_combat=true,
-               enable_culture=true, enable_credit=true,
-               use_llm_decisions=(architecture == "llm"))
+               enable_culture=true, enable_credit=true, llm_metadata=llm_metadata, run_name=run_name)
+elseif architecture == "llm"
+    sugarscape(; seed=seed, enable_reproduction=true, enable_combat=true,
+               enable_culture=true, enable_credit=true, use_llm_decisions=true, llm_metadata=llm_metadata, run_name=run_name)
 elseif architecture == "bigfive"
     sugarscape_llm_bigfive(; seed=seed, enable_reproduction=true, enable_combat=true,
-                           enable_culture=true, enable_credit=true)
+                           enable_culture=true, enable_credit=true, llm_metadata=llm_metadata, run_name=run_name)
 elseif architecture == "schwartz"
     sugarscape_llm_schwartz(; seed=seed, enable_reproduction=true, enable_combat=true,
-                            enable_culture=true, enable_credit=true)
+                            enable_culture=true, enable_credit=true, llm_metadata=llm_metadata, run_name=run_name)
 else
     error("Unsupported architecture: $architecture")
 end
 
+if isempty(model.llm_api_key)
+    model.llm_api_key = get(ENV, "OPENAI_API_KEY", "")
+end
+
 # ---------------------- Analytics Setup ---------------------- #
-output_dir = "data/results/simulations/$(scenario)"
+timestamp = Dates.format(now(), "yymmdd_HHMM")
+
+output_prefix = "$(scenario)_$(architecture)"
+output_dir = "data/results/simulations/$(output_prefix)"
 mkpath(output_dir)
-output_prefix = "sugarscape_$(scenario)_$(architecture)"
-metrics_file = joinpath(output_dir, "$(output_prefix)_metrics.csv")
+metrics_file = joinpath(output_dir, "$(output_prefix)_metrics_$(run_number).csv")
+agents_file = joinpath(output_dir, "$(output_prefix)_agents_$(run_number).csv")
+initial_agents_file = joinpath(output_dir, "$(output_prefix)_initial_agents_$(run_number).csv")
+checkpoint_dir = "data/checkpoints/$(run_name)_checkpoint"
+mkpath(checkpoint_dir)
+checkpoint_file = joinpath(checkpoint_dir, "model_checkpoint.jld2")
 
 mdata = full_stack_metrics
-adata = []
+adata = if architecture == "bigfive"
+    # Include traits for Big Five agents
+    [
+        :pos, :sugar, :age, :vision, :metabolism, :sex,
+        :culture, :children, :has_reproduced, :total_inheritance_received,
+        :last_partner_id, :last_credit_partner, :traits
+    ]
+elseif architecture == "schwartz"
+    # Include traits for Schwartz agents
+    [
+        :pos, :sugar, :age, :vision, :metabolism, :sex,
+        :culture, :children, :has_reproduced, :total_inheritance_received,
+        :last_partner_id, :last_credit_partner, :schwartz_values
+    ]
+else
+    # Standard agent data for other architectures
+    [
+        :pos, :sugar, :age, :vision, :metabolism, :sex,
+        :culture, :children, :has_reproduced, :total_inheritance_received,
+        :last_partner_id, :last_credit_partner,
+    ]
+end
 
-analytics = Analytics(; export_dir=output_dir, export_prefix=output_prefix,
-    collect_individual_data=false, collect_distributions=false,
-    collect_network_metrics=false)
+AgentsIO.dump_to_csv(initial_agents_file, allagents(model);
+    transform=(c, v) -> v === nothing ? missing : v)
 
 # ---------------------- Run Simulation ---------------------- #
-run!(model, agent_step!, n_steps; mdata=mdata, adata=adata)
+# Custom obtainer function to copy only mutable Vector{Int} arrays
+# while leaving other properties as identity (to avoid copying non-copyable types like Tuple)
+function custom_obtainer(x)
+    if isa(x, Vector{Int})
+        return copy(x)  # Copy mutable arrays to capture their state at each step
+    else
+        return x  # Use identity for all other types
+    end
+end
+
+# Run simulation with offline_run! - writes data every 10 steps
+offline_run!(model, n_steps;
+    when=1,
+    mdata=mdata,
+    adata=adata,
+    obtainer=custom_obtainer,
+    showprogress=true,
+    backend=:csv,
+    adata_filename=agents_file,
+    mdata_filename=metrics_file,
+    writing_interval=1,  # Write data every 10 steps
+)
+
+AgentsIO.save_checkpoint(checkpoint_file, model)
+
+adf = CSV.read(agents_file, DataFrame)
+mdf = CSV.read(metrics_file, DataFrame)
 
 # ---------------------- Export Metrics ---------------------- #
-export_to_csv(analytics)
 
 println("✅ Simulation complete for architecture: $architecture")
 println("📁 Results saved to: $(metrics_file)")
