@@ -220,8 +220,6 @@ function movement!(agent, model)
     end
     movement_decision = SugarscapeLLM.get_movement_decision(movement_context, model)
 
-    println("Agent $(agent.id) Movement: ", movement_decision.reasoning)
-
     llm_move!(agent, model, movement_decision.move_coords)
   else
     best_positions = get_best_positions(agent, model)

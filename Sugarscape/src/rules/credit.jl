@@ -300,8 +300,6 @@ function attempt_lend!(lender, model, amount, neighbours)
             end
             borrower_decision = SugarscapeLLM.get_credit_borrower_respond_decision(borrower_context, model)
 
-            println("Agent $(borrower.id) Borrower respond Credit: ", borrower_decision.reasoning)
-
             if !borrower_decision.borrow || borrower_decision.borrow_from === nothing
                 continue
             elseif borrower_decision.borrow

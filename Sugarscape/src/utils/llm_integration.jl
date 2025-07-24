@@ -28,7 +28,7 @@ Log a decision made by an LLM agent to a CSV file.
 - `reasoning`: The LLM's reasoning for the decision
 """
 function log_decision!(model, agent_id, step, rule, decision, reasoning)
-    run_name = model.run_name || "fun_run"
+    run_name = something(model.run_name, "fun_run")
     logdir = "data/logs/$(run_name)"
     mkpath(logdir)
     logfile = joinpath(logdir, "llm_decisions.csv")
@@ -139,23 +139,31 @@ end
 ##############################  API interaction  ##############################
 
 """
-    safe_llm_call(api_call_func, args...; retries=3) -> Any
+    safe_llm_call(api_call_func, args...; retries=5) -> Any
 Retry wrapper for OpenAI API calls with exponential backoff.
-Handles transient errors like 520 server errors with configurable retry attempts.
+Handles network connectivity issues, HTTP errors, and API rate limiting.
 
 # Arguments
 - `api_call_func`: Function to call (should be the actual OpenAI API call)
 - `args...`: Arguments to pass to the API call function
-- `retries`: Maximum number of retry attempts (default: 3)
+- `retries`: Maximum number of retry attempts (default: 5)
 
 # Returns
 - Result of successful API call
 
 # Throws
 - Re-throws the last exception if all retries are exhausted
+
+# Retryable Errors
+- Network errors: EOFError, HTTP.Exceptions.RequestError, IOError, SystemError
+- SSL/TLS errors: Certificate issues, handshake failures, SSL connection problems
+- JSON parsing errors: Malformed API responses, parsing failures
+- HTTP status codes: 408, 429, 502-504, 520-527, 530
+- Connection issues: timeouts, resets, DNS failures, host unreachable
+- System errors: Socket errors, temporary failures, service unavailable
 """
-function safe_llm_call(api_call_func, args...; retries=3)
-    delay = 5.0
+function safe_llm_call(api_call_func, args...; retries=10)
+    delay = 20.0
     last_error = nothing
 
     for i in 1:retries
@@ -167,13 +175,56 @@ function safe_llm_call(api_call_func, args...; retries=3)
 
             # Check for specific error conditions that warrant retry
             should_retry = (
+                # Network/connection errors
+                isa(e, EOFError) ||  # Connection terminated unexpectedly
+                isa(e, HTTP.Exceptions.RequestError) ||  # HTTP request errors
+                isa(e, Base.IOError) ||  # General IO errors
+                isa(e, Base.SystemError) ||  # System-level errors (DNS, socket)
+                isa(e, InterruptException) ||  # Process interruption
+                isa(e, TaskFailedException) ||  # Async task failures                 # SSL/TLS errors
+                isa(e, Base.IOError) && occursin("ssl", lowercase(error_str)) ||                 # HTTP client specific errors
+                isa(e, HTTP.Exceptions.ConnectError) ||  # Connection establishment failed
+                isa(e, HTTP.Exceptions.TimeoutError) ||  # Request timeout
+                isa(e, HTTP.Exceptions.StatusError) ||  # HTTP status error responses                 # JSON parsing errors (malformed API responses)
+                isa(e, JSON.ParserError) ||
+                isa(e, ArgumentError) && occursin("json", lowercase(error_str)) ||                 # HTTP status codes that should be retried
                 occursin("520", error_str) ||  # Server error
+                occursin("521", error_str) ||  # Web server is down
+                occursin("522", error_str) ||  # Connection timed out
+                occursin("523", error_str) ||  # Origin is unreachable
+                occursin("524", error_str) ||  # A timeout occurred
+                occursin("525", error_str) ||  # SSL handshake failed
+                occursin("526", error_str) ||  # Invalid SSL certificate
+                occursin("527", error_str) ||  # Railgun error
+                occursin("530", error_str) ||  # Origin DNS error
                 occursin("502", error_str) ||  # Bad gateway
                 occursin("503", error_str) ||  # Service unavailable
                 occursin("504", error_str) ||  # Gateway timeout
                 occursin("429", error_str) ||  # Rate limit
+                occursin("408", error_str) ||  # Request timeout                 # String patterns for various network/API issues
                 occursin("timeout", lowercase(error_str)) ||
-                occursin("connection", lowercase(error_str))
+                occursin("connection", lowercase(error_str)) ||
+                occursin("eof", lowercase(error_str)) ||
+                occursin("read end of file", lowercase(error_str)) ||
+                occursin("connection reset", lowercase(error_str)) ||
+                occursin("connection refused", lowercase(error_str)) ||
+                occursin("network", lowercase(error_str)) ||
+                occursin("dns", lowercase(error_str)) ||
+                occursin("ssl", lowercase(error_str)) ||
+                occursin("tls", lowercase(error_str)) ||
+                occursin("certificate", lowercase(error_str)) ||
+                occursin("handshake", lowercase(error_str)) ||
+                occursin("socket", lowercase(error_str)) ||
+                occursin("host", lowercase(error_str)) ||
+                occursin("unreachable", lowercase(error_str)) ||
+                occursin("temporary failure", lowercase(error_str)) ||
+                occursin("service unavailable", lowercase(error_str)) ||
+                occursin("server error", lowercase(error_str)) ||                 # OpenAI API specific errors that should be retried
+                occursin("rate limit", lowercase(error_str)) ||
+                occursin("quota exceeded", lowercase(error_str)) ||
+                occursin("overloaded", lowercase(error_str)) ||
+                occursin("temporarily unavailable", lowercase(error_str)) ||
+                occursin("internal error", lowercase(error_str))
             )
 
             if should_retry && i < retries

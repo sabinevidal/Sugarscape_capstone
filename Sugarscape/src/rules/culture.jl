@@ -48,8 +48,6 @@ function culture_spread!(agent, model, check_decision::Bool=false)
     end
     culture_decision = SugarscapeLLM.get_culture_decision(culture_context, model)
 
-    println("Agent $(agent.id) Culture: ", culture_decision.reasoning)
-
     if culture_decision.spread_culture === false || culture_decision.transmit_to === nothing
       return
     end

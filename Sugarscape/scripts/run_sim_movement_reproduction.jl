@@ -17,10 +17,10 @@ end
 
 architecture = ARGS[1]
 scenario = "movement_reproduction"
-n_steps = 3
+n_steps = 250
 seed = 28
 llm_metadata = Dict{String,Any}("sugarscape" => "$(scenario)-$(architecture)")
-run_number = 1
+run_number = 2
 run_name = "$(scenario)_$(architecture)_run_$(run_number)"
 
 # ---------------------- Initialise Model ---------------------- #
@@ -93,15 +93,15 @@ end
 
 # Run simulation with offline_run! - writes data every 10 steps
 offline_run!(model, n_steps;
-    when=1,
+    when=5,
     mdata=mdata,
     adata=adata,
     obtainer=custom_obtainer,
-    showprogress=false,
+    showprogress=true,
     backend=:csv,
     adata_filename=agents_file,
     mdata_filename=metrics_file,
-    writing_interval=1,  # Write data every 10 steps
+    writing_interval=5,  # Write data every 10 steps
 )
 
 AgentsIO.save_checkpoint(checkpoint_file, model)

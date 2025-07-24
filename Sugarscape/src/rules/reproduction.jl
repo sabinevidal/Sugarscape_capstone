@@ -76,7 +76,6 @@ function reproduction!(agent, model)
       reproduction_context = build_reproduction_context(agent, model, eligible_partners, max_partners)
     end
     reproduction_decision = SugarscapeLLM.get_reproduction_decision(reproduction_context, model)
-    println("Agent $(agent.id) Reproduction: ", reproduction_decision.reasoning)
 
     if reproduction_decision.reproduce === false || reproduction_decision.partners === nothing || isempty(reproduction_decision.partners)
       @info "No partners selected by LLM for reproduction."
