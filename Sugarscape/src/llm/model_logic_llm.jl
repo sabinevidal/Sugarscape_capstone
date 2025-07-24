@@ -210,6 +210,8 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     sugar = Float64(rand(abmrng(model), initial_sugar_dist[1]:initial_sugar_dist[2]))
     sex = rand(abmrng(model), (:male, :female))
     has_reproduced = false
+    has_spread_culture = false
+    has_accepted_culture = false
     children = Int[]
     total_inheritance_received = 0.0
     culture = initialize_culture(culture_tag_length, model)
@@ -223,7 +225,7 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     last_credit_partner = Int[]
 
     add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-      sex, has_reproduced, sugar, children, total_inheritance_received,
+      sex, has_reproduced, has_spread_culture, has_accepted_culture, sugar, children, total_inheritance_received,
       culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
   end
 
@@ -283,6 +285,12 @@ function _agent_step_llm!(agent, model)
   end
   if hasproperty(agent, :has_reproduced)
     agent.has_reproduced = false
+  end
+  if hasproperty(agent, :has_spread_culture)
+    agent.has_spread_culture = false
+  end
+  if hasproperty(agent, :has_accepted_culture)
+    agent.has_accepted_culture = false
   end
 
   # ---------------------------------------------------------
@@ -355,6 +363,16 @@ function _agent_step_llm!(agent, model)
         push!(model.last_trait_interactions, (agent.id, partner_id))
       end
     end
+  end
+
+  # Log culture spread
+  if model.enable_culture && agent.has_spread_culture
+    push!(model.last_actions, "spread_culture")
+  end
+
+  # Log culture acceptance
+  if model.enable_culture && agent.has_accepted_culture
+    push!(model.last_actions, "accept_culture")
   end
 
   if model.enable_credit && hasproperty(agent, :last_credit_partner) && !isempty(agent.last_credit_partner)

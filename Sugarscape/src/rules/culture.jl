@@ -89,6 +89,9 @@ function attempt_culture_spread!(agent, neighbours, model)
     # Rule K-2: flip neighbour's randomly chosen bit so it matches the focal agent
     if neighbour.culture[idx] != agent.culture[idx]
       neighbour.culture[idx] = agent.culture[idx]
+      # Track culture spread
+      agent.has_spread_culture = true
+      neighbour.has_accepted_culture = true
     end
   end
 
@@ -108,6 +111,9 @@ function llm_attempt_culture_spread!(agent, model, culture_decision)
     # Rule K-2: flip neighbour's randomly chosen bit so it matches the focal agent
     if neighbor.culture[idx] != agent.culture[idx]
       neighbor.culture[idx] = agent.culture[idx]
+      # Track culture spread
+      agent.has_spread_culture = true
+      neighbor.has_accepted_culture = true
     end
   end
 
@@ -293,4 +299,59 @@ used by the Combat extension (Rule C-α 2) and various analytics utilities.
 """
 function culturally_different(agent1, agent2)
   return !same_tribe(agent1, agent2)
+end
+
+# === Tribe counting functions for analytics ===
+"""
+    count_tribe_members(model, tribe_symbol::Symbol) -> Int
+
+Count the number of agents belonging to a specific tribe (:red or :blue).
+"""
+function count_tribe_members(model, tribe_symbol::Symbol)
+  count = 0
+  for agent in allagents(model)
+    if tribe(agent) == tribe_symbol
+      count += 1
+    end
+  end
+  return count
+end
+
+"""
+    count_red_tribe(model) -> Int
+
+Count the number of red tribe members in the model.
+"""
+function count_red_tribe(model)
+  return count_tribe_members(model, :red)
+end
+
+"""
+    count_blue_tribe(model) -> Int
+
+Count the number of blue tribe members in the model.
+"""
+function count_blue_tribe(model)
+  return count_tribe_members(model, :blue)
+end
+
+"""
+    calculate_tribe_proportions(model) -> Dict{String,Float64}
+
+Calculate the proportion of red and blue tribe members in the population.
+Returns a dictionary with keys "red_proportion" and "blue_proportion".
+"""
+function calculate_tribe_proportions(model)
+  total_agents = nagents(model)
+  if total_agents == 0
+    return Dict("red_proportion" => 0.0, "blue_proportion" => 0.0)
+  end
+  
+  red_count = count_red_tribe(model)
+  blue_count = count_blue_tribe(model)
+  
+  return Dict(
+    "red_proportion" => red_count / total_agents,
+    "blue_proportion" => blue_count / total_agents
+  )
 end

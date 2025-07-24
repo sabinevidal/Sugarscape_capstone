@@ -60,6 +60,12 @@ function _agent_step!(agent, model)
   if hasproperty(agent, :has_reproduced)
     agent.has_reproduced = false
   end
+  if hasproperty(agent, :has_spread_culture)
+    agent.has_spread_culture = false
+  end
+  if hasproperty(agent, :has_accepted_culture)
+    agent.has_accepted_culture = false
+  end
 
   if model.enable_combat
     maybe_combat!(agent, model)
@@ -104,6 +110,16 @@ function _agent_step!(agent, model)
         push!(model.last_trait_interactions, (agent.id, partner_id))
       end
     end
+  end
+
+  # Log culture spread
+  if model.enable_culture && agent.has_spread_culture
+    push!(model.last_actions, "spread_culture")
+  end
+
+  # Log culture acceptance
+  if model.enable_culture && agent.has_accepted_culture
+    push!(model.last_actions, "accept_culture")
   end
 
   # Log credit

@@ -46,7 +46,7 @@ end
 
 Create and add a BigFiveSugarscapeAgent to the model with the given parameters and traits.
 """
-function create_big_five_agent!(model, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced,
+function create_big_five_agent!(model, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
   initial_sugar, children, total_inheritance_received, culture,
   loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, traits_row)
   traits = (
@@ -57,7 +57,7 @@ function create_big_five_agent!(model, pos, vision, metabolism, sugar, age, max_
     neuroticism=traits_row.Neuroticism,
   )
 
-  add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced,
+  add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
     initial_sugar, children, total_inheritance_received, culture,
     loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner,
     traits)

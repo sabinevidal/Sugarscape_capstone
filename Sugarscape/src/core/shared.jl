@@ -56,6 +56,8 @@ function death_replacement!(agent, model)
     sugar = Float64(rand(abmrng(model), model.initial_sugar_dist[1]:model.initial_sugar_dist[2]))
     sex = rand(abmrng(model), (:male, :female))
     has_reproduced = false
+    has_spread_culture = false
+    has_accepted_culture = false
     children = Int[]
     total_inheritance_received = 0.0
     culture = initialize_culture(model.culture_tag_length, model)
@@ -81,13 +83,13 @@ function death_replacement!(agent, model)
           neuroticism=traits_sample.Neuroticism,
         )
 
-        add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-          sex, has_reproduced, sugar, children, total_inheritance_received,
+        add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
+          sugar, children, total_inheritance_received,
           culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, traits)
       else
         # Create a regular SugarscapeAgent
         add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-          sex, has_reproduced, sugar, children, total_inheritance_received,
+          sex, has_reproduced, has_spread_culture, has_accepted_culture, sugar, children, total_inheritance_received,
           culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
       end
     elseif model.use_schwartz_values
@@ -107,19 +109,19 @@ function death_replacement!(agent, model)
           universalism=traits_sample.Universalism,
         )
 
-        add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-          sex, has_reproduced, sugar, children, total_inheritance_received,
+        add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
+          sugar, children, total_inheritance_received,
           culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, schwartz_values)
       else
         # Create a regular SugarscapeAgent
         add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-          sex, has_reproduced, sugar, children, total_inheritance_received,
+          sex, has_reproduced, has_spread_culture, has_accepted_culture, sugar, children, total_inheritance_received,
           culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
       end
     else
       # Create a regular SugarscapeAgent when neither use_big_five nor use_schwartz_values is enabled
-      add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-        sex, has_reproduced, sugar, children, total_inheritance_received,
+      add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
+        sugar, children, total_inheritance_received,
         culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
     end
   end

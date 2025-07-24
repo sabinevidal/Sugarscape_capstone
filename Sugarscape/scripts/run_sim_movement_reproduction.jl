@@ -17,10 +17,10 @@ end
 
 architecture = ARGS[1]
 scenario = "movement_reproduction"
-n_steps = 250
+n_steps = 150
 seed = 28
 llm_metadata = Dict{String,Any}("sugarscape" => "$(scenario)-$(architecture)")
-run_number = 2
+run_number = 1
 run_name = "$(scenario)_$(architecture)_run_$(run_number)"
 
 # ---------------------- Initialise Model ---------------------- #
@@ -52,7 +52,7 @@ agents_file = joinpath(output_dir, "$(output_prefix)_agents_$(run_number).csv")
 initial_agents_file = joinpath(output_dir, "$(output_prefix)_initial_agents_$(run_number).csv")
 checkpoint_dir = "data/checkpoints/$(run_name)_checkpoint"
 mkpath(checkpoint_dir)
-checkpoint_file = joinpath(checkpoint_dir, "model_checkpoint.jld2")
+checkpoint_file = joinpath(checkpoint_dir, "model_checkpoint_schwartz_1.jld2")
 
 mdata = reproduction_metrics
 
@@ -62,6 +62,14 @@ adata = if architecture == "bigfive"
         :pos, :sugar, :age, :vision, :metabolism, :sex,
         :culture, :children, :has_reproduced, :total_inheritance_received,
         :last_partner_id, :last_credit_partner, :traits
+    ]
+
+elseif architecture == "schwartz"
+    # Include traits for Schwartz agents
+    [
+        :pos, :sugar, :age, :vision, :metabolism, :sex,
+        :culture, :children, :has_reproduced, :total_inheritance_received,
+        :last_partner_id, :last_credit_partner, :schwartz_values
     ]
 else
     # Standard agent data for other architectures
@@ -93,7 +101,7 @@ end
 
 # Run simulation with offline_run! - writes data every 10 steps
 offline_run!(model, n_steps;
-    when=5,
+    when=1,
     mdata=mdata,
     adata=adata,
     obtainer=custom_obtainer,
@@ -101,7 +109,7 @@ offline_run!(model, n_steps;
     backend=:csv,
     adata_filename=agents_file,
     mdata_filename=metrics_file,
-    writing_interval=5,  # Write data every 10 steps
+    writing_interval=1,  # Write data every 10 steps
 )
 
 AgentsIO.save_checkpoint(checkpoint_file, model)

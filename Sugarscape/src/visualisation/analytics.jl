@@ -139,6 +139,16 @@ function create_agent_data_functions(model, analytics)
     push!(adata, (func, length))
   end
 
+  # Add tribe membership categories
+  tribe_categories = [
+    ("red_tribe", a -> tribe(a) == :red),
+    ("blue_tribe", a -> tribe(a) == :blue)
+  ]
+  
+  for (name, func) in tribe_categories
+    push!(adata, (func, length))
+  end
+
   # Add wealth statistics
   push!(adata, (a -> true, a -> length(a) > 0 ? mean(agent.sugar for agent in a) : 0.0))  # Mean wealth
   push!(adata, (a -> true, a -> length(a) > 0 ? std(agent.sugar for agent in a) : 0.0))   # Wealth std
@@ -218,7 +228,10 @@ function create_model_data_functions(model, analytics)
     # Big Five trait summary statistics
     model -> calculate_trait_summary_stats(model),
     model -> calculate_decision_entropy(model),
-    model -> calculate_trait_similarity_metrics(model)
+    model -> calculate_trait_similarity_metrics(model),
+    model -> count_red_tribe(model),
+    model -> count_blue_tribe(model),
+    model -> calculate_tribe_proportions(model)
   ]
 
   return mdata

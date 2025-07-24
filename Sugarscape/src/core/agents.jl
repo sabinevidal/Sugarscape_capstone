@@ -15,6 +15,8 @@ end
     max_age::Int
     sex::Symbol
     has_reproduced::Bool
+    has_spread_culture::Bool
+    has_accepted_culture::Bool
     initial_sugar::Float64
     children::Vector{Int}
     total_inheritance_received::Float64

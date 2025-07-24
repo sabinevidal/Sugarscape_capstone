@@ -143,20 +143,26 @@ end
     process_ess_schwartz_values(path::String; 
                                respondent_id_col::String = "idno",
                                apply_ipsatization::Bool = true,
-                               sample_size::Int = 0) -> DataFrame
+                               sample_size::Int = 0,
+                               include_id::Bool = false)
 
-Process ESS Schwartz Human Values data through the complete pipeline:
-1. Load and clean data (handle missing values, invalid responses)
-2. Reverse scale (higher = greater endorsement)
-3. Aggregate into 10 value dimensions
-4. Optionally apply ipsatization (centering)
+Process ESS Schwartz Human Values data and return a DataFrame with 10 value dimensions.
 
-Returns DataFrame with respondent ID, 10 value scores, and optionally ipsatized scores.
+# Arguments
+- `path`: Path to the ESS CSV file
+- `respondent_id_col`: Column name for respondent ID (default: "idno")
+- `apply_ipsatization`: Whether to apply ipsatization (default: true)
+- `sample_size`: Number of rows to sample (0 = use all, default: 0)
+- `include_id`: Whether to include respondent ID column (default: false for smaller files)
+
+# Returns
+DataFrame with columns for each Schwartz value dimension (optionally plus respondent ID).
 """
 function process_ess_schwartz_values(path::String; 
                                    respondent_id_col::String = "idno",
                                    apply_ipsatization::Bool = true,
-                                   sample_size::Int = 0)
+                                   sample_size::Int = 0,
+                                   include_id::Bool = false)
     
     # Load data
     println("Loading ESS data from: $path")
@@ -187,15 +193,19 @@ function process_ess_schwartz_values(path::String;
     println("Computing value scores...")
     result_df = DataFrame()
     
-    # Add respondent ID if available
-    if respondent_id_col in names(df)
-        result_df[!, :respondent_id] = df[!, respondent_id_col]
-    else
-        result_df[!, :respondent_id] = 1:nrow(df)
-        println("Warning: Respondent ID column '$respondent_id_col' not found. Using row numbers.")
+    # Only add ID if requested (default: false for smaller files)
+    if include_id
+        if respondent_id_col in names(df)
+            result_df[!, :id] = convert.(Float32, df[!, respondent_id_col])
+        else
+            # Create simple index if no ID column
+            result_df[!, :id] = Float32.(1:nrow(df))
+            println("Warning: Respondent ID column '$respondent_id_col' not found. Using row numbers.")
+        end
     end
     
     # Compute scores for each value dimension
+    # Compute value scores (only the 10 essential value dimensions)
     value_cols = String[]
     for value_name in VALUE_NAMES
         col_name = string(value_name)
@@ -203,7 +213,7 @@ function process_ess_schwartz_values(path::String;
         
         items = SCHWARTZ_ITEMS[value_name]
         scores = compute_value_score(df, items)
-        result_df[!, Symbol(col_name)] = scores
+        result_df[!, Symbol(col_name)] = convert.(Union{Missing, Float32}, scores)
         
         # Report availability
         available_items = filter(item -> item in names(df), items)
@@ -227,6 +237,11 @@ function process_ess_schwartz_values(path::String;
     after_count = nrow(result_df)
     println("Removed $(before_count - after_count) rows with all missing values")
     println("Final dataset: $after_count respondents")
+    
+    # Convert to Float32 for storage efficiency
+    for col in value_score_cols
+        result_df[!, col] = convert.(Union{Missing, Float32}, result_df[!, col])
+    end
     
     return result_df
 end

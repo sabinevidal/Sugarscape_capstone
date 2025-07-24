@@ -160,13 +160,14 @@ function process_schwartz_values(data_path::Union{String,Nothing}=nothing; sampl
   end
 
   try
-    # Process complete ESS dataset
+    # Process complete ESS dataset with optimized settings
     println("\nProcessing complete ESS Schwartz Human Values dataset...")
     result_df = SchwartzValuesProcessor.process_ess_schwartz_values(
       data_path;
       respondent_id_col="idno",
       apply_ipsatization=true,
-      sample_size=sample_size
+      sample_size=sample_size,
+      include_id=false  # Exclude ID column to reduce file size
     )
 
     # Save processed data to CSV

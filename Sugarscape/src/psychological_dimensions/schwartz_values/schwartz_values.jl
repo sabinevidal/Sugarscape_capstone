@@ -17,7 +17,7 @@ export SchwartzValuesSugarscapeAgent, prepare_schwartz_values, create_schwartz_v
   schwartz_values::NamedTuple{
     (:self_direction, :stimulation, :hedonism, :achievement, :power,
       :security, :conformity, :tradition, :benevolence, :universalism),
-    NTuple{10,Float64}
+    NTuple{10,Float32}
   }
 end
 
@@ -41,13 +41,13 @@ function prepare_schwartz_values(schwartz_values_path::AbstractString, N::Int, m
 end
 
 """
-    create_schwartz_values_agent!(model, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced,
+    create_schwartz_values_agent!(model, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
                           initial_sugar, children, total_inheritance_received, culture,
                           loans_given, loans_owed, diseases, immunity, values_row)
 
 Create and add a SchwartzValuesSugarscapeAgent to the model with the given parameters and traits.
 """
-function create_schwartz_values_agent!(model, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced,
+function create_schwartz_values_agent!(model, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
   initial_sugar, children, total_inheritance_received, culture,
   loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, values_row)
   schwartz_values = (
@@ -63,7 +63,7 @@ function create_schwartz_values_agent!(model, pos, vision, metabolism, sugar, ag
     universalism=values_row.universalism,
   )
 
-  add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced,
+  add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
     initial_sugar, children, total_inheritance_received, culture,
     loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner,
     schwartz_values)

@@ -29,6 +29,9 @@ const culture_metrics = [
     model -> calculate_cultural_diversity(model),
     model -> calculate_spatial_segregation(model),
     model -> calculate_clustering_coefficient(model),
+    model -> count_red_tribe(model),
+    model -> count_blue_tribe(model),
+    model -> calculate_tribe_proportions(model),
     nagents
 ]
 
@@ -70,7 +73,10 @@ const reproduction_culture_metrics = vcat(
     [model -> calculate_cultural_entropy(model),
         model -> calculate_cultural_diversity(model),
         model -> calculate_spatial_segregation(model),
-        model -> calculate_clustering_coefficient(model)]
+        model -> calculate_clustering_coefficient(model),
+        model -> count_red_tribe(model),
+        model -> count_blue_tribe(model),
+        model -> calculate_tribe_proportions(model)]
 )
 
 const credit_reproduction_metrics = vcat(
@@ -121,7 +127,10 @@ const full_stack_metrics = vcat(
     model -> calculate_spatial_segregation(model),
     model -> calculate_clustering_coefficient(model),
     model -> calculate_trait_summary_stats(model),
-    model -> calculate_trait_similarity_metrics(model)]
+    model -> calculate_trait_similarity_metrics(model),
+    model -> count_red_tribe(model),
+    model -> count_blue_tribe(model),
+    model -> calculate_tribe_proportions(model)]
 )
 
 export reproduction_metrics,

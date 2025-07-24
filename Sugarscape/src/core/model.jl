@@ -245,6 +245,8 @@ function sugarscape(;
     sugar = Float64(rand(abmrng(model), initial_sugar_dist[1]:initial_sugar_dist[2]))
     sex = rand(abmrng(model), (:male, :female))
     has_reproduced = false
+    has_spread_culture = false
+    has_accepted_culture = false
     children = Int[]
     total_inheritance_received = 0.0
     culture = initialize_culture(culture_tag_length, model)
@@ -262,7 +264,7 @@ function sugarscape(;
 
     # Create agent arguments for add_agent! (pos, AgentType, model, ...args)
     agent_args = (
-      vision, metabolism, sugar, age, max_age, sex, has_reproduced,
+      vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
       sugar, children, total_inheritance_received, BitVector(culture),
       loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner
     )
