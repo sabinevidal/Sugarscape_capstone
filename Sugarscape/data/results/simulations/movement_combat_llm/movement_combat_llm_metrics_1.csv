@@ -1,3 +1,33 @@
 time,#95,#96,#97,nagents
 0,0,"Dict{String, Real}(""avg_cultural_distance"" => 5.468571428571429, ""conflict_rate"" => 0.9991836734693877, ""potential_conflicts"" => 1224)",0.0,50
 1,6,"Dict{String, Real}(""avg_cultural_distance"" => 5.436575052854122, ""conflict_rate"" => 1.0, ""potential_conflicts"" => 946)",0.0,44
+0,0,0.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",50
+1,7,68.0,"Dict{String, Real}(""total_attacks"" => 7, ""red_initiated_attacks"" => 5, ""red_attack_rate"" => 0.7142857142857143, ""blue_attack_rate"" => 0.2857142857142857, ""blue_initiated_attacks"" => 2)",43
+2,11,127.0,"Dict{String, Real}(""total_attacks"" => 4, ""red_initiated_attacks"" => 2, ""red_attack_rate"" => 0.5, ""blue_attack_rate"" => 0.5, ""blue_initiated_attacks"" => 2)",39
+3,15,188.0,"Dict{String, Real}(""total_attacks"" => 4, ""red_initiated_attacks"" => 1, ""red_attack_rate"" => 0.25, ""blue_attack_rate"" => 0.75, ""blue_initiated_attacks"" => 3)",35
+4,17,233.0,"Dict{String, Real}(""total_attacks"" => 2, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 1.0, ""blue_initiated_attacks"" => 2)",33
+5,17,233.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",33
+6,17,233.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",33
+7,19,270.0,"Dict{String, Real}(""total_attacks"" => 2, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 1.0, ""blue_initiated_attacks"" => 2)",31
+8,22,288.0,"Dict{String, Real}(""total_attacks"" => 3, ""red_initiated_attacks"" => 1, ""red_attack_rate"" => 0.3333333333333333, ""blue_attack_rate"" => 0.6666666666666666, ""blue_initiated_attacks"" => 2)",28
+9,23,304.0,"Dict{String, Real}(""total_attacks"" => 1, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 1.0, ""blue_initiated_attacks"" => 1)",27
+10,25,338.0,"Dict{String, Real}(""total_attacks"" => 2, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 1.0, ""blue_initiated_attacks"" => 2)",25
+11,28,373.0,"Dict{String, Real}(""total_attacks"" => 2, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 1.0, ""blue_initiated_attacks"" => 2)",22
+12,28,373.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",22
+13,28,373.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",22
+14,28,373.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",22
+15,29,396.0,"Dict{String, Real}(""total_attacks"" => 1, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 1.0, ""blue_initiated_attacks"" => 1)",21
+16,29,396.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",21
+17,29,396.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",21
+18,31,404.0,"Dict{String, Real}(""total_attacks"" => 2, ""red_initiated_attacks"" => 1, ""red_attack_rate"" => 0.5, ""blue_attack_rate"" => 0.5, ""blue_initiated_attacks"" => 1)",19
+19,31,404.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",19
+20,32,414.0,"Dict{String, Real}(""total_attacks"" => 1, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 1.0, ""blue_initiated_attacks"" => 1)",18
+21,32,414.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",18
+22,32,414.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",18
+23,32,414.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",18
+24,32,414.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",18
+25,32,414.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",18
+26,32,414.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",18
+27,32,414.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",18
+28,32,414.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",18
+29,32,414.0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)",18
