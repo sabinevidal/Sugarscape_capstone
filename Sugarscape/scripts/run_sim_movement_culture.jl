@@ -17,7 +17,7 @@ end
 
 architecture = ARGS[1]
 scenario = "movement_culture"
-n_steps = 4
+n_steps = 150
 seed = 28
 llm_metadata = Dict{String,Any}("sugarscape" => "$(scenario)-$(architecture)")
 run_number = 1

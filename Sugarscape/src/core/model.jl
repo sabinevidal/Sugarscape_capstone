@@ -74,12 +74,12 @@ function sugarscape(;
 
   # Big Five
   use_big_five::Bool=false,
-  big_five_traits_path::AbstractString="data/processed/big5-traits_raw.csv",
+  big_five_traits_path::AbstractString="data/processed/big5-traits-processed.csv",
   big_five_mvn_dist::Union{MvNormal,Nothing}=nothing,
 
   # Schwartz Values
   use_schwartz_values::Bool=false,
-  schwartz_values_path::AbstractString="data/processed/schwartz-values-data-raw.csv",
+  schwartz_values_path::AbstractString="data/processed/schwartz-values-processed.csv",
   schwartz_values_mvn_dist::Union{MvNormal,Nothing}=nothing,
 )
   # -------------------------------------------------------------------------

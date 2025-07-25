@@ -83,7 +83,7 @@ forwarded to `sugarscape`.
 function sugarscape_llm_schwartz(;
   mvn_dist::Union{MvNormal,Nothing}=nothing,
   llm_api_key::AbstractString=get(ENV, "OPENAI_API_KEY", ""),
-  schwartz_values_path::AbstractString="data/processed/schwartz_values_processed.csv",
+  schwartz_values_path::AbstractString="data/processed/schwartz-values-processed.csv",
   kwargs...)
 
   # Always enable Schwartz values and LLM decisions for this constructor
