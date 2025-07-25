@@ -144,7 +144,7 @@ function create_agent_data_functions(model, analytics)
     ("red_tribe", a -> tribe(a) == :red),
     ("blue_tribe", a -> tribe(a) == :blue)
   ]
-  
+
   for (name, func) in tribe_categories
     push!(adata, (func, length))
   end
@@ -656,15 +656,6 @@ Returns:
     - "avg_cultural_distance": Mean Hamming distance across all pairs
 """
 function calculate_combat_network_metrics(model)
-  # Always return consistent keys, even when combat is disabled or no agents exist
-  if !model.enable_combat
-    return Dict(
-      "potential_conflicts" => 0,
-      "conflict_rate" => 0.0,
-      "avg_cultural_distance" => 0.0
-    )
-  end
-
   # Combat creates temporary relationships, so we track cultural similarity
   agents_list = collect(allagents(model))
   if length(agents_list) == 0
@@ -702,6 +693,91 @@ function calculate_combat_network_metrics(model)
     "potential_conflicts" => potential_conflicts,
     "conflict_rate" => conflict_rate,
     "avg_cultural_distance" => avg_cultural_distance
+  )
+end
+
+# ---------------------------------------------------------------------------
+# Additional Combat/Factional Network Metrics
+# ---------------------------------------------------------------------------
+
+"""
+    calculate_factional_clustering(model)
+
+Calculate the number of combat interactions initiated by each tribe.
+
+Returns:
+- A `Dict` with keys:
+    - "red_initiated_attacks": Number of attacks initiated by red tribe agents
+    - "blue_initiated_attacks": Number of attacks initiated by blue tribe agents
+    - "total_attacks": Total number of recorded attacks
+    - "red_attack_rate": Fraction of total attacks initiated by red tribe agents (0.0–1.0)
+    - "blue_attack_rate": Fraction of total attacks initiated by blue tribe agents (0.0–1.0)
+"""
+function calculate_factional_clustering(model)
+  red_attacks = 0
+  blue_attacks = 0
+
+  for agent in allagents(model)
+    num_attacks = length(agent.last_combat_partner)
+    if num_attacks > 0
+      if tribe(agent) == :red
+        red_attacks += num_attacks
+      elseif tribe(agent) == :blue
+        blue_attacks += num_attacks
+      end
+    end
+  end
+
+  total_attacks = red_attacks + blue_attacks
+  red_rate = total_attacks > 0 ? red_attacks / total_attacks : 0.0
+  blue_rate = total_attacks > 0 ? blue_attacks / total_attacks : 0.0
+
+  return Dict(
+    "red_initiated_attacks" => red_attacks,
+    "blue_initiated_attacks" => blue_attacks,
+    "total_attacks" => total_attacks,
+    "red_attack_rate" => red_rate,
+    "blue_attack_rate" => blue_rate
+  )
+end
+
+"""
+    calculate_cultural_initiation_by_tribe(model)
+
+Count how many cultural transmission attempts were initiated by each tribe in the current step.
+
+Returns:
+- A `Dict` with keys:
+    - "red_initiated_transmissions": Number of culture spread actions by red agents
+    - "blue_initiated_transmissions": Number of culture spread actions by blue agents
+    - "total_transmissions": Total number of agents who spread culture
+    - "red_transmission_rate": Fraction of transmissions by red tribe agents (0.0–1.0)
+    - "blue_transmission_rate": Fraction of transmissions by blue tribe agents (0.0–1.0)
+"""
+function calculate_cultural_initiation_by_tribe(model)
+  red_transmissions = 0
+  blue_transmissions = 0
+
+  for agent in allagents(model)
+    if agent.has_spread_culture
+      if tribe(agent) == :red
+        red_transmissions += 1
+      elseif tribe(agent) == :blue
+        blue_transmissions += 1
+      end
+    end
+  end
+
+  total_transmissions = red_transmissions + blue_transmissions
+  red_rate = total_transmissions > 0 ? red_transmissions / total_transmissions : 0.0
+  blue_rate = total_transmissions > 0 ? blue_transmissions / total_transmissions : 0.0
+
+  return Dict(
+    "red_initiated_transmissions" => red_transmissions,
+    "blue_initiated_transmissions" => blue_transmissions,
+    "total_transmissions" => total_transmissions,
+    "red_transmission_rate" => red_rate,
+    "blue_transmission_rate" => blue_rate
   )
 end
 

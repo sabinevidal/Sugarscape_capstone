@@ -48,7 +48,7 @@ Create and add a BigFiveSugarscapeAgent to the model with the given parameters a
 """
 function create_big_five_agent!(model, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
   initial_sugar, children, total_inheritance_received, culture,
-  loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, traits_row)
+  loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, last_combat_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, traits_row)
   traits = (
     openness=traits_row.Openness,
     conscientiousness=traits_row.Conscientiousness,
@@ -59,7 +59,7 @@ function create_big_five_agent!(model, pos, vision, metabolism, sugar, age, max_
 
   add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
     initial_sugar, children, total_inheritance_received, culture,
-    loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner,
+    loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, last_combat_partner,
     chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, traits)
 
   # for agent in allagents(model)

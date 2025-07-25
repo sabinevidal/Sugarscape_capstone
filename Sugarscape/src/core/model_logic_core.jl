@@ -57,6 +57,9 @@ function _agent_step!(agent, model)
   if hasproperty(agent, :last_credit_partner)
     empty!(agent.last_credit_partner)
   end
+  if hasproperty(agent, :last_combat_partner)
+    empty!(agent.last_combat_partner)
+  end
   if hasproperty(agent, :has_reproduced)
     agent.has_reproduced = false
   end

@@ -223,6 +223,7 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     immunity = falses(model.disease_immunity_length)
     last_partner_id = Int[]
     last_credit_partner = Int[]
+    last_combat_partner = Int[]
     chose_not_to_attack = false
     chose_not_to_borrow = false
     chose_not_to_lend = false
@@ -231,7 +232,7 @@ function sugarscape_llm(;  # signature mirrors original for brevity
 
     add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
       sex, has_reproduced, has_spread_culture, has_accepted_culture, sugar, children, total_inheritance_received,
-      culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner,
+      culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, last_combat_partner,
       chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture)
   end
 
@@ -288,6 +289,9 @@ function _agent_step_llm!(agent, model)
   end
   if hasproperty(agent, :last_credit_partner)
     empty!(agent.last_credit_partner)
+  end
+  if hasproperty(agent, :last_combat_partner)
+    empty!(agent.last_combat_partner)
   end
   if hasproperty(agent, :has_reproduced)
     agent.has_reproduced = false

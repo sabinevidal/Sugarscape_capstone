@@ -168,6 +168,7 @@ function maybe_combat!(attacker, model)
 
   death!(victim, model, :combat)
   model.combat_kills += 1
+  attacker.last_combat_partner = victim.id
 
   move_agent!(attacker, target_pos, model)
   attacker.sugar += collected - attacker.metabolism

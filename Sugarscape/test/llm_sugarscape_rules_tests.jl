@@ -67,6 +67,7 @@ function add_custom_agent!(model, pos; sugar, initial_sugar=sugar, vision=2, met
   loans_owed = Dict{Int,Vector{Sugarscape.Loan}}()
   last_partner_id = Int[]
   last_credit_partner = Int[]
+  last_combat_partner = Int[]
   chose_not_to_attack = false
   chose_not_to_borrow = false
   chose_not_to_lend = false
@@ -76,7 +77,7 @@ function add_custom_agent!(model, pos; sugar, initial_sugar=sugar, vision=2, met
   ag = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age,
     max_age, sex, has_reproduced, initial_sugar, children,
     total_inheritance_received, culture, loans_given, loans_owed,
-    diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture)
+    diseases, immunity, last_partner_id, last_credit_partner, last_combat_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture)
 
   return ag
 end

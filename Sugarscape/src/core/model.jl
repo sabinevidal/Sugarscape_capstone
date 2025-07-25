@@ -85,7 +85,7 @@ function sugarscape(;
   # -------------------------------------------------------------------------
   # Prepare psychological traits BEFORE model creation
   # -------------------------------------------------------------------------
-  
+
   # Prepare Big Five traits if needed
   traits_samples, big_five_mvn = if use_big_five
     prepare_big_five_traits(big_five_traits_path, N, big_five_mvn_dist)
@@ -255,6 +255,7 @@ function sugarscape(;
     immunity = falses(model.disease_immunity_length)
     last_partner_id = Int[]
     last_credit_partner = Int[]
+    last_combat_partner = Int[]
     chose_not_to_attack = false
     chose_not_to_borrow = false
     chose_not_to_lend = false
@@ -265,7 +266,7 @@ function sugarscape(;
     agent_args = (
       vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
       sugar, children, total_inheritance_received, BitVector(culture),
-      loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner,
+      loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, last_combat_partner,
       chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture
     )
 

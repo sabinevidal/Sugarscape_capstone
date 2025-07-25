@@ -1,0 +1,3 @@
+time,#95,#96,#97,nagents
+0,0,"Dict{String, Real}(""avg_cultural_distance"" => 5.468571428571429, ""conflict_rate"" => 0.9991836734693877, ""potential_conflicts"" => 1224)",0.0,50
+1,6,"Dict{String, Real}(""avg_cultural_distance"" => 5.436575052854122, ""conflict_rate"" => 1.0, ""potential_conflicts"" => 946)",0.0,44

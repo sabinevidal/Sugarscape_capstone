@@ -20,7 +20,7 @@ scenario = "movement_combat"
 n_steps = 150
 seed = 28
 llm_metadata = Dict{String,Any}("sugarscape" => "$(scenario)-$(architecture)")
-run_number = 2
+run_number = 1
 run_name = "$(scenario)_$(architecture)_run_$(run_number)"
 
 # ---------------------- Initialise Model ---------------------- #
@@ -59,21 +59,21 @@ adata = if architecture == "bigfive"
     [
         :pos, :sugar, :age, :vision, :metabolism, :sex,
         :children, :has_reproduced, :total_inheritance_received,
-        :last_partner_id, :last_credit_partner, :chose_not_to_attack, :traits
+        :last_partner_id, :last_credit_partner, :last_combat_partner, :chose_not_to_attack, :traits
     ]
 elseif architecture == "schwartz"
     # Include traits for Schwartz agents
     [
         :pos, :sugar, :age, :vision, :metabolism, :sex,
         :children, :has_reproduced, :total_inheritance_received,
-        :last_partner_id, :last_credit_partner, :chose_not_to_attack, :schwartz_values
+        :last_partner_id, :last_credit_partner, :last_combat_partner, :chose_not_to_attack, :schwartz_values
     ]
 else
     # Standard agent data for other architectures
     [
         :pos, :sugar, :age, :vision, :metabolism, :sex,
         :children, :has_reproduced, :total_inheritance_received,
-        :last_partner_id, :last_credit_partner,
+        :last_partner_id, :last_credit_partner, :last_combat_partner,
     ]
 end
 

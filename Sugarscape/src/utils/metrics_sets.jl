@@ -18,8 +18,8 @@ const reproduction_metrics = [
 # Combat-only metrics
 const combat_metrics = [
     model -> model.combat_kills,
-    model -> calculate_combat_network_metrics(model),
-    model -> calculate_decision_entropy(model),
+    model -> model.combat_sugar_stolen,
+    model -> calculate_factional_clustering(model),
     nagents
 ]
 
@@ -36,6 +36,7 @@ const culture_metrics = [
     model -> calculate_pareto_alpha(model),
     model -> model.deaths_age,
     model -> model.deaths_starvation,
+    model -> calculate_cultural_initiation_by_tribe(model),
     nagents
 ]
 
@@ -60,8 +61,7 @@ const reproduction_combat_metrics = vcat(
         model -> calculate_mean_lifespan(model),
         model -> calculate_lifespan_inequality(model)],
     [model -> model.combat_kills,
-        model -> calculate_combat_network_metrics(model),
-        model -> calculate_decision_entropy(model)]
+        model -> calculate_factional_clustering(model),]
 )
 
 const reproduction_culture_metrics = vcat(
@@ -84,9 +84,8 @@ const reproduction_culture_metrics = vcat(
         model -> calculate_wealth_percentiles(model),
         model -> calculate_pareto_alpha(model),
         model -> model.deaths_age,
-        model -> model.deaths_starvation,]
-
-)
+        model -> model.deaths_starvation,
+        model -> calculate_cultural_initiation_by_tribe(model),])
 
 const credit_reproduction_metrics = vcat(
     [nagents,
@@ -112,7 +111,8 @@ const culture_credit_metrics = vcat(
         model -> calculate_wealth_percentiles(model),
         model -> calculate_pareto_alpha(model),
         model -> model.deaths_age,
-        model -> model.deaths_starvation,],
+        model -> model.deaths_starvation,
+        model -> calculate_cultural_initiation_by_tribe(model),],
     [model -> calculate_total_credit_outstanding(model),
         model -> calculate_credit_default_rate(model),
         model -> calculate_credit_network_metrics(model),
@@ -128,13 +128,14 @@ const full_stack_metrics = vcat(
     model -> calculate_total_credit_outstanding(model),
     model -> calculate_credit_default_rate(model),
     model -> calculate_credit_network_metrics(model),
-    model -> calculate_combat_network_metrics(model),
+    model -> calculate_factional_clustering(model),
     model -> calculate_decision_entropy(model),
     model -> calculate_gini_coefficient(model),
     model -> calculate_wealth_percentiles(model),
     model -> calculate_pareto_alpha(model),
     model -> calculate_mean_lifespan(model),
     model -> calculate_lifespan_inequality(model),
+    model -> calculate_cultural_initiation_by_tribe(model),
     model -> calculate_cultural_entropy(model),
     model -> calculate_cultural_diversity(model),
     model -> calculate_spatial_segregation(model),

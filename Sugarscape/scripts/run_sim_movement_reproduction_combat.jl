@@ -59,21 +59,21 @@ adata = if architecture == "bigfive"
     [
         :pos, :sugar, :age, :vision, :metabolism, :sex,
         :children, :has_reproduced, :total_inheritance_received,
-        :last_partner_id, :last_credit_partner, :chose_not_to_attack, :chose_not_to_reproduce, :traits
+        :last_partner_id, :last_credit_partner, :last_combat_partner, :chose_not_to_attack, :chose_not_to_reproduce, :traits
     ]
 elseif architecture == "schwartz"
     # Include traits for Schwartz agents
     [
         :pos, :sugar, :age, :vision, :metabolism, :sex,
         :children, :has_reproduced, :total_inheritance_received,
-        :last_partner_id, :last_credit_partner, :chose_not_to_attack, :chose_not_to_reproduce, :schwartz_values
+        :last_partner_id, :last_credit_partner, :last_combat_partner, :chose_not_to_attack, :chose_not_to_reproduce, :schwartz_values
     ]
 else
     # Standard agent data for other architectures
     [
         :pos, :sugar, :age, :vision, :metabolism, :sex,
         :children, :has_reproduced, :total_inheritance_received,
-        :last_partner_id, :last_credit_partner,
+        :last_partner_id, :last_credit_partner, :last_combat_partner,
     ]
 end
 
