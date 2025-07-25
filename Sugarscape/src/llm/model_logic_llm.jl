@@ -223,10 +223,16 @@ function sugarscape_llm(;  # signature mirrors original for brevity
     immunity = falses(model.disease_immunity_length)
     last_partner_id = Int[]
     last_credit_partner = Int[]
+    chose_not_to_attack = false
+    chose_not_to_borrow = false
+    chose_not_to_lend = false
+    chose_not_to_reproduce = false
+    chose_not_to_spread_culture = false
 
     add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
       sex, has_reproduced, has_spread_culture, has_accepted_culture, sugar, children, total_inheritance_received,
-      culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
+      culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner,
+      chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture)
   end
 
   return model
@@ -291,6 +297,21 @@ function _agent_step_llm!(agent, model)
   end
   if hasproperty(agent, :has_accepted_culture)
     agent.has_accepted_culture = false
+  end
+  if hasproperty(agent, :chose_not_to_attack)
+    agent.chose_not_to_attack = false
+  end
+  if hasproperty(agent, :chose_not_to_borrow)
+    agent.chose_not_to_borrow = false
+  end
+  if hasproperty(agent, :chose_not_to_lend)
+    agent.chose_not_to_lend = false
+  end
+  if hasproperty(agent, :chose_not_to_reproduce)
+    agent.chose_not_to_reproduce = false
+  end
+  if hasproperty(agent, :chose_not_to_spread_culture)
+    agent.chose_not_to_spread_culture = false
   end
 
   # ---------------------------------------------------------

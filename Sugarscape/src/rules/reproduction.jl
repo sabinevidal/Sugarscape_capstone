@@ -78,7 +78,7 @@ function reproduction!(agent, model)
     reproduction_decision = SugarscapeLLM.get_reproduction_decision(reproduction_context, model)
 
     if reproduction_decision.reproduce === false || reproduction_decision.partners === nothing || isempty(reproduction_decision.partners)
-      @info "No partners selected by LLM for reproduction."
+      agent.chose_not_to_reproduce = true
       return
     end
 
@@ -125,6 +125,11 @@ function create_child(parent1, parent2, pos, model)
   immunity = falses(model.disease_immunity_length)
   last_partner_id = Int[]
   last_credit_partner = Int[]
+  chose_not_to_attack = false
+  chose_not_to_borrow = false
+  chose_not_to_lend = false
+  chose_not_to_reproduce = false
+  chose_not_to_spread_culture = false
 
   # Create child based on whether Big Five traits are enabled
   if model.use_big_five
@@ -139,7 +144,7 @@ function create_child(parent1, parent2, pos, model)
       neuroticism=traits_row.Neuroticism
     )
 
-    child = add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, false, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, child_traits)
+    child = add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, false, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, child_traits)
 
   elseif model.use_schwartz_values
     values_sample = SchwartzValuesProcessor.sample_agents(model.schwartz_values_mvn_dist, 1)
@@ -158,9 +163,9 @@ function create_child(parent1, parent2, pos, model)
       universalism=values_row.universalism
     )
 
-    child = add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, false, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, child_values)
+    child = add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, false, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, child_values)
   else
-    child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, false, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
+    child = add_agent!(pos, SugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, false, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture)
   end
 
   # Track birth in model statistics

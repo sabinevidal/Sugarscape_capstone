@@ -104,6 +104,46 @@ function build_big_five_reproduction_context(agent, model, eligible_partners, ma
   return reproduction_context
 end
 
+"""
+    build_big_five_combat_context(agent, model, candidates) -> Dict
+
+Build a Big Five combat context for the agent, including their traits and eligible combat targets.
+"""
+function build_big_five_combat_context(agent, model, candidates)
+  targets = Vector{Dict{String,Any}}()
+  for candidate in candidates
+    # candidate is a tuple: (position, agent, reward, distance)
+    pos, target_agent, reward, distance = candidate
+
+    # Get target's Big Five traits if available
+    target_big_five_traits = hasproperty(target_agent, :traits) ? Dict(string(k) => v for (k, v) in pairs(target_agent.traits)) : nothing
+
+    push!(targets, Dict(
+      "id" => target_agent.id,
+      "position" => target_agent.pos,
+      "sugar" => target_agent.sugar,
+      "culture" => target_agent.culture,
+      "big_five_traits" => target_big_five_traits,
+      "reward" => reward,
+      "distance" => distance
+    ))
+  end
+
+  # Get agent's Big Five traits
+  big_five_traits = hasproperty(agent, :traits) ? Dict(string(k) => v for (k, v) in pairs(agent.traits)) : nothing
+
+  return Dict(
+    "agent_id" => agent.id,
+    "position" => agent.pos,
+    "sugar" => agent.sugar,
+    "vision" => agent.vision,
+    "metabolism" => agent.metabolism,
+    "culture" => agent.culture,
+    "big_five_traits" => big_five_traits,
+    "eligible_targets" => targets,
+  )
+end
+
 
 """
     build_big_five_culture_context(agent, model, neighbors)

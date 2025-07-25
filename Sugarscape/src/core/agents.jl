@@ -27,4 +27,9 @@ end
     immunity::BitVector
     last_partner_id::Vector{Int}
     last_credit_partner::Vector{Int}
+    chose_not_to_attack::Bool
+    chose_not_to_borrow::Bool
+    chose_not_to_lend::Bool
+    chose_not_to_reproduce::Bool
+    chose_not_to_spread_culture::Bool
 end

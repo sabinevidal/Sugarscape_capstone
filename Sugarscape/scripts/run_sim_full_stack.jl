@@ -26,16 +26,16 @@ run_name = "$(scenario)_$(architecture)_run_$(run_number)"
 # ---------------------- Initialise Model ---------------------- #
 model = if architecture == "rule"
     sugarscape(; seed=seed, enable_reproduction=true, enable_combat=true,
-               enable_culture=true, enable_credit=true, llm_metadata=llm_metadata, run_name=run_name)
+        enable_culture=true, enable_credit=true, llm_metadata=llm_metadata, run_name=run_name)
 elseif architecture == "llm"
     sugarscape(; seed=seed, enable_reproduction=true, enable_combat=true,
-               enable_culture=true, enable_credit=true, use_llm_decisions=true, llm_metadata=llm_metadata, run_name=run_name)
+        enable_culture=true, enable_credit=true, use_llm_decisions=true, llm_metadata=llm_metadata, run_name=run_name)
 elseif architecture == "bigfive"
     sugarscape_llm_bigfive(; seed=seed, enable_reproduction=true, enable_combat=true,
-                           enable_culture=true, enable_credit=true, llm_metadata=llm_metadata, run_name=run_name)
+        enable_culture=true, enable_credit=true, llm_metadata=llm_metadata, run_name=run_name)
 elseif architecture == "schwartz"
     sugarscape_llm_schwartz(; seed=seed, enable_reproduction=true, enable_combat=true,
-                            enable_culture=true, enable_credit=true, llm_metadata=llm_metadata, run_name=run_name)
+        enable_culture=true, enable_credit=true, llm_metadata=llm_metadata, run_name=run_name)
 else
     error("Unsupported architecture: $architecture")
 end
@@ -63,14 +63,14 @@ adata = if architecture == "bigfive"
     [
         :pos, :sugar, :age, :vision, :metabolism, :sex,
         :culture, :children, :has_reproduced, :total_inheritance_received,
-        :last_partner_id, :last_credit_partner, :traits
+        :last_partner_id, :last_credit_partner, :chose_not_to_attack, :chose_not_to_borrow, :chose_not_to_lend, :chose_not_to_reproduce, :chose_not_to_spread_culture, :traits
     ]
 elseif architecture == "schwartz"
     # Include traits for Schwartz agents
     [
         :pos, :sugar, :age, :vision, :metabolism, :sex,
         :culture, :children, :has_reproduced, :total_inheritance_received,
-        :last_partner_id, :last_credit_partner, :schwartz_values
+        :last_partner_id, :last_credit_partner, :chose_not_to_attack, :chose_not_to_borrow, :chose_not_to_lend, :chose_not_to_reproduce, :chose_not_to_spread_culture, :schwartz_values
     ]
 else
     # Standard agent data for other architectures

@@ -470,11 +470,17 @@ end
 
 function get_combat_decision(context::Dict, model)
     combat_response_format = SugarscapePrompts.get_combat_response_format()
-    combat_prompt = SugarscapePrompts.get_combat_system_prompt()
+    if model.use_big_five
+        combat_prompt = BigFive.get_big_five_combat_system_prompt()
+    elseif model.use_schwartz_values
+        combat_prompt = SchwartzValues.get_schwartz_values_combat_system_prompt()
+    else
+        combat_prompt = SugarscapePrompts.get_combat_system_prompt()
+    end
     try
         raw_response = call_openai_api(context, "combat", model, combat_prompt, combat_response_format)
         decision = _parse_combat_decision(raw_response)
-        log_decision!(model, context["agent_id"], abmtime(model), "combat", decision.target, decision.reasoning)
+        log_decision!(model, context["agent_id"], abmtime(model), "combat", decision.combat_target, decision.reasoning)
         return decision
     catch e
         throw(LLMAPIError("Failed to get combat decision: $(e)", nothing, nothing))

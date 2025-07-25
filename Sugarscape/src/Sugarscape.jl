@@ -72,9 +72,12 @@ include("visualisation/ai_dashboards.jl")
 export SugarscapeAgent, sugarscape
 
 # Psychological Dimensions
+## Modules
+export BigFive, SchwartzValues
+
 ## Big Five
-export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive, build_big_five_movement_context
-export get_big_five_system_prompt, get_big_five_reproduction_system_prompt, get_big_five_culture_system_prompt
+export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive, build_big_five_movement_context, build_big_five_combat_context
+export get_big_five_system_prompt, get_big_five_reproduction_system_prompt, get_big_five_culture_system_prompt, get_big_five_combat_system_prompt
 export get_big_five_movement_system_prompt, get_big_five_credit_lender_offer_system_prompt
 export get_big_five_credit_lender_respond_system_prompt, get_big_five_credit_borrower_request_system_prompt
 

@@ -261,12 +261,18 @@ function sugarscape(;
     immunity = falses(model.disease_immunity_length)
     last_partner_id = Int[]
     last_credit_partner = Int[]
+    chose_not_to_attack = false
+    chose_not_to_borrow = false
+    chose_not_to_lend = false
+    chose_not_to_reproduce = false
+    chose_not_to_spread_culture = false
 
     # Create agent arguments for add_agent! (pos, AgentType, model, ...args)
     agent_args = (
       vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
       sugar, children, total_inheritance_received, BitVector(culture),
-      loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner
+      loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner,
+      chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture
     )
 
     if use_big_five

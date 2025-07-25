@@ -66,6 +66,21 @@ function _agent_step!(agent, model)
   if hasproperty(agent, :has_accepted_culture)
     agent.has_accepted_culture = false
   end
+  if hasproperty(agent, :chose_not_to_attack)
+    agent.chose_not_to_attack = false
+  end
+  if hasproperty(agent, :chose_not_to_borrow)
+    agent.chose_not_to_borrow = false
+  end
+  if hasproperty(agent, :chose_not_to_lend)
+    agent.chose_not_to_lend = false
+  end
+  if hasproperty(agent, :chose_not_to_reproduce)
+    agent.chose_not_to_reproduce = false
+  end
+  if hasproperty(agent, :chose_not_to_spread_culture)
+    agent.chose_not_to_spread_culture = false
+  end
 
   if model.enable_combat
     maybe_combat!(agent, model)

@@ -72,8 +72,16 @@ attempt_pay_loans!(agent, model)
 Placeholder for rule-based credit logic.
 """
 function attempt_pay_loans!(borrower, model)
+    # Collect ids that no longer correspond to living agents so we can forgive these debts
+    to_remove = Int[]
+    # Iterate over all outstanding loans grouped by counterparty
     # Iterate over all outstanding loans grouped by counterparty
     for (other_id, loan_list) in pairs(borrower.loans_owed)
+        # Skip and mark for removal if the lender has died (no longer in the model)
+        if !hasid(model, other_id)
+            push!(to_remove, other_id)
+            continue
+        end
         lender = model[other_id]
         new_list = Loan[]
         for loan in loan_list
@@ -112,6 +120,10 @@ function attempt_pay_loans!(borrower, model)
         else
             borrower.loans_owed[other_id] = new_list
         end
+    end
+    # Forgive loans whose counterparties no longer exist
+    for rem_id in to_remove
+        delete!(borrower.loans_owed, rem_id)
     end
     return
 end
@@ -165,6 +177,7 @@ function attempt_borrow!(borrower, model, amount, neighbours)
         credit_decision = SugarscapeLLM.get_credit_borrower_request_decision(borrower_context, model)
 
         if !credit_decision.borrow || credit_decision.borrow_from === nothing
+            borrower.chose_not_to_borrow = true
             return
         end
 
@@ -185,6 +198,7 @@ function attempt_borrow!(borrower, model, amount, neighbours)
             lender_decision = SugarscapeLLM.get_credit_lender_respond_decision(lender_context, model)
 
             if !lender_decision.lend || lender_decision.lend_to === nothing
+                lender.chose_not_to_lend = true
                 continue
             elseif lender_decision.lend
                 # Find the corresponding lend decision for this borrower
@@ -282,6 +296,7 @@ function attempt_lend!(lender, model, amount, neighbours)
         credit_decision = SugarscapeLLM.get_credit_lender_offer_decision(lender_context, model)
 
         if !credit_decision.lend || credit_decision.lend_to === nothing
+            lender.chose_not_to_lend = true
             return
         end
 
@@ -301,6 +316,7 @@ function attempt_lend!(lender, model, amount, neighbours)
             borrower_decision = SugarscapeLLM.get_credit_borrower_respond_decision(borrower_context, model)
 
             if !borrower_decision.borrow || borrower_decision.borrow_from === nothing
+                borrower.chose_not_to_borrow = true
                 continue
             elseif borrower_decision.borrow
                 # Find the corresponding borrow decision for this lender

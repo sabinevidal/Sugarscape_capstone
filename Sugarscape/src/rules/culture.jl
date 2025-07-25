@@ -49,6 +49,7 @@ function culture_spread!(agent, model, check_decision::Bool=false)
     culture_decision = SugarscapeLLM.get_culture_decision(culture_context, model)
 
     if culture_decision.spread_culture === false || culture_decision.transmit_to === nothing
+      agent.chose_not_to_spread_culture = true
       return
     end
 
@@ -346,10 +347,10 @@ function calculate_tribe_proportions(model)
   if total_agents == 0
     return Dict("red_proportion" => 0.0, "blue_proportion" => 0.0)
   end
-  
+
   red_count = count_red_tribe(model)
   blue_count = count_blue_tribe(model)
-  
+
   return Dict(
     "red_proportion" => red_count / total_agents,
     "blue_proportion" => blue_count / total_agents

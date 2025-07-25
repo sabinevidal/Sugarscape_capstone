@@ -1,12 +1,13 @@
 """
-Combat (L) Rule Implementation for Sugarscape
-
-The Combat Rule allows agents to attack and rob other agents under specific conditions:
-1. Target must be within vision range
-2. Target must be weaker (less sugar)
-3. Target must be culturally different
-4. Target's cell must be unoccupied by others
-5. Attacker steals min(target.sugar, combat_limit) and kills target
+Combat (C) Rule Implementation for Sugarscape
+- Look out as far as directions;
+- Throw out all sites occupied by members of the agent's own tribe;
+- Throw out all sites occupied by members of different tribes who are wealthier than the agent;
+- The reward of each remaining site is given by the resource level at the site plus, if it is occupied, the minimum of a and  the occupant's wealth;
+- Throw out all sites that are vulnerable to retaliation;
+- Select the nearest position having maximum reward and go there;
+- Gather the resources at the site plus the minimum of a and  the occupant's wealth, if the site was occupied;
+- If the site was occupied, then the former occupant is considered "killed" - permanently removed from play.
 """
 
 using Agents
@@ -19,19 +20,13 @@ Get all positions visible to an agent in the four cardinal directions up to thei
 Returns a vector of position tuples that are within the model boundaries.
 """
 function visible_positions(agent, model)
-  positions = []
-  for direction in [(1, 0), (-1, 0), (0, 1), (0, -1)]  # cardinal directions
-    for distance in 1:agent.vision
-      pos = (agent.pos[1] + distance * direction[1],
-        agent.pos[2] + distance * direction[2])
-
-      # Handle boundaries (GridSpaceSingle) – access the internal `:space` field
-      # via `getfield` to bypass `getproperty`, which would otherwise look into
-      # the `properties` Dict and raise a `KeyError` for `:space`.
-      if all(1 .<= pos .<= size(getfield(model, :space)))
-        push!(positions, pos)
-      end
-    end
+  # Collect the coordinates of *agents* that are within the agent's vision range
+  # using Agents.jl built-in spatial query. We do **not** enumerate empty cells
+  # because combat considers only occupied sites.
+  positions = Tuple{Int,Int}[]
+  for other in nearby_agents(agent, model, agent.vision)
+    other.id == agent.id && continue  # skip self
+    push!(positions, other.pos)
   end
   return positions
 end
@@ -54,30 +49,14 @@ end
 Return `true` when *any* stronger enemy (different tribe) can see `target_pos`
 within their own vision (Combat Rule C-α 4).
 """
-function exposed_to_retaliation(model; attacker, target_pos, future=attacker.sugar)
-  for other in allagents(model)
+function exposed_to_retaliation(model; attacker, target_pos, future)
+  for other in nearby_agents(attacker, model, attacker.vision)
     other.id == attacker.id && continue           # skip self
     culturally_different(attacker, other) || continue
     other.sugar > future || continue              # stronger *after* we cash in
     target_pos in visible_positions(other, model) && return true
   end
   return false
-end
-
-"""
-    combat!(model)
-
-**Deprecated.** The combat rule now executes asynchronously via
-`maybe_combat!(agent, model)` inside each agent step.  This
-function is kept for backwards compatibility but simply iterates over
-all agents and calls `maybe_combat!`.
-"""
-function combat!(model)
-  !model.enable_combat && return
-
-  for ag in allagents(model)
-    maybe_combat!(ag, model)
-  end
 end
 
 """
@@ -122,16 +101,17 @@ function maybe_combat!(attacker, model)
     return
   end
 
-  candidates = Vector{Tuple{Tuple{Int,Int},SugarscapeAgent,Float64,Float64}}()
-  for pos in visible_positions(attacker, model)
-    occs = get_agents_at_position(model, pos)
-    length(occs) == 1 || continue
-    victim = first(occs)
-    culturally_different(attacker, victim) || continue
-    victim.sugar < attacker.sugar || continue
+  candidates = Vector{Tuple{Tuple{Int,Int},Any,Float64,Float64}}()
+  # Iterate over *nearby agents* instead of manually scanning positions
+  for victim in nearby_agents(attacker, model, attacker.vision)
+    victim.id == attacker.id && continue                                   # skip self
+    culturally_different(attacker, victim) || continue                     # must be enemy
+    victim.sugar < attacker.sugar || continue                              # attacker must be stronger
 
+    pos = victim.pos
+    # Reward = current sugar on site + growback that will occur this tick + victim's wealth
     site_sugar = model.sugar_values[pos...]
-    reward = site_sugar + min(victim.sugar, model.combat_limit)
+    reward = site_sugar + model.growth_rate + victim.sugar
     reward == 0.0 && continue
 
     exposed_to_retaliation(model; attacker, target_pos=pos,
@@ -143,12 +123,24 @@ function maybe_combat!(attacker, model)
 
   if model.use_llm_decisions
     # combat context
-    combat_context = build_combat_context(attacker, model, candidates)
+    if model.use_big_five
+      combat_context = build_big_five_combat_context(attacker, model, candidates)
+    elseif model.use_schwartz_values
+      combat_context = build_schwartz_values_combat_context(attacker, model, candidates)
+    else
+      combat_context = build_combat_context(attacker, model, candidates)
+    end
     # get combat decision
     combat_decision = SugarscapeLLM.get_combat_decision(combat_context, model)
 
     should_attack = combat_decision.combat
     target_id = combat_decision.combat_target
+
+    if !should_attack || target_id === nothing
+      attacker.chose_not_to_attack = true
+      movement!(attacker, model)
+      return
+    end
 
     valid = should_attack && target_id !== nothing &&
             any(c -> c[2].id == target_id, candidates)

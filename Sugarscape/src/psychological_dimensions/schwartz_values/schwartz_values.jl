@@ -49,7 +49,7 @@ Create and add a SchwartzValuesSugarscapeAgent to the model with the given param
 """
 function create_schwartz_values_agent!(model, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
   initial_sugar, children, total_inheritance_received, culture,
-  loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, values_row)
+  loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, values_row)
   schwartz_values = (
     self_direction=values_row.self_direction,
     stimulation=values_row.stimulation,
@@ -66,7 +66,7 @@ function create_schwartz_values_agent!(model, pos, vision, metabolism, sugar, ag
   add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
     initial_sugar, children, total_inheritance_received, culture,
     loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner,
-    schwartz_values)
+    chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, schwartz_values)
 
   # for agent in allagents(model)
   #   println("Agent $(agent.id): $(agent.traits)")

@@ -11,7 +11,7 @@ import ..Sugarscape: SugarscapeAgent, Loan
 include("big_five_prompts.jl")
 include("big_five_contexts.jl")
 
-export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive, build_big_five_movement_context, build_big_five_credit_lender_context, build_big_five_culture_context, build_big_five_credit_borrower_context, build_big_five_reproduction_context
+export BigFiveSugarscapeAgent, prepare_big_five_traits, create_big_five_agent!, sugarscape_llm_bigfive, build_big_five_movement_context, build_big_five_combat_context, build_big_five_credit_lender_context, build_big_five_culture_context, build_big_five_credit_borrower_context, build_big_five_reproduction_context
 
 @agent struct BigFiveSugarscapeAgent(SugarscapeAgent)
   traits::NamedTuple{
@@ -48,7 +48,7 @@ Create and add a BigFiveSugarscapeAgent to the model with the given parameters a
 """
 function create_big_five_agent!(model, pos, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
   initial_sugar, children, total_inheritance_received, culture,
-  loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, traits_row)
+  loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, traits_row)
   traits = (
     openness=traits_row.Openness,
     conscientiousness=traits_row.Conscientiousness,
@@ -60,7 +60,7 @@ function create_big_five_agent!(model, pos, vision, metabolism, sugar, age, max_
   add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
     initial_sugar, children, total_inheritance_received, culture,
     loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner,
-    traits)
+    chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, traits)
 
   # for agent in allagents(model)
   #   println("Agent $(agent.id): $(agent.traits)")

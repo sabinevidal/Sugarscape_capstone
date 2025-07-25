@@ -69,6 +69,11 @@ function death_replacement!(agent, model)
     immunity = falses(model.disease_immunity_length)
     last_partner_id = Int[]
     last_credit_partner = Int[]
+    chose_not_to_attack = false
+    chose_not_to_borrow = false
+    chose_not_to_lend = false
+    chose_not_to_reproduce = false
+    chose_not_to_spread_culture = false
 
     # Check if this is a Big Five model and create appropriate agent type
     if model.use_big_five
@@ -85,12 +90,12 @@ function death_replacement!(agent, model)
 
         add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
           sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, traits)
+          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, traits)
       else
         # Create a regular SugarscapeAgent
         add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
           sex, has_reproduced, has_spread_culture, has_accepted_culture, sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
+          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture)
       end
     elseif model.use_schwartz_values
       if isa(agent, SchwartzValuesSugarscapeAgent) && hasproperty(model, :schwartz_values_mvn_dist) && !isnothing(model.schwartz_values_mvn_dist)
@@ -111,18 +116,18 @@ function death_replacement!(agent, model)
 
         add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
           sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, schwartz_values)
+          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, schwartz_values)
       else
         # Create a regular SugarscapeAgent
         add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
           sex, has_reproduced, has_spread_culture, has_accepted_culture, sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
+          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture)
       end
     else
       # Create a regular SugarscapeAgent when neither use_big_five nor use_schwartz_values is enabled
       add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
         sugar, children, total_inheritance_received,
-        culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner)
+        culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture)
     end
   end
 end
