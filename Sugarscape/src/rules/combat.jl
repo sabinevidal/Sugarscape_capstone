@@ -168,7 +168,9 @@ function maybe_combat!(attacker, model)
 
   death!(victim, model, :combat)
   model.combat_kills += 1
-  attacker.last_combat_partner = victim.id
+  if hasproperty(attacker, :last_combat_partner)
+    push!(attacker.last_combat_partner, victim.id)
+  end
 
   move_agent!(attacker, target_pos, model)
   attacker.sugar += collected - attacker.metabolism
