@@ -74,14 +74,32 @@ function sugarscape(;
 
   # Big Five
   use_big_five::Bool=false,
-  big_five_traits_path::AbstractString="data/processed/big5-traits_raw.csv",
+  big_five_traits_path::AbstractString="data/processed/big5-traits-processed.csv",
   big_five_mvn_dist::Union{MvNormal,Nothing}=nothing,
 
   # Schwartz Values
   use_schwartz_values::Bool=false,
-  schwartz_values_path::AbstractString="data/processed/schwartz-values-data-raw.csv",
+  schwartz_values_path::AbstractString="data/processed/schwartz-values-processed.csv",
   schwartz_values_mvn_dist::Union{MvNormal,Nothing}=nothing,
 )
+  # -------------------------------------------------------------------------
+  # Prepare psychological traits BEFORE model creation
+  # -------------------------------------------------------------------------
+  
+  # Prepare Big Five traits if needed
+  traits_samples, big_five_mvn = if use_big_five
+    prepare_big_five_traits(big_five_traits_path, N, big_five_mvn_dist)
+  else
+    (nothing, nothing)
+  end
+
+  # Prepare Schwartz values if needed
+  schwartz_values_samples, schwartz_values_mvn = if use_schwartz_values
+    prepare_schwartz_values(schwartz_values_path, N, schwartz_values_mvn_dist)
+  else
+    (nothing, nothing)
+  end
+
   # -------------------------------------------------------------------------
   # Grid initialisation
   # -------------------------------------------------------------------------
@@ -177,12 +195,12 @@ function sugarscape(;
     # Big Five MvNormal for runtime sampling
     :use_big_five => use_big_five,
     :big_five_traits_path => big_five_traits_path,
-    :big_five_mvn_dist => nothing,
+    :big_five_mvn_dist => big_five_mvn,
 
     # Schwartz Values
     :use_schwartz_values => use_schwartz_values,
     :schwartz_values_path => schwartz_values_path,
-    :schwartz_values_mvn_dist => nothing,
+    :schwartz_values_mvn_dist => schwartz_values_mvn,
 
     # Action logging
     :last_actions => String[],
@@ -212,30 +230,6 @@ function sugarscape(;
   # -----------------------------------------------------------------------
   # Initialise population
   # -----------------------------------------------------------------------
-
-  # Prepare Big Five traits if needed
-  traits_samples, big_five_mvn = if use_big_five
-    prepare_big_five_traits(big_five_traits_path, N, big_five_mvn_dist)
-  else
-    (nothing, nothing)
-  end
-
-  # Store MVN distribution in model for runtime sampling during reproduction
-  if use_big_five
-    model.big_five_mvn_dist = big_five_mvn
-  end
-
-  # Prepare Schwartz values if needed
-  schwartz_values_samples, schwartz_values_mvn = if use_schwartz_values
-    prepare_schwartz_values(schwartz_values_path, N, schwartz_values_mvn_dist)
-  else
-    (nothing, nothing)
-  end
-
-  # Store MVN distribution in model for runtime sampling during reproduction
-  if use_schwartz_values
-    model.schwartz_values_mvn_dist = schwartz_values_mvn
-  end
 
   for i in 1:N
     vision = rand(abmrng(model), vision_dist[1]:vision_dist[2])

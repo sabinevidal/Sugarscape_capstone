@@ -1,0 +1,4 @@
+time,#101,#102,#103,#104,nagents
+0,4.5913072423768835,"Dict{String, Real}(""unique_cultures"" => 99, ""max_possible"" => 2048, ""diversity_ratio"" => 0.04833984375)",0.0,0.0,100
+1,4.577444298765684,"Dict{String, Real}(""unique_cultures"" => 98, ""max_possible"" => 2048, ""diversity_ratio"" => 0.0478515625)",0.0,0.0,100
+2,4.55311093010065,"Dict{String, Real}(""unique_cultures"" => 96, ""max_possible"" => 2048, ""diversity_ratio"" => 0.046875)",0.0,0.0,99

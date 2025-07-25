@@ -77,9 +77,9 @@ function death_replacement!(agent, model)
 
     # Check if this is a Big Five model and create appropriate agent type
     if model.use_big_five
-      if isa(agent, BigFiveSugarscapeAgent) && hasproperty(model, :big_five_mvn_dist) && !isnothing(model.big_five_mvn_dist)
+      if isa(agent, BigFiveSugarscapeAgent) && haskey(getfield(model, :properties), :big_five_mvn_dist) && !isnothing(getfield(model, :properties)[:big_five_mvn_dist])
         # Create a BigFiveSugarscapeAgent with random traits from the MVN distribution
-        traits_sample = BigFiveProcessor.sample_agents(model.big_five_mvn_dist, 1)[1]
+        traits_sample = BigFiveProcessor.sample_agents(getfield(model, :properties)[:big_five_mvn_dist], 1)[1, :]
         traits = (
           openness=traits_sample.Openness,
           conscientiousness=traits_sample.Conscientiousness,
@@ -92,15 +92,14 @@ function death_replacement!(agent, model)
           sugar, children, total_inheritance_received,
           culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, traits)
       else
-        # Create a regular SugarscapeAgent
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-          sex, has_reproduced, has_spread_culture, has_accepted_culture, sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture)
+        # Error: Cannot create BigFiveSugarscapeAgent without proper MVN distribution
+        error("Cannot create BigFiveSugarscapeAgent during death replacement: model.big_five_mvn_dist is missing or null. " *
+              "Big Five agents require a proper multivariate normal distribution fitted from real psychological data.")
       end
     elseif model.use_schwartz_values
-      if isa(agent, SchwartzValuesSugarscapeAgent) && hasproperty(model, :schwartz_values_mvn_dist) && !isnothing(model.schwartz_values_mvn_dist)
+      if isa(agent, SchwartzValuesSugarscapeAgent) && haskey(getfield(model, :properties), :schwartz_values_mvn_dist) && !isnothing(getfield(model, :properties)[:schwartz_values_mvn_dist])
         # Create a SchwartzValuesSugarscapeAgent with random traits from the MVN distribution
-        traits_sample = SchwartzValuesProcessor.sample_agents(model.schwartz_values_mvn_dist, 1)[1]
+        traits_sample = SchwartzValuesProcessor.sample_agents(getfield(model, :properties)[:schwartz_values_mvn_dist], 1)[1, :]
         schwartz_values = (
           self_direction=traits_sample.SelfDirection,
           stimulation=traits_sample.Stimulation,
@@ -118,10 +117,9 @@ function death_replacement!(agent, model)
           sugar, children, total_inheritance_received,
           culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, schwartz_values)
       else
-        # Create a regular SugarscapeAgent
-        add_agent!(pos, SugarscapeAgent, model, vision, metabolism, sugar, age, max_age,
-          sex, has_reproduced, has_spread_culture, has_accepted_culture, sugar, children, total_inheritance_received,
-          culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture)
+        # Error: Cannot create SchwartzValuesSugarscapeAgent without proper MVN distribution
+        error("Cannot create SchwartzValuesSugarscapeAgent during death replacement: model.schwartz_values_mvn_dist is missing or null. " *
+              "Schwartz Values agents require a proper multivariate normal distribution fitted from real psychological data.")
       end
     else
       # Create a regular SugarscapeAgent when neither use_big_five nor use_schwartz_values is enabled

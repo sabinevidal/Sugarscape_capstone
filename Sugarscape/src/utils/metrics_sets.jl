@@ -32,6 +32,10 @@ const culture_metrics = [
     model -> count_red_tribe(model),
     model -> count_blue_tribe(model),
     model -> calculate_tribe_proportions(model),
+    model -> calculate_wealth_percentiles(model),
+    model -> calculate_pareto_alpha(model),
+    model -> model.deaths_age,
+    model -> model.deaths_starvation,
     nagents
 ]
 
@@ -76,7 +80,12 @@ const reproduction_culture_metrics = vcat(
         model -> calculate_clustering_coefficient(model),
         model -> count_red_tribe(model),
         model -> count_blue_tribe(model),
-        model -> calculate_tribe_proportions(model)]
+        model -> calculate_tribe_proportions(model),
+        model -> calculate_wealth_percentiles(model),
+        model -> calculate_pareto_alpha(model),
+        model -> model.deaths_age,
+        model -> model.deaths_starvation,]
+
 )
 
 const credit_reproduction_metrics = vcat(
@@ -99,7 +108,11 @@ const culture_credit_metrics = vcat(
         model -> calculate_cultural_entropy(model),
         model -> calculate_cultural_diversity(model),
         model -> calculate_spatial_segregation(model),
-        model -> calculate_clustering_coefficient(model)],
+        model -> calculate_clustering_coefficient(model),
+        model -> calculate_wealth_percentiles(model),
+        model -> calculate_pareto_alpha(model),
+        model -> model.deaths_age,
+        model -> model.deaths_starvation,],
     [model -> calculate_total_credit_outstanding(model),
         model -> calculate_credit_default_rate(model),
         model -> calculate_credit_network_metrics(model),

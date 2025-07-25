@@ -78,7 +78,7 @@ forwarded to `sugarscape`.
 function sugarscape_llm_bigfive(;
   mvn_dist::Union{MvNormal,Nothing}=nothing,
   llm_api_key::AbstractString=get(ENV, "OPENAI_API_KEY", ""),
-  big_five_traits_path::AbstractString="data/processed/big5-traits_raw.csv",
+  big_five_traits_path::AbstractString="data/processed/big5-traits-processed.csv",
   kwargs...)
 
   # Always enable Big Five and LLM decisions for this constructor
