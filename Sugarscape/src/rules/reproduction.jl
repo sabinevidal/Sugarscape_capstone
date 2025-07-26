@@ -145,7 +145,7 @@ function create_child(parent1, parent2, pos, model)
       neuroticism=traits_row.Neuroticism
     )
 
-    child = add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, false, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, child_traits)
+    child = add_agent!(pos, BigFiveSugarscapeAgent, model, vision, metabolism, child_sugar, 0, max_age, sex, false, false, false, child_sugar, Int[], 0.0, culture, loans_given, loans_owed, diseases, immunity, last_partner_id, last_credit_partner, last_combat_partner, chose_not_to_attack, chose_not_to_borrow, chose_not_to_lend, chose_not_to_reproduce, chose_not_to_spread_culture, child_traits)
 
   elseif model.use_schwartz_values
     values_sample = SchwartzValuesProcessor.sample_agents(model.schwartz_values_mvn_dist, 1)

@@ -4,3 +4,14 @@ time,#125,#126,#127,#128,nagents
 2,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.2966205837173579,50
 3,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3350855365474339,50
 4,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.35656012176560115,50
+5,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.35853658536585353,50
+6,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3636216216216217,50
+7,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.36975796178343945,50
+8,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3825759416767922,50
+9,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3752252252252253,50
+10,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.39962513781697906,50
+11,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3966108786610878,50
+12,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.38818092428711903,50
+13,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.36238095238095247,50
+14,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3579826086956521,50
+15,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3609650582362729,50

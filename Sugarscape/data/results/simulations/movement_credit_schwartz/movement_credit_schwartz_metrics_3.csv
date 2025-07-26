@@ -4,3 +4,17 @@ time,#125,#126,#127,#128,nagents
 2,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.2978159126365054,50
 3,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.31965785381026435,50
 4,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3404368174726988,50
+5,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3496385542168674,50
+6,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.350677966101695,50
+7,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3558730158730159,50
+8,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3609547738693468,50
+9,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.36758620689655164,50
+10,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.37443678160919536,50
+11,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3638779956427014,50
+12,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.34697061803444784,50
+13,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.35534246575342454,50
+14,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.343253234750462,50
+15,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.35298561151079144,50
+16,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.35600688468158337,50
+17,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3673031825795645,50
+18,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.37243941841680117,50
