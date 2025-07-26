@@ -102,16 +102,16 @@ function death_replacement!(agent, model)
         # Create a SchwartzValuesSugarscapeAgent with random traits from the MVN distribution
         traits_sample = SchwartzValuesProcessor.sample_agents(getfield(model, :properties)[:schwartz_values_mvn_dist], 1)[1, :]
         schwartz_values = (
-          self_direction=traits_sample.SelfDirection,
-          stimulation=traits_sample.Stimulation,
-          hedonism=traits_sample.Hedonism,
-          achievement=traits_sample.Achievement,
-          power=traits_sample.Power,
-          security=traits_sample.Security,
-          conformity=traits_sample.Conformity,
-          tradition=traits_sample.Tradition,
-          benevolence=traits_sample.Benevolence,
-          universalism=traits_sample.Universalism,
+          self_direction=traits_sample.self_direction,
+          stimulation=traits_sample.stimulation,
+          hedonism=traits_sample.hedonism,
+          achievement=traits_sample.achievement,
+          power=traits_sample.power,
+          security=traits_sample.security,
+          conformity=traits_sample.conformity,
+          tradition=traits_sample.tradition,
+          benevolence=traits_sample.benevolence,
+          universalism=traits_sample.universalism,
         )
 
         add_agent!(pos, SchwartzValuesSugarscapeAgent, model, vision, metabolism, sugar, age, max_age, sex, has_reproduced, has_spread_culture, has_accepted_culture,
