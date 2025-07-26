@@ -20,7 +20,7 @@ scenario = "movement_credit_reproduction"
 n_steps = 150
 seed = 28
 llm_metadata = Dict{String,Any}("sugarscape" => "$(scenario)-$(architecture)")
-run_number = 2
+run_number = 1
 run_name = "$(scenario)_$(architecture)_run_$(run_number)"
 
 # ---------------------- Initialise Model ---------------------- #
