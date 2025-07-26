@@ -104,6 +104,44 @@ function build_schwartz_values_reproduction_context(agent, model, eligible_partn
   return reproduction_context
 end
 
+"""
+    build_schwartz_values_combat_context(agent, model, candidates) -> Dict
+
+Build a Schwartz Values combat context for the agent, including their values and eligible combat targets.
+"""
+function build_schwartz_values_combat_context(agent, model, candidates)
+  targets = Vector{Dict{String,Any}}()
+  for candidate in candidates
+    # candidate is a tuple: (position, agent, reward, distance)
+    pos, target_agent, reward, distance = candidate
+
+    target_schwartz_values = hasproperty(target_agent, :schwartz_values) ? Dict(string(k) => v for (k, v) in pairs(target_agent.schwartz_values)) : nothing
+
+    push!(targets, Dict(
+      "id" => target_agent.id,
+      "position" => pos,
+      "sugar" => target_agent.sugar,
+      "reward" => reward,
+      "distance" => distance,
+      "culture" => target_agent.culture,
+      "schwartz_values" => target_schwartz_values,
+    ))
+  end
+
+  schwartz_values = hasproperty(agent, :schwartz_values) ? Dict(string(k) => v for (k, v) in pairs(agent.schwartz_values)) : nothing
+
+  return Dict(
+    "agent_id" => agent.id,
+    "position" => agent.pos,
+    "sugar" => agent.sugar,
+    "vision" => agent.vision,
+    "metabolism" => agent.metabolism,
+    "culture" => agent.culture,
+    "schwartz_values" => schwartz_values,
+    "eligible_targets" => targets,
+  )
+end
+
 
 """
     build_schwartz_values_culture_context(agent, model, neighbors)

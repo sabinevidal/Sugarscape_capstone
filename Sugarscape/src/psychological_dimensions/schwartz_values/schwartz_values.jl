@@ -11,7 +11,7 @@ import ..Sugarscape: SugarscapeAgent, Loan
 include("schwartz_values_contexts.jl")
 include("schwartz_values_prompts.jl")
 
-export SchwartzValuesSugarscapeAgent, prepare_schwartz_values, create_schwartz_values_agent!, sugarscape_llm_schwartz, build_schwartz_values_movement_context, build_schwartz_values_reproduction_context
+export SchwartzValuesSugarscapeAgent, prepare_schwartz_values, create_schwartz_values_agent!, sugarscape_llm_schwartz, build_schwartz_values_movement_context, build_schwartz_values_reproduction_context, build_schwartz_values_combat_context, build_schwartz_values_culture_context, build_schwartz_values_credit_lender_context, build_schwartz_values_credit_borrower_context
 
 @agent struct SchwartzValuesSugarscapeAgent(SugarscapeAgent)
   schwartz_values::NamedTuple{

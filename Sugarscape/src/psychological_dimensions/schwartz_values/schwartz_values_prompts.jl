@@ -1,7 +1,7 @@
 # This file is part of the SchwartzValues module
 # Functions for generating Schwartz Human Values-based prompts for LLM agents
 
-export get_schwartz_values_system_prompt, get_schwartz_values_movement_system_prompt, get_schwartz_values_reproduction_system_prompt
+export get_schwartz_values_system_prompt, get_schwartz_values_movement_system_prompt, get_schwartz_values_reproduction_system_prompt, get_schwartz_values_culture_system_prompt, get_schwartz_values_combat_system_prompt, get_schwartz_values_credit_lender_offer_system_prompt, get_schwartz_values_credit_lender_respond_system_prompt, get_schwartz_values_credit_borrower_request_system_prompt, get_schwartz_values_credit_borrower_respond_system_prompt
 
 function get_schwartz_values_system_prompt()
   content = """
@@ -183,4 +183,33 @@ Also weigh:
 If you choose to accept, return the **accepted amount** (up to the offer).
 If you **decline**, return `false`.
 """
+end
+
+"""
+    get_schwartz_values_combat_system_prompt() -> String
+Returns the system prompt used for LLM Schwartz Values combat decisions in Sugarscape.
+"""
+function get_schwartz_values_combat_system_prompt()
+  return """
+  COMBAT RULE:
+You have identified a list of eligible targets you are allowed to attack.
+
+  You may choose to attack ONE of these targets — or NONE — based on your Schwartz Values, your current context, and the characteristics of the targets.
+
+  If you attack:
+  - You must choose ONE target from the eligible list.
+  - You will move to the target's position, kill the target, and steal their sugar.
+
+  If you do NOT attack:
+  - You will instead skip combat and perform a normal movement action.
+
+  Considerations:
+  - You may weigh reward vs. distance, cultural difference, and personal disposition based on your Schwartz Values
+  - Consider how your values influence your willingness to engage in combat
+
+  Your task:
+  - Evaluate your targets through the lens of your Schwartz Values
+  - Decide whether to attack one of them, or to skip combat
+  - Return a single target ID to attack, or `false` if you choose not to engage
+  """
 end
