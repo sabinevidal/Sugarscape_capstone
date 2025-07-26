@@ -1,0 +1,6 @@
+time,#125,#126,#127,#128,nagents
+0,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.23110204081632646,50
+1,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.25965065502183404,50
+2,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.2966205837173579,50
+3,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.3350855365474339,50
+4,0.0,0.0,"Dict{String, Real}(""n_edges"" => 0, ""density"" => 0.0, ""avg_degree"" => 0.0, ""n_nodes"" => 50, ""max_degree"" => 0)",0.35656012176560115,50
