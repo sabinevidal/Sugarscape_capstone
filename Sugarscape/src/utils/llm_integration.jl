@@ -87,6 +87,101 @@ struct LLMResearchIntegrityError <: Exception
     context::String
 end
 
+############################### Error Handling Utilities ################################
+
+"""
+    is_llm_error(e) -> Bool
+
+Check if an exception is LLM-related (LLMAPIError, LLMSchemaError, LLMValidationError, or LLMResearchIntegrityError).
+"""
+function is_llm_error(e::Exception)
+    return isa(e, LLMAPIError) || isa(e, LLMSchemaError) || isa(e, LLMValidationError) || isa(e, LLMResearchIntegrityError)
+end
+
+"""
+    format_llm_error(e) -> String
+
+Format an LLM error for better debugging with truncated response content.
+"""
+function format_llm_error(e::Exception)
+    if isa(e, LLMAPIError)
+        return "LLMAPIError: $(e.message)" * (e.status_code !== nothing ? " (Status: $(e.status_code))" : "")
+    elseif isa(e, LLMSchemaError)
+        response_preview = if e.raw_response !== nothing
+            response_str = string(e.raw_response)
+            length(response_str) > 200 ? response_str[1:200] * "..." : response_str
+        else
+            "No response data"
+        end
+        return "LLMSchemaError: $(e.message) | Agent: $(e.agent_id) | Response: $(response_preview)"
+    elseif isa(e, LLMValidationError)
+        return "LLMValidationError: $(e.message) | Field: $(e.field) | Value: $(e.value) | Agent: $(e.agent_id)"
+    elseif isa(e, LLMResearchIntegrityError)
+        return "LLMResearchIntegrityError: $(e.message) | Agent: $(e.agent_id) | Context: $(e.context)"
+    else
+        return string(e)
+    end
+end
+
+"""
+    handle_llm_error_with_fallback(e, operation_name, agent_id, fallback_func)
+
+Handle LLM errors with fallback mechanism and detailed logging.
+"""
+function handle_llm_error_with_fallback(e::Exception, operation_name::String, agent_id::Int, fallback_func::Function)
+    error_msg = format_llm_error(e)
+    @error "LLM Error in $(operation_name) for agent $(agent_id): $(error_msg)"
+    
+    try
+        fallback_result = fallback_func()
+        @warn "Using fallback for $(operation_name) - agent $(agent_id): $(fallback_result)"
+        return fallback_result
+    catch fallback_error
+        @error "Fallback failed for $(operation_name) - agent $(agent_id): $(fallback_error)"
+        rethrow(e)  # Rethrow original error if fallback fails
+    end
+end
+
+"""
+    safe_llm_operation(operation_func, operation_name, agent_id; max_retries=3)
+
+General wrapper for LLM operations with retry logic. Fails hard after all retries are exhausted.
+
+# Arguments
+- `operation_func`: Function to execute (should return the LLM decision)
+- `operation_name`: Name of the operation for logging
+- `agent_id`: ID of the agent for logging
+- `max_retries`: Maximum number of retry attempts (default: 3)
+
+# Returns
+The result of operation_func, or rethrows the last error if all retries fail
+"""
+function safe_llm_operation(operation_func::Function, operation_name::String, agent_id::Int; max_retries::Int=3)
+    last_error = nothing
+    
+    for attempt in 1:max_retries
+        try
+            return operation_func()
+        catch e
+            last_error = e
+            if is_llm_error(e)
+                @warn "LLM Error in $(operation_name) for agent $(agent_id) (attempt $(attempt)/$(max_retries)): $(format_llm_error(e))"
+                if attempt < max_retries
+                    sleep(0.1 * attempt)  # Brief exponential backoff
+                    continue
+                end
+            else
+                # Non-LLM errors should be rethrown immediately
+                rethrow(e)
+            end
+        end
+    end
+    
+    # All retries failed - fail hard for research integrity
+    @error "All retries failed for $(operation_name) - agent $(agent_id): $(format_llm_error(last_error))"
+    rethrow(last_error)
+end
+
 """
     build_agent_context(agent, model) -> Dict
 Collect a lightweight JSON-serialisable summary of the local state that the LLM
@@ -384,23 +479,37 @@ function _parse_movement_decision(obj)
     return (move=move, move_coords=move_coords, reasoning=reasoning)
 end
 
-function get_movement_decision(context::Dict, model)
-    movement_response_format = SugarscapePrompts.get_movement_response_format()
-    if model.use_big_five
-        movement_prompt = get_big_five_movement_system_prompt()
-    elseif model.use_schwartz_values
-        movement_prompt = get_schwartz_values_movement_system_prompt()
-    else
-        movement_prompt = SugarscapePrompts.get_movement_system_prompt()
+function get_movement_decision(context::Dict, model; max_retries::Int=3)
+    agent_id = context["agent_id"]
+    
+    # Define the core operation
+    operation_func = () -> begin
+        movement_response_format = SugarscapePrompts.get_movement_response_format()
+        if model.use_big_five
+            movement_prompt = get_big_five_movement_system_prompt()
+        elseif model.use_schwartz_values
+            movement_prompt = get_schwartz_values_movement_system_prompt()
+        else
+            movement_prompt = SugarscapePrompts.get_movement_system_prompt()
+        end
+        
+        try
+            raw_response = call_openai_api(context, "movement", model, movement_prompt, movement_response_format)
+            decision = _parse_movement_decision(raw_response)
+            log_decision!(model, agent_id, abmtime(model), "movement", decision.move_coords, decision.reasoning)
+            return decision
+        catch e
+            if isa(e, Exception) && !is_llm_error(e)
+                # Wrap non-LLM errors in LLMAPIError for consistent handling
+                throw(LLMAPIError("Failed to get movement decision: $(e)", nothing, nothing))
+            else
+                rethrow(e)
+            end
+        end
     end
-    try
-        raw_response = call_openai_api(context, "movement", model, movement_prompt, movement_response_format)
-        decision = _parse_movement_decision(raw_response)
-        log_decision!(model, context["agent_id"], abmtime(model), "movement", decision.move_coords, decision.reasoning)
-        return decision
-    catch e
-        throw(LLMAPIError("Failed to get movement decision: $(e)", nothing, nothing))
-    end
+    
+    # Use safe operation wrapper with retry-only approach
+    return safe_llm_operation(operation_func, "movement decision", agent_id; max_retries=max_retries)
 end
 
 ########################### Reproduction helpers ############################
@@ -412,23 +521,37 @@ function _parse_reproduction_decision(obj)
     return (reproduce=reproduce, partners=partners, reasoning=reasoning)
 end
 
-function get_reproduction_decision(context::Dict, model)
-    reproduction_response_format = SugarscapePrompts.get_reproduction_response_format(context["max_partners"])
-    if model.use_big_five
-        reproduction_prompt = get_big_five_reproduction_system_prompt()
-    elseif model.use_schwartz_values
-        reproduction_prompt = get_schwartz_values_reproduction_system_prompt()
-    else
-        reproduction_prompt = SugarscapePrompts.get_reproduction_system_prompt()
+function get_reproduction_decision(context::Dict, model; max_retries::Int=3)
+    agent_id = context["agent_id"]
+    
+    # Define the core operation
+    operation_func = () -> begin
+        reproduction_response_format = SugarscapePrompts.get_reproduction_response_format(context["max_partners"])
+        if model.use_big_five
+            reproduction_prompt = get_big_five_reproduction_system_prompt()
+        elseif model.use_schwartz_values
+            reproduction_prompt = get_schwartz_values_reproduction_system_prompt()
+        else
+            reproduction_prompt = SugarscapePrompts.get_reproduction_system_prompt()
+        end
+        
+        try
+            raw_response = call_openai_api(context, "reproduction", model, reproduction_prompt, reproduction_response_format)
+            decision = _parse_reproduction_decision(raw_response)
+            log_decision!(model, agent_id, abmtime(model), "reproduction", decision.partners, decision.reasoning)
+            return decision
+        catch e
+            if isa(e, Exception) && !is_llm_error(e)
+                # Wrap non-LLM errors in LLMAPIError for consistent handling
+                throw(LLMAPIError("Failed to get reproduction decision: $(e)", nothing, nothing))
+            else
+                rethrow(e)
+            end
+        end
     end
-    try
-        raw_response = call_openai_api(context, "reproduction", model, reproduction_prompt, reproduction_response_format)
-        decision = _parse_reproduction_decision(raw_response)
-        log_decision!(model, context["agent_id"], abmtime(model), "reproduction", decision.partners, decision.reasoning)
-        return decision
-    catch e
-        throw(LLMAPIError("Failed to get reproduction decision: $(e)", nothing, nothing))
-    end
+    
+    # Use safe operation wrapper with retry-only approach
+    return safe_llm_operation(operation_func, "reproduction decision", agent_id; max_retries=max_retries)
 end
 
 ########################### Culture helpers ############################
@@ -441,23 +564,37 @@ function _parse_culture_decision(obj)
     return (spread_culture=spread_culture, transmit_to=transmit_to, reasoning=reasoning)
 end
 
-function get_culture_decision(context::Dict, model)
-    culture_response_format = SugarscapePrompts.get_culture_response_format()
-    if model.use_big_five
-        culture_prompt = get_big_five_culture_system_prompt()
-    elseif model.use_schwartz_values
-        culture_prompt = SchwartzValues.get_schwartz_values_culture_system_prompt()
-    else
-        culture_prompt = SugarscapePrompts.get_culture_system_prompt()
+function get_culture_decision(context::Dict, model; max_retries::Int=3)
+    agent_id = context["agent_id"]
+    
+    # Define the core operation
+    operation_func = () -> begin
+        culture_response_format = SugarscapePrompts.get_culture_response_format()
+        if model.use_big_five
+            culture_prompt = get_big_five_culture_system_prompt()
+        elseif model.use_schwartz_values
+            culture_prompt = get_schwartz_values_culture_system_prompt()
+        else
+            culture_prompt = SugarscapePrompts.get_culture_system_prompt()
+        end
+        
+        try
+            raw_response = call_openai_api(context, "culture", model, culture_prompt, culture_response_format)
+            decision = _parse_culture_decision(raw_response)
+            log_decision!(model, agent_id, abmtime(model), "culture", decision.transmit_to, decision.reasoning)
+            return decision
+        catch e
+            if isa(e, Exception) && !is_llm_error(e)
+                # Wrap non-LLM errors in LLMAPIError for consistent handling
+                throw(LLMAPIError("Failed to get culture decision: $(e)", nothing, nothing))
+            else
+                rethrow(e)
+            end
+        end
     end
-    try
-        raw_response = call_openai_api(context, "culture", model, culture_prompt, culture_response_format)
-        decision = _parse_culture_decision(raw_response)
-        log_decision!(model, context["agent_id"], abmtime(model), "culture", decision.transmit_to, decision.reasoning)
-        return decision
-    catch e
-        throw(LLMAPIError("Failed to get culture decision: $(e)", nothing, nothing))
-    end
+    
+    # Use safe operation wrapper with retry-only approach
+    return safe_llm_operation(operation_func, "culture decision", agent_id; max_retries=max_retries)
 end
 
 ########################### Combat helpers ############################
@@ -468,23 +605,37 @@ function _parse_combat_decision(obj)
     return (combat=combat, combat_target=target, reasoning=reasoning)
 end
 
-function get_combat_decision(context::Dict, model)
-    combat_response_format = SugarscapePrompts.get_combat_response_format()
-    if model.use_big_five
-        combat_prompt = BigFive.get_big_five_combat_system_prompt()
-    elseif model.use_schwartz_values
-        combat_prompt = SchwartzValues.get_schwartz_values_combat_system_prompt()
-    else
-        combat_prompt = SugarscapePrompts.get_combat_system_prompt()
+function get_combat_decision(context::Dict, model; max_retries::Int=3)
+    agent_id = context["agent_id"]
+    
+    # Define the core operation
+    operation_func = () -> begin
+        combat_response_format = SugarscapePrompts.get_combat_response_format()
+        if model.use_big_five
+            combat_prompt = BigFive.get_big_five_combat_system_prompt()
+        elseif model.use_schwartz_values
+            combat_prompt = SchwartzValues.get_schwartz_values_combat_system_prompt()
+        else
+            combat_prompt = SugarscapePrompts.get_combat_system_prompt()
+        end
+        
+        try
+            raw_response = call_openai_api(context, "combat", model, combat_prompt, combat_response_format)
+            decision = _parse_combat_decision(raw_response)
+            log_decision!(model, agent_id, abmtime(model), "combat", decision.combat_target, decision.reasoning)
+            return decision
+        catch e
+            if isa(e, Exception) && !is_llm_error(e)
+                # Wrap non-LLM errors in LLMAPIError for consistent handling
+                throw(LLMAPIError("Failed to get combat decision: $(e)", nothing, nothing))
+            else
+                rethrow(e)
+            end
+        end
     end
-    try
-        raw_response = call_openai_api(context, "combat", model, combat_prompt, combat_response_format)
-        decision = _parse_combat_decision(raw_response)
-        log_decision!(model, context["agent_id"], abmtime(model), "combat", decision.combat_target, decision.reasoning)
-        return decision
-    catch e
-        throw(LLMAPIError("Failed to get combat decision: $(e)", nothing, nothing))
-    end
+    
+    # Use safe operation wrapper with retry-only approach
+    return safe_llm_operation(operation_func, "combat decision", agent_id; max_retries=max_retries)
 end
 
 
@@ -515,94 +666,150 @@ end
     get_credit_lender_offer_decision(context::Dict, model)
 LLM integration for credit lending decisions.
 """
-function get_credit_lender_offer_decision(context::Dict, model)
-    credit_response_format = SugarscapePrompts.get_credit_lender_response_format()
-
-    if model.use_big_five
-        credit_prompt = SchwartzValues.get_big_five_credit_lender_offer_system_prompt()
-    else
-        credit_prompt = SugarscapePrompts.get_credit_lender_system_prompt()
+function get_credit_lender_offer_decision(context::Dict, model; max_retries::Int=3)
+    agent_id = context["agent_id"]
+    
+    # Define the core operation
+    operation_func = () -> begin
+        credit_response_format = SugarscapePrompts.get_credit_lender_response_format()
+        
+        if model.use_big_five
+            credit_prompt = SchwartzValues.get_big_five_credit_lender_offer_system_prompt()
+        else
+            credit_prompt = SugarscapePrompts.get_credit_lender_system_prompt()
+        end
+        
+        try
+            raw_response = call_openai_api(context, "credit_lender", model, credit_prompt, credit_response_format)
+            decision = _parse_credit_lender_decision(raw_response)
+            log_decision!(model, agent_id, abmtime(model), "credit_lender_offer", decision.lend_to, decision.reasoning)
+            return decision
+        catch e
+            if isa(e, Exception) && !is_llm_error(e)
+                # Wrap non-LLM errors in LLMAPIError for consistent handling
+                throw(LLMAPIError("Failed to get credit lender decision: $(e)", nothing, nothing))
+            else
+                rethrow(e)
+            end
+        end
     end
-    try
-        raw_response = call_openai_api(context, "credit_lender", model, credit_prompt, credit_response_format)
-        decision = _parse_credit_lender_decision(raw_response)
-        log_decision!(model, context["agent_id"], abmtime(model), "credit_lender_offer", decision.lend_to, decision.reasoning)
-        return decision
-    catch e
-        throw(LLMAPIError("Failed to get credit lender decision: $(e)", nothing, nothing))
-    end
+    
+    # Use safe operation wrapper with retry-only approach
+    return safe_llm_operation(operation_func, "credit lender offer decision", agent_id; max_retries=max_retries)
 end
 
 """
     get_credit_borrower_respond_decision(context::Dict, model)
 LLM integration for credit borrowing decisions.
 """
-function get_credit_borrower_respond_decision(context::Dict, model)
-    credit_response_format = SugarscapePrompts.get_credit_borrower_response_format()
-
-    if model.use_big_five
-        credit_prompt = SchwartzValues.get_big_five_credit_borrower_respond_system_prompt()
-    elseif model.use_schwartz_values
-        credit_prompt = SchwartzValues.get_schwartz_values_credit_borrower_respond_system_prompt()
-    else
-        credit_prompt = SugarscapePrompts.get_credit_borrower_system_prompt()
+function get_credit_borrower_respond_decision(context::Dict, model; max_retries::Int=3)
+    agent_id = context["agent_id"]
+    
+    # Define the core operation
+    operation_func = () -> begin
+        credit_response_format = SugarscapePrompts.get_credit_borrower_response_format()
+        
+        if model.use_big_five
+            credit_prompt = SchwartzValues.get_big_five_credit_borrower_respond_system_prompt()
+        elseif model.use_schwartz_values
+            credit_prompt = SchwartzValues.get_schwartz_values_credit_borrower_respond_system_prompt()
+        else
+            credit_prompt = SugarscapePrompts.get_credit_borrower_system_prompt()
+        end
+        
+        try
+            raw_response = call_openai_api(context, "credit_borrower", model, credit_prompt, credit_response_format)
+            decision = _parse_credit_borrower_decision(raw_response)
+            log_decision!(model, agent_id, abmtime(model), "credit_borrower_respond", decision.borrow_from, decision.reasoning)
+            return decision
+        catch e
+            if isa(e, Exception) && !is_llm_error(e)
+                # Wrap non-LLM errors in LLMAPIError for consistent handling
+                throw(LLMAPIError("Failed to get credit borrower decision: $(e)", nothing, nothing))
+            else
+                rethrow(e)
+            end
+        end
     end
-    try
-        raw_response = call_openai_api(context, "credit_borrower", model, credit_prompt, credit_response_format)
-        decision = _parse_credit_borrower_decision(raw_response)
-        log_decision!(model, context["agent_id"], abmtime(model), "credit_borrower_respond", decision.borrow_from, decision.reasoning)
-        return decision
-    catch e
-        throw(LLMAPIError("Failed to get credit borrower decision: $(e)", nothing, nothing))
-    end
+    
+    # Use safe operation wrapper with retry-only approach
+    return safe_llm_operation(operation_func, "credit borrower respond decision", agent_id; max_retries=max_retries)
 end
 
 """
     get_credit_lender_respond_decision(context::Dict, model)
 LLM integration for credit lending decisions.
 """
-function get_credit_lender_respond_decision(context::Dict, model)
-    credit_response_format = SugarscapePrompts.get_credit_lender_response_format()
-
-    if model.use_big_five
-        credit_prompt = SchwartzValues.get_big_five_credit_lender_respond_system_prompt()
-    elseif model.use_schwartz_values
-        credit_prompt = SchwartzValues.get_schwartz_values_credit_lender_respond_system_prompt()
-    else
-        credit_prompt = SugarscapePrompts.get_credit_lender_system_prompt()
+function get_credit_lender_respond_decision(context::Dict, model; max_retries::Int=3)
+    agent_id = context["agent_id"]
+    
+    # Define the core operation
+    operation_func = () -> begin
+        credit_response_format = SugarscapePrompts.get_credit_lender_response_format()
+        
+        if model.use_big_five
+            credit_prompt = SchwartzValues.get_big_five_credit_lender_respond_system_prompt()
+        elseif model.use_schwartz_values
+            credit_prompt = SchwartzValues.get_schwartz_values_credit_lender_respond_system_prompt()
+        else
+            credit_prompt = SugarscapePrompts.get_credit_lender_system_prompt()
+        end
+        
+        try
+            raw_response = call_openai_api(context, "credit_lender", model, credit_prompt, credit_response_format)
+            decision = _parse_credit_lender_decision(raw_response)
+            log_decision!(model, agent_id, abmtime(model), "credit_lender_respond", decision.lend_to, decision.reasoning)
+            return decision
+        catch e
+            if isa(e, Exception) && !is_llm_error(e)
+                # Wrap non-LLM errors in LLMAPIError for consistent handling
+                throw(LLMAPIError("Failed to get credit lender decision: $(e)", nothing, nothing))
+            else
+                rethrow(e)
+            end
+        end
     end
-    try
-        raw_response = call_openai_api(context, "credit_lender", model, credit_prompt, credit_response_format)
-        decision = _parse_credit_lender_decision(raw_response)
-        log_decision!(model, context["agent_id"], abmtime(model), "credit_lender_respond", decision.lend_to, decision.reasoning)
-        return decision
-    catch e
-        throw(LLMAPIError("Failed to get credit lender decision: $(e)", nothing, nothing))
-    end
+    
+    # Use safe operation wrapper with retry-only approach
+    return safe_llm_operation(operation_func, "credit lender respond decision", agent_id; max_retries=max_retries)
 end
 
 """
     get_credit_borrower_request_decision(context::Dict, model)
 LLM integration for credit borrowing decisions.
 """
-function get_credit_borrower_request_decision(context::Dict, model)
-    credit_response_format = SugarscapePrompts.get_credit_borrower_response_format()
-
-    if model.use_big_five
-        credit_prompt = SchwartzValues.get_big_five_credit_borrower_request_system_prompt()
-    elseif model.use_schwartz_values
-        credit_prompt = SchwartzValues.get_schwartz_values_credit_borrower_request_system_prompt()
-    else
-        credit_prompt = SugarscapePrompts.get_credit_borrower_system_prompt()
+function get_credit_borrower_request_decision(context::Dict, model; max_retries::Int=3)
+    agent_id = context["agent_id"]
+    
+    # Define the core operation
+    operation_func = () -> begin
+        credit_response_format = SugarscapePrompts.get_credit_borrower_response_format()
+        
+        if model.use_big_five
+            credit_prompt = SchwartzValues.get_big_five_credit_borrower_request_system_prompt()
+        elseif model.use_schwartz_values
+            credit_prompt = SchwartzValues.get_schwartz_values_credit_borrower_request_system_prompt()
+        else
+            credit_prompt = SugarscapePrompts.get_credit_borrower_system_prompt()
+        end
+        
+        try
+            raw_response = call_openai_api(context, "credit_borrower", model, credit_prompt, credit_response_format)
+            decision = _parse_credit_borrower_decision(raw_response)
+            log_decision!(model, agent_id, abmtime(model), "credit_borrower_request", decision.borrow_from, decision.reasoning)
+            return decision
+        catch e
+            if isa(e, Exception) && !is_llm_error(e)
+                # Wrap non-LLM errors in LLMAPIError for consistent handling
+                throw(LLMAPIError("Failed to get credit borrower decision: $(e)", nothing, nothing))
+            else
+                rethrow(e)
+            end
+        end
     end
-    try
-        raw_response = call_openai_api(context, "credit_borrower", model, credit_prompt, credit_response_format)
-        decision = _parse_credit_borrower_decision(raw_response)
-        log_decision!(model, context["agent_id"], abmtime(model), "credit_borrower_request", decision.borrow_from, decision.reasoning)
-        return decision
-    catch e
-        throw(LLMAPIError("Failed to get credit borrower decision: $(e)", nothing, nothing))
-    end
+    
+    # Use safe operation wrapper with retry-only approach
+    return safe_llm_operation(operation_func, "credit borrower request decision", agent_id; max_retries=max_retries)
 end
 
 ########################### Error Message Helpers ############################
