@@ -386,6 +386,14 @@ begin
     scenario_architectures = unique(scenario_data.architecture)
     n_architectures = length(scenario_architectures)
 
+    # ------------------------------
+    # Compute final metric value per architecture (needed for later stats/plots)
+    # ------------------------------
+    final_values = combine(groupby(scenario_data, :architecture)) do df
+      DataFrame(architecture = first(df.architecture),
+                final_value  = last(df[!, selected_metric]))
+    end
+
     println("📊 Filtered data: $(nrow(scenario_data)) rows")
     println("🏗️ Architectures in $(selected_scenario): $(join(scenario_architectures, ", "))")
     println("📈 Metric: $(selected_metric)")
@@ -406,23 +414,6 @@ Shows the evolution of the selected metric over time, grouped by architecture:
 
 # ╔═╡ 2c7bcbea-1755-4d0d-b5f3-f2da994c7a00
 
-
-# ╔═╡ 3b2b3c40-5c8e-11ee-2345-0123456789ab
-begin
-  if has_data && n_architectures > 0
-    # Get final values for each run (last time per run) - needed for other sections
-    final_values = combine(groupby(scenario_data, [:architecture, :run_id])) do df
-      # Get the last time's value for this run
-      last_row = df[argmax(df.time), :]
-      (final_value=last_row[selected_metric],)
-    end
-    
-    # Store final_values for use in other sections
-    final_values
-  else
-    DataFrame(architecture=String[], final_value=Float64[])
-  end
-end
 
 # ╔═╡ 4b2b3c40-5c8e-11ee-2345-0123456789ab
 md"""
@@ -480,52 +471,6 @@ md"""
 ## 💾 Export Results
 
 Export summary tables and plots for reporting:
-"""
-
-# ╔═╡ 3c2b3c40-5c8e-11ee-2345-0123456789ab
-md"""
-## 📝 Analysis Summary
-
-### Selected Analysis
-- **Scenario:** $(selected_scenario)
-- **Metric:** $(selected_metric)
-- **Architectures:** $(has_data ? join(scenario_architectures, ", ") : "None available")
-
-### Key Findings
-$(if has_data && n_architectures >= 2
-    if @isdefined(overall_test_result) && overall_test_result[2] < 0.05
-        "🔍 **Significant differences detected** between architectures (p < 0.05)"
-    else
-        "📊 **No significant differences** detected between architectures (p ≥ 0.05)"
-    end
-else
-    "❌ **Insufficient data** for statistical analysis"
-end)
-
-### Statistical Summary
-$(if has_data && @isdefined(summary_stats)
-    let
-        best_arch = summary_stats[argmax(summary_stats.mean), :architecture]
-        best_mean = maximum(summary_stats.mean)
-        "🏆 **Best performing architecture:** $(best_arch) (mean = $(round(best_mean, digits=3)))"
-    end
-else
-    "No summary available"
-end)
-
-### Recommendations
-$(if has_data && n_architectures >= 2
-    if @isdefined(pairwise_results) && any(r -> r.significant, pairwise_results)
-        "✅ **Action needed:** Significant differences found. Consider investigating the mechanisms behind these differences."
-    else
-        "📋 **Status:** No significant differences detected. Architectures perform similarly on this metric."
-    end
-else
-    "⚠️ **Data needed:** Collect more data across different architectures for meaningful comparison."
-end)
-
----
-*Analysis generated on $(Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))*
 """
 
 # ╔═╡ 1a6b3c40-5c8e-11ee-2345-0123456789ab
@@ -634,62 +579,16 @@ begin
   end
 end
 
-# ╔═╡ 2c2b3c40-5c8e-11ee-2345-0123456789ab
-begin
-  if export_results && has_data
-    # Create results directory
-    results_dir = "/Users/sabinevidal/Documents/LIS/Capstone/Sugarscape_capstone/Sugarscape/notebooks/results/$(selected_scenario)"
-    mkpath(results_dir)
-
-    # Generate timestamp for unique filenames
-    timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
-
-    # Export summary statistics
-    if @isdefined(summary_display)
-      csv_filename = joinpath(results_dir, "architecture_comparison_$(selected_scenario)_$(selected_metric)_$(timestamp).csv")
-      CSV.write(csv_filename, summary_display)
-      println("📊 Summary statistics exported to: $(csv_filename)")
-    end
-
-    # Export plots
-    if @isdefined(time_series_plot)
-      ts_filename = joinpath(results_dir, "timeseries_$(selected_scenario)_$(selected_metric)_$(timestamp).png")
-      savefig(time_series_plot, ts_filename)
-      println("📈 Time series plot exported to: $(ts_filename)")
-    end
-
-    if @isdefined(annotated_plot)
-      box_filename = joinpath(results_dir, "boxplot_$(selected_scenario)_$(selected_metric)_$(timestamp).png")
-      savefig(annotated_plot, box_filename)
-      println("📊 Box plot exported to: $(box_filename)")
-    end
-
-    # Export statistical test results
-    if @isdefined(pairwise_results) && length(pairwise_results) > 0
-      test_results_df = DataFrame(pairwise_results)
-      test_filename = joinpath(results_dir, "statistical_tests_$(selected_scenario)_$(selected_metric)_$(timestamp).csv")
-      CSV.write(test_filename, test_results_df)
-      println("🧪 Statistical test results exported to: $(test_filename)")
-    end
-
-    println("✅ Export completed!")
-  elseif export_results
-    println("❌ No data available for export")
-  else
-    println("ℹ️ Export disabled. Check the 'Export Results' box to save files.")
-  end
-end
-
 # ╔═╡ 9b2b3c40-5c8e-11ee-2345-0123456789ab
 begin
   if has_data && n_architectures >= 2
     # Create bar chart for single-run comparison
     arch_order_bar = sort(unique(final_values.architecture))
     colors_bar = [get_arch_color(arch) for arch in arch_order_bar]
-    
+
     # Get values in the same order as architectures
-    bar_values = [final_values[final_values.architecture .== arch, :final_value][1] for arch in arch_order_bar]
-    
+    bar_values = [final_values[final_values.architecture.==arch, :final_value][1] for arch in arch_order_bar]
+
     bar_plot = bar(arch_order_bar, bar_values,
       title="$(selected_metric) by Architecture - $(selected_scenario)",
       xlabel="Architecture",
@@ -699,16 +598,16 @@ begin
       color=colors_bar,
       alpha=0.8
     )
-    
+
     # Add value labels on top of bars
     for (i, val) in enumerate(bar_values)
-      annotate!(bar_plot, [(i, val + 0.02 * maximum(bar_values), 
+      annotate!(bar_plot, [(i, val + 0.02 * maximum(bar_values),
         text(@sprintf("%.3f", val), 10, :center, :bottom))])
     end
-    
+
     # Add grid for better readability
     plot!(bar_plot, grid=true, gridwidth=1, gridcolor=:lightgray, gridalpha=0.5)
-    
+
     bar_plot
   else
     plot(title="Insufficient data for comparison", size=(700, 500))
@@ -734,22 +633,22 @@ begin
   if has_data && n_architectures >= 2
     # Create comparison table
     comparison_df = DataFrame(
-      Architecture = String[],
-      Value = Float64[],
-      Relative_to_Best = String[],
-      Relative_to_Worst = String[]
+      Architecture=String[],
+      Value=Float64[],
+      Relative_to_Best=String[],
+      Relative_to_Worst=String[]
     )
-    
+
     # Get architecture values
-    arch_values = [(arch, final_values[final_values.architecture .== arch, :final_value][1]) 
+    arch_values = [(arch, final_values[final_values.architecture.==arch, :final_value][1])
                    for arch in sort(unique(final_values.architecture))]
-    
+
     # Sort by value (descending for "best" being highest)
-    sort!(arch_values, by=x->x[2], rev=true)
-    
+    sort!(arch_values, by=x -> x[2], rev=true)
+
     best_value = arch_values[1][2]
     worst_value = arch_values[end][2]
-    
+
     for (arch, value) in arch_values
       # Calculate relative differences
       rel_to_best = if value == best_value
@@ -758,31 +657,335 @@ begin
         pct_diff = ((value - best_value) / abs(best_value)) * 100
         @sprintf("%.1f%%", pct_diff)
       end
-      
+
       rel_to_worst = if value == worst_value
         "Worst (0.0%)"
       else
         pct_diff = ((value - worst_value) / abs(worst_value)) * 100
         @sprintf("+%.1f%%", pct_diff)
       end
-      
+
       push!(comparison_df, (arch, value, rel_to_best, rel_to_worst))
     end
-    
+
     # Display the table with nice formatting
     println("\n📊 $(selected_metric) Comparison - $(selected_scenario)")
-    println("═" ^ 60)
+    println("═"^60)
     for row in eachrow(comparison_df)
-      println(@sprintf("%-12s: %8.3f  (vs best: %10s, vs worst: %10s)", 
+      println(@sprintf("%-12s: %8.3f  (vs best: %10s, vs worst: %10s)",
         row.Architecture, row.Value, row.Relative_to_Best, row.Relative_to_Worst))
     end
-    println("═" ^ 60)
-    
+    println("═"^60)
+
     # Also return the DataFrame for potential export
     comparison_df
   else
     println("Insufficient data for comparison table")
     DataFrame()
+  end
+end
+
+# ╔═╡ 3b2b3c40-5c8e-11ee-2345-0123456789ab
+begin
+  # Compute enhanced key findings for notebook display
+  notebook_key_findings = if has_data && @isdefined(comparison_df) && nrow(comparison_df) > 0
+    findings_list = String[]
+
+    local best_arch = comparison_df[1, :Architecture]
+    local worst_arch = comparison_df[end, :Architecture]
+
+    # Overall assessment
+    if n_architectures >= 2
+      if @isdefined(overall_test_result) && overall_test_result[2] < 0.05
+        push!(findings_list, "🔍 **Statistical Significance:** Significant differences detected between architectures (p < 0.05)")
+      else
+        push!(findings_list, "📊 **Statistical Significance:** No significant differences detected between architectures (p ≥ 0.05)")
+      end
+    end
+
+    # Performance ranking
+    push!(findings_list, "🏆 **Best Performer:** $(best_arch) achieved the highest $(selected_metric) value")
+    push!(findings_list, "📉 **Worst Performer:** $(worst_arch) showed the lowest $(selected_metric) value")
+    push!(findings_list, "🔢 **Architecture Count:** $(nrow(comparison_df)) architectures compared")
+
+    # Performance details
+    push!(findings_list, "\n**Architecture Performance:**")
+    for row in eachrow(comparison_df)
+      push!(findings_list, "• **$(row.Architecture):** $(round(row.Value, digits=3)) ($(row.Relative_to_Best))")
+    end
+
+    # Performance gap
+    local best_val = comparison_df[1, :Value]
+    local worst_val = comparison_df[end, :Value]
+    if worst_val != 0 && nrow(comparison_df) > 1
+      local improvement = ((best_val - worst_val) / abs(worst_val)) * 100
+      push!(findings_list, "\n📈 **Performance Gap:** $(round(improvement, digits=1))% improvement from worst to best performer")
+    end
+
+    join(findings_list, "\n")
+  elseif has_data && n_architectures >= 2
+    if @isdefined(overall_test_result) && overall_test_result[2] < 0.05
+      "🔍 **Significant differences detected** between architectures (p < 0.05)"
+    else
+      "📊 **No significant differences** detected between architectures (p ≥ 0.05)"
+    end
+  else
+    "❌ **Insufficient data** for statistical analysis"
+  end
+end
+
+# ╔═╡ 3c2b3c40-5c8e-11ee-2345-0123456789ab
+md"""
+## 📝 Analysis Summary
+
+### Selected Analysis
+- **Scenario:** $(selected_scenario)
+- **Metric:** $(selected_metric)
+- **Architectures:** $(has_data ? join(scenario_architectures, ", ") : "None available")
+
+### Key Findings
+$(notebook_key_findings)
+
+### Statistical Summary
+$(if has_data && @isdefined(summary_stats)
+    let
+        local best_arch = summary_stats[argmax(summary_stats.mean), :architecture]
+        best_mean = maximum(summary_stats.mean)
+        "🏆 **Best performing architecture:** $(best_arch) (mean = $(round(best_mean, digits=3)))"
+    end
+else
+    "No summary available"
+end)
+
+### Recommendations
+$(if has_data && n_architectures >= 2
+    if @isdefined(pairwise_results) && any(r -> r.significant, pairwise_results)
+        "✅ **Action needed:** Significant differences found. Consider investigating the mechanisms behind these differences."
+    else
+        "📋 **Status:** No significant differences detected. Architectures perform similarly on this metric."
+    end
+else
+    "⚠️ **Data needed:** Collect more data across different architectures for meaningful comparison."
+end)
+
+---
+*Analysis generated on $(Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))*
+"""
+
+# ╔═╡ 2c2b3c40-5c8e-11ee-2345-0123456789ab
+begin
+  if export_results && has_data
+    # Create results directory
+    results_dir = "/Users/sabinevidal/Documents/LIS/Capstone/Sugarscape_capstone/Sugarscape/notebooks/results/$(selected_scenario)"
+    mkpath(results_dir)
+
+    # Generate timestamp for unique filenames
+    timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
+
+    println("📁 Exporting analysis results for $(selected_scenario) - $(selected_metric)...")
+
+    # 1. Export time series plot
+    if @isdefined(time_series_plot)
+      ts_filename = joinpath(results_dir, "timeseries_$(selected_scenario)_$(selected_metric)_$(timestamp).png")
+      savefig(time_series_plot, ts_filename)
+      println("📈 Time series plot exported to: $(ts_filename)")
+    end
+
+    # 2. Export bar chart
+    if @isdefined(bar_plot)
+      bar_filename = joinpath(results_dir, "barchart_$(selected_scenario)_$(selected_metric)_$(timestamp).png")
+      savefig(bar_plot, bar_filename)
+      println("📊 Bar chart exported to: $(bar_filename)")
+    end
+
+    # 3. Export comparison table
+    if @isdefined(comparison_df) && nrow(comparison_df) > 0
+      table_filename = joinpath(results_dir, "comparison_table_$(selected_scenario)_$(selected_metric)_$(timestamp).csv")
+      CSV.write(table_filename, comparison_df)
+      println("📋 Comparison table exported to: $(table_filename)")
+    end
+
+    # 4. Export summary statistics
+    if @isdefined(summary_display) && nrow(summary_display) > 0
+      summary_filename = joinpath(results_dir, "summary_stats_$(selected_scenario)_$(selected_metric)_$(timestamp).csv")
+      CSV.write(summary_filename, summary_display)
+      println("📊 Summary statistics exported to: $(summary_filename)")
+    end
+
+    # 5. Export final values data
+    if @isdefined(final_values) && nrow(final_values) > 0
+      final_values_filename = joinpath(results_dir, "final_values_$(selected_scenario)_$(selected_metric)_$(timestamp).csv")
+      CSV.write(final_values_filename, final_values)
+      println("🎯 Final values data exported to: $(final_values_filename)")
+    end
+
+    # 6. Create comprehensive markdown analysis summary
+    md_filename = joinpath(results_dir, "analysis_summary_$(selected_scenario)_$(selected_metric)_$(timestamp).md")
+
+    # Generate markdown content using string interpolation to avoid scoping issues
+    arch_list = has_data && @isdefined(final_values) ? join(sort(unique(final_values.architecture)), ", ") : "No data available"
+
+    # Build performance ranking section
+    ranking_section = if @isdefined(comparison_df) && nrow(comparison_df) > 0
+      ranking_lines = String[]
+      push!(ranking_lines, "")
+      for (i, row) in enumerate(eachrow(comparison_df))
+        medal = i == 1 ? "🥇" : i == 2 ? "🥈" : i == 3 ? "🥉" : "  "
+        push!(ranking_lines, "$(medal) **$(i). $(row.Architecture)**: $(round(row.Value, digits=3))")
+      end
+
+      # Add performance gaps
+      local best_val = comparison_df[1, :Value]
+      local worst_val = comparison_df[end, :Value]
+      if worst_val != 0
+        local improvement = ((best_val - worst_val) / abs(worst_val)) * 100
+        push!(ranking_lines, "")
+        push!(ranking_lines, "**Performance Gap:** $(round(improvement, digits=1))% improvement from worst to best performer")
+      end
+      join(ranking_lines, "\n")
+    else
+      "No comparison data available"
+    end
+
+    # Build enhanced findings section (same as notebook display)
+    findings_section = if @isdefined(comparison_df) && nrow(comparison_df) > 0
+      findings_lines = String[]
+
+      local best_arch = comparison_df[1, :Architecture]
+      local worst_arch = comparison_df[end, :Architecture]
+
+      # Overall assessment
+      if n_architectures >= 2
+        if @isdefined(overall_test_result) && overall_test_result[2] < 0.05
+          push!(findings_lines, "🔍 **Statistical Significance:** Significant differences detected between architectures (p < 0.05)")
+        else
+          push!(findings_lines, "📊 **Statistical Significance:** No significant differences detected between architectures (p ≥ 0.05)")
+        end
+      end
+
+      # Performance ranking
+      push!(findings_lines, "🏆 **Best Performer:** $(best_arch) achieved the highest $(selected_metric) value")
+      push!(findings_lines, "📉 **Worst Performer:** $(worst_arch) showed the lowest $(selected_metric) value")
+      push!(findings_lines, "🔢 **Architecture Count:** $(nrow(comparison_df)) architectures compared")
+
+      # Performance details
+      push!(findings_lines, "\n**Architecture Performance:**")
+      for row in eachrow(comparison_df)
+        push!(findings_lines, "• **$(row.Architecture):** $(round(row.Value, digits=3)) ($(row.Relative_to_Best))")
+      end
+
+      # Performance gap
+      local best_val = comparison_df[1, :Value]
+      local worst_val = comparison_df[end, :Value]
+      if worst_val != 0 && nrow(comparison_df) > 1
+        local improvement = ((best_val - worst_val) / abs(worst_val)) * 100
+        push!(findings_lines, "\n📈 **Performance Gap:** $(round(improvement, digits=1))% improvement from worst to best performer")
+      end
+
+      join(findings_lines, "\n")
+    elseif has_data && n_architectures >= 2
+      if @isdefined(overall_test_result) && overall_test_result[2] < 0.05
+        "🔍 **Significant differences detected** between architectures (p < 0.05)"
+      else
+        "📊 **No significant differences** detected between architectures (p ≥ 0.05)"
+      end
+    else
+      "❌ **Insufficient data** for statistical analysis"
+    end
+
+    # Build recommendations section
+    recommendations_section = if @isdefined(comparison_df) && nrow(comparison_df) > 0
+      local best_arch = comparison_df[1, :Architecture]
+      """
+1. **Primary Recommendation:** Consider $(best_arch) architecture for scenarios prioritizing $(selected_metric) optimization
+2. **Further Analysis:** Conduct multiple-run studies to assess consistency and statistical significance
+3. **Scenario-Specific Tuning:** Investigate architecture-specific parameter optimization for $(selected_scenario) scenarios
+"""
+    else
+      "No recommendations available without comparison data"
+    end
+
+    # Combine all sections into final content
+    final_analysis_content = """
+# Architecture Comparison Analysis
+
+**Scenario:** $(selected_scenario)
+**Metric:** $(selected_metric)
+**Analysis Date:** $(Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))
+**Architectures Analyzed:** $(arch_list)
+
+## Executive Summary
+
+This analysis compares the performance of different Sugarscape architectures on the **$(selected_metric)** metric within the **$(selected_scenario)** scenario. The comparison is based on single-run simulations, focusing on final metric values and temporal evolution patterns.
+
+## Performance Ranking
+$(ranking_section)
+
+## Key Findings
+
+### Architecture Performance
+$(findings_section)
+
+## Methodology
+
+### Data Source
+- **Scenario:** $(selected_scenario) simulation runs
+- **Metric:** $(selected_metric) final values
+- **Comparison Type:** Single-run architecture comparison
+- **Time Series:** Full temporal evolution analyzed
+
+### Analysis Approach
+1. **Time Series Analysis:** Tracked metric evolution over simulation time
+2. **Final Value Comparison:** Extracted final metric values for direct comparison
+3. **Performance Ranking:** Ranked architectures by final performance
+4. **Relative Analysis:** Calculated percentage differences between architectures
+
+### Visualizations Generated
+- **Time Series Plot:** Shows metric evolution over time for each architecture
+- **Bar Chart:** Direct comparison of final values with labeled exact values
+- **Comparison Table:** Detailed numerical analysis with relative differences
+
+## Files Generated
+
+### Visualizations
+- `timeseries_$(selected_scenario)_$(selected_metric)_$(timestamp).png` - Time series evolution plot
+- `barchart_$(selected_scenario)_$(selected_metric)_$(timestamp).png` - Final values comparison chart
+
+### Data Files
+- `comparison_table_$(selected_scenario)_$(selected_metric)_$(timestamp).csv` - Architecture comparison table
+- `summary_stats_$(selected_scenario)_$(selected_metric)_$(timestamp).csv` - Statistical summaries
+- `final_values_$(selected_scenario)_$(selected_metric)_$(timestamp).csv` - Raw final values data
+
+### Analysis
+- `analysis_summary_$(selected_scenario)_$(selected_metric)_$(timestamp).md` - This comprehensive analysis summary
+
+## Recommendations
+
+Based on this single-run comparison:
+$(recommendations_section)
+
+---
+*Generated by Sugarscape Architecture Comparison Analysis*
+*Timestamp: $(timestamp)*
+"""
+
+    # Write markdown file - with error handling
+    try
+      open(md_filename, "w") do file
+        write(file, final_analysis_content)
+      end
+      println("📝 Analysis summary exported to: $(md_filename)")
+    catch e
+      println("⚠️ Failed to write markdown analysis: $e")
+    end
+
+    println("\n✅ Complete export finished!")
+    println("📁 All files saved to: $(results_dir)")
+
+  elseif export_results
+    println("❌ No data available for export")
+  else
+    println("ℹ️ Export disabled. Check the 'Export Results' box to save files.")
   end
 end
 
