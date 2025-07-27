@@ -1,0 +1,17 @@
+METRIC COLUMN MAPPING
+==================================================
+CSV File: data/for_analysis/reproduction_combat/movement_reproduction_combat_llm_metrics_2.csv
+Metric Set: reproduction_combat_metrics
+Generated: 2025-07-27T12:41:53.262
+==================================================
+
+#133 => births
+#134 => deaths_age
+#135 => deaths_starvation
+#136 => calculate_gini_coefficient
+#137 => calculate_wealth_percentiles
+#138 => calculate_pareto_alpha
+#139 => calculate_mean_lifespan
+#140 => calculate_lifespan_inequality
+#141 => combat_kills
+#142 => calculate_factional_clustering

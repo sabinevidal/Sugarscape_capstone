@@ -1,0 +1,10 @@
+METRIC COLUMN MAPPING
+==================================================
+CSV File: data/for_analysis/combat/movement_combat_bigfive_metrics_1.csv
+Metric Set: combat_metrics
+Generated: 2025-07-27T12:05:12.966
+==================================================
+
+#95 => combat_kills
+#96 => combat_sugar_stolen
+#97 => calculate_factional_clustering

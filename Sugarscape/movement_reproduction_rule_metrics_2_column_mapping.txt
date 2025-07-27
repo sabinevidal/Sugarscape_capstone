@@ -1,0 +1,16 @@
+METRIC COLUMN MAPPING
+==================================================
+CSV File: data/for_analysis/reproduction/movement_reproduction_rule_metrics_2.csv
+Metric Set: reproduction_metrics
+Generated: 2025-07-27T11:46:36.407
+==================================================
+
+#77 => births
+#78 => deaths_age
+#79 => deaths_starvation
+#80 => calculate_gini_coefficient
+#81 => calculate_wealth_percentiles
+#82 => calculate_pareto_alpha
+#83 => calculate_mean_lifespan
+#84 => calculate_lifespan_inequality
+#85 => calculate_decision_entropy

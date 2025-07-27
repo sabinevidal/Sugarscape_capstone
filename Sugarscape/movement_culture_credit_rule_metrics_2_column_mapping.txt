@@ -1,0 +1,20 @@
+METRIC COLUMN MAPPING
+==================================================
+CSV File: data/for_analysis/culture_credit/movement_culture_credit_rule_metrics_2.csv
+Metric Set: culture_credit_metrics
+Generated: 2025-07-27T12:41:34.751
+==================================================
+
+#215 => calculate_cultural_entropy
+#216 => calculate_cultural_diversity
+#217 => calculate_spatial_segregation
+#218 => calculate_clustering_coefficient
+#219 => calculate_wealth_percentiles
+#220 => calculate_pareto_alpha
+#221 => deaths_age
+#222 => deaths_starvation
+#223 => calculate_cultural_initiation_by_tribe
+#224 => calculate_total_credit_outstanding
+#225 => calculate_credit_default_rate
+#226 => calculate_credit_network_metrics
+#227 => calculate_gini_coefficient

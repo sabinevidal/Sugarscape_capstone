@@ -1,0 +1,11 @@
+METRIC COLUMN MAPPING
+==================================================
+CSV File: data/for_analysis/culture/movement_culture_rule_metrics_3.csv
+Metric Set: culture_metrics
+Generated: 2025-07-27T11:48:11.026
+==================================================
+
+#101 => calculate_cultural_entropy
+#102 => calculate_cultural_diversity
+#103 => calculate_spatial_segregation
+#104 => calculate_clustering_coefficient
