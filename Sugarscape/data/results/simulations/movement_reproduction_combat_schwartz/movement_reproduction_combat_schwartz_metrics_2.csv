@@ -1,0 +1,3 @@
+time,nagents,#133,#134,#135,#136,#137,#138,#139,#140,#141,#142
+0,50,0,0,0,0.23110204081632646,"Dict(:p25 => 10.25, :p75 => 19.0, :p50 => 14.0, :p90 => 23.1, :p99 => 25.0, :p95 => 24.549999999999997)",9.797632143947327,0.0,0.0,0,"Dict{String, Real}(""total_attacks"" => 0, ""red_initiated_attacks"" => 0, ""red_attack_rate"" => 0.0, ""blue_attack_rate"" => 0.0, ""blue_initiated_attacks"" => 0)"
+1,48,0,0,0,0.2871456500488758,"Dict(:p25 => 8.0, :p75 => 20.5, :p50 => 13.0, :p90 => 23.0, :p99 => 32.419999999999916, :p95 => 24.65)",8.234184879893725,1.0,0.0,2,"Dict{String, Real}(""total_attacks"" => 2, ""red_initiated_attacks"" => 1, ""red_attack_rate"" => 0.5, ""blue_attack_rate"" => 0.5, ""blue_initiated_attacks"" => 1)"
