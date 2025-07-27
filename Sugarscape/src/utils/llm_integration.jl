@@ -486,9 +486,9 @@ function get_movement_decision(context::Dict, model; max_retries::Int=3)
     operation_func = () -> begin
         movement_response_format = SugarscapePrompts.get_movement_response_format()
         if model.use_big_five
-            movement_prompt = get_big_five_movement_system_prompt()
+            movement_prompt = BigFive.get_big_five_movement_system_prompt()
         elseif model.use_schwartz_values
-            movement_prompt = get_schwartz_values_movement_system_prompt()
+            movement_prompt = SchwartzValues.get_schwartz_values_movement_system_prompt()
         else
             movement_prompt = SugarscapePrompts.get_movement_system_prompt()
         end
@@ -528,9 +528,9 @@ function get_reproduction_decision(context::Dict, model; max_retries::Int=3)
     operation_func = () -> begin
         reproduction_response_format = SugarscapePrompts.get_reproduction_response_format(context["max_partners"])
         if model.use_big_five
-            reproduction_prompt = get_big_five_reproduction_system_prompt()
+            reproduction_prompt = BigFive.get_big_five_reproduction_system_prompt()
         elseif model.use_schwartz_values
-            reproduction_prompt = get_schwartz_values_reproduction_system_prompt()
+            reproduction_prompt = SchwartzValues.get_schwartz_values_reproduction_system_prompt()
         else
             reproduction_prompt = SugarscapePrompts.get_reproduction_system_prompt()
         end
@@ -571,9 +571,9 @@ function get_culture_decision(context::Dict, model; max_retries::Int=3)
     operation_func = () -> begin
         culture_response_format = SugarscapePrompts.get_culture_response_format()
         if model.use_big_five
-            culture_prompt = get_big_five_culture_system_prompt()
+            culture_prompt = BigFive.get_big_five_culture_system_prompt()
         elseif model.use_schwartz_values
-            culture_prompt = get_schwartz_values_culture_system_prompt()
+            culture_prompt = SchwartzValues.get_schwartz_values_culture_system_prompt()
         else
             culture_prompt = SugarscapePrompts.get_culture_system_prompt()
         end
@@ -812,51 +812,6 @@ function get_credit_borrower_request_decision(context::Dict, model; max_retries:
     return safe_llm_operation(operation_func, "credit borrower request decision", agent_id; max_retries=max_retries)
 end
 
-########################### Error Message Helpers ############################
 
-"""
-    format_llm_error(e::Exception) -> String
-Format LLM integration errors with helpful debugging information.
-"""
-function format_llm_error(e::Exception)
-    if isa(e, LLMAPIError)
-        msg = "LLM API Error: $(e.message)"
-        if e.status_code !== nothing
-            msg *= "\nHTTP Status: $(e.status_code)"
-        end
-        if e.response_body !== nothing
-            # Truncate long responses
-            body = length(e.response_body) > 500 ? e.response_body[1:500] * "..." : e.response_body
-            msg *= "\nResponse Body: $(body)"
-        end
-        return msg
-    elseif isa(e, LLMSchemaError)
-        msg = "LLM Schema Error: $(e.message)"
-        if e.agent_id !== nothing
-            msg *= "\nAgent ID: $(e.agent_id)"
-        end
-        if e.raw_response !== nothing
-            msg *= "\nRaw Response: $(e.raw_response)"
-        end
-        return msg
-    elseif isa(e, LLMValidationError)
-        msg = "LLM Validation Error: $(e.message)"
-        if e.agent_id !== nothing
-            msg *= "\nAgent ID: $(e.agent_id)"
-        end
-        msg *= "\nField: $(e.field)"
-        msg *= "\nInvalid Value: $(e.value)"
-        return msg
-    elseif isa(e, LLMResearchIntegrityError)
-        msg = "LLM Research Integrity Error: $(e.message)"
-        if e.agent_id !== nothing
-            msg *= "\nAgent ID: $(e.agent_id)"
-        end
-        msg *= "\nContext: $(e.context)"
-        return msg
-    else
-        return "Unexpected error: $(e)"
-    end
-end
 
 end # module SugarscapeLLM
