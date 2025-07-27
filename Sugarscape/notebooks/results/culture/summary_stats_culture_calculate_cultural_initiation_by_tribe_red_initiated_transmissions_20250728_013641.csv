@@ -1,0 +1,3 @@
+Architecture,N_Runs,Mean,Std,Min,Max,Median,Q25,Q75
+rule,1,4.000,NaN,4.000,4.000,4.000,4.000,4.000
+schwartz,1,1.000,NaN,1.000,1.000,1.000,1.000,1.000

@@ -126,8 +126,8 @@ function create_global_metric_mapping()
     global_mapping[128] = "gini_coefficient"  # model -> calculate_gini_coefficient(model)
 
     # Reproduction + Combat metrics (observed: #133-#142)
-    # Based on reproduction_combat_metrics order: nagents, births, deaths_age, deaths_starvation, 
-    # calculate_gini_coefficient, calculate_wealth_percentiles, calculate_pareto_alpha, 
+    # Based on reproduction_combat_metrics order: nagents, births, deaths_age, deaths_starvation,
+    # calculate_gini_coefficient, calculate_wealth_percentiles, calculate_pareto_alpha,
     # calculate_mean_lifespan, calculate_lifespan_inequality, combat_kills, calculate_factional_clustering
     global_mapping[133] = "births"  # model -> model.births
     global_mapping[134] = "deaths_age"  # model -> model.deaths_age
@@ -159,8 +159,38 @@ function create_global_metric_mapping()
     global_mapping[226] = "calculate_credit_network_metrics"  # model -> calculate_credit_network_metrics(model)
     global_mapping[227] = "calculate_gini_coefficient"  # model -> calculate_gini_coefficient(model)
 
-    # Add more mappings as discovered from other CSV files
-    # Full stack metrics, etc.
+    # Full stack metrics (observed: #241-#264)
+    # Based on full_stack_metrics order: nagents, births, deaths_age, deaths_starvation, combat_kills,
+    # calculate_total_credit_outstanding, calculate_credit_default_rate, calculate_credit_network_metrics,
+    # calculate_factional_clustering, calculate_decision_entropy, calculate_gini_coefficient,
+    # calculate_wealth_percentiles, calculate_pareto_alpha, calculate_mean_lifespan, calculate_lifespan_inequality,
+    # calculate_cultural_initiation_by_tribe, calculate_cultural_entropy, calculate_cultural_diversity,
+    # calculate_spatial_segregation, calculate_clustering_coefficient, calculate_trait_summary_stats,
+    # calculate_trait_similarity_metrics, count_red_tribe, count_blue_tribe, calculate_tribe_proportions
+    global_mapping[241] = "births"  # model -> model.births
+    global_mapping[242] = "deaths_age"  # model -> model.deaths_age
+    global_mapping[243] = "deaths_starvation"  # model -> model.deaths_starvation
+    global_mapping[244] = "combat_kills"  # model -> model.combat_kills
+    global_mapping[245] = "calculate_total_credit_outstanding"  # model -> calculate_total_credit_outstanding(model)
+    global_mapping[246] = "calculate_credit_default_rate"  # model -> calculate_credit_default_rate(model)
+    global_mapping[247] = "calculate_credit_network_metrics"  # model -> calculate_credit_network_metrics(model)
+    global_mapping[248] = "calculate_factional_clustering"  # model -> calculate_factional_clustering(model)
+    global_mapping[249] = "calculate_decision_entropy"  # model -> calculate_decision_entropy(model)
+    global_mapping[250] = "calculate_gini_coefficient"  # model -> calculate_gini_coefficient(model)
+    global_mapping[251] = "calculate_wealth_percentiles"  # model -> calculate_wealth_percentiles(model)
+    global_mapping[252] = "calculate_pareto_alpha"  # model -> calculate_pareto_alpha(model)
+    global_mapping[253] = "calculate_mean_lifespan"  # model -> calculate_mean_lifespan(model)
+    global_mapping[254] = "calculate_lifespan_inequality"  # model -> calculate_lifespan_inequality(model)
+    global_mapping[255] = "calculate_cultural_initiation_by_tribe"  # model -> calculate_cultural_initiation_by_tribe(model)
+    global_mapping[256] = "calculate_cultural_entropy"  # model -> calculate_cultural_entropy(model)
+    global_mapping[257] = "calculate_cultural_diversity"  # model -> calculate_cultural_diversity(model)
+    global_mapping[258] = "calculate_spatial_segregation"  # model -> calculate_spatial_segregation(model)
+    global_mapping[259] = "calculate_clustering_coefficient"  # model -> calculate_clustering_coefficient(model)
+    global_mapping[260] = "calculate_trait_summary_stats"  # model -> calculate_trait_summary_stats(model)
+    global_mapping[261] = "calculate_trait_similarity_metrics"  # model -> calculate_trait_similarity_metrics(model)
+    global_mapping[262] = "count_red_tribe"  # model -> count_red_tribe(model)
+    global_mapping[263] = "count_blue_tribe"  # model -> count_blue_tribe(model)
+    global_mapping[264] = "calculate_tribe_proportions"  # model -> calculate_tribe_proportions(model)
 
     return global_mapping
 end
