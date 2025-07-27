@@ -27,6 +27,7 @@ begin
   using CSV
   using Dates
   using Printf
+  using Measures
   gr()
 end
 
@@ -390,8 +391,8 @@ begin
     # Compute final metric value per architecture (needed for later stats/plots)
     # ------------------------------
     final_values = combine(groupby(scenario_data, :architecture)) do df
-      DataFrame(architecture = first(df.architecture),
-                final_value  = last(df[!, selected_metric]))
+      DataFrame(architecture=first(df.architecture),
+        final_value=last(df[!, selected_metric]))
     end
 
     println("📊 Filtered data: $(nrow(scenario_data)) rows")
@@ -533,8 +534,9 @@ begin
       title="$(selected_metric) over Time - $(selected_scenario)",
       xlabel="Time",
       ylabel=selected_metric,
-      legend=:bottomright,
-      size=(800, 500)
+      legend=:outerbottom,
+      legendcolumns=5,
+      size=(1000, 500)
     )
 
     # Plot each architecture with custom colors
@@ -589,20 +591,24 @@ begin
     # Get values in the same order as architectures
     bar_values = [final_values[final_values.architecture.==arch, :final_value][1] for arch in arch_order_bar]
 
+    ymax = maximum(bar_values)
+
     bar_plot = bar(arch_order_bar, bar_values,
       title="$(selected_metric) by Architecture - $(selected_scenario)",
       xlabel="Architecture",
       ylabel="Final $(selected_metric)",
       legend=false,
-      size=(700, 500),
+      size=(700, 600),
       color=colors_bar,
-      alpha=0.8
+      alpha=0.8,
+      ylim=(0, ymax * 1.1),
+      top_margin=8mm
     )
 
     # Add value labels on top of bars
     for (i, val) in enumerate(bar_values)
       annotate!(bar_plot, [(i, val + 0.02 * maximum(bar_values),
-        text(@sprintf("%.3f", val), 10, :center, :bottom))])
+        text(@sprintf("%.3f", val), 10, :right, :bottom))])
     end
 
     # Add grid for better readability
@@ -996,6 +1002,7 @@ CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 HypothesisTests = "09f84164-cd44-5f33-b23f-e6b0d136a0d5"
+Measures = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
@@ -1006,6 +1013,7 @@ StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
 CSV = "~0.10.15"
 DataFrames = "~1.7.0"
 HypothesisTests = "~0.11.5"
+Measures = "~0.3.2"
 Plots = "~1.40.16"
 PlutoUI = "~0.7.68"
 StatsPlots = "~0.15.7"
@@ -1017,7 +1025,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "48592dd5483a84bd90867f6d4451e955dc8f2da9"
+project_hash = "d1212afc0958dc2bc35c07329396d65460967259"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
