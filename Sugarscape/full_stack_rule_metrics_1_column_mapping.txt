@@ -1,0 +1,31 @@
+METRIC COLUMN MAPPING
+==================================================
+CSV File: data/for_analysis/fullstack/full_stack_rule_metrics_1.csv
+Metric Set: full_stack_metrics
+Generated: 2025-07-28T01:09:17.200
+==================================================
+
+#241 => births
+#242 => deaths_age
+#243 => deaths_starvation
+#244 => combat_kills
+#245 => calculate_total_credit_outstanding
+#246 => calculate_credit_default_rate
+#247 => calculate_credit_network_metrics
+#248 => calculate_factional_clustering
+#249 => calculate_decision_entropy
+#250 => calculate_gini_coefficient
+#251 => calculate_wealth_percentiles
+#252 => calculate_pareto_alpha
+#253 => calculate_mean_lifespan
+#254 => calculate_lifespan_inequality
+#255 => calculate_cultural_initiation_by_tribe
+#256 => calculate_cultural_entropy
+#257 => calculate_cultural_diversity
+#258 => calculate_spatial_segregation
+#259 => calculate_clustering_coefficient
+#260 => calculate_trait_summary_stats
+#261 => calculate_trait_similarity_metrics
+#262 => count_red_tribe
+#263 => count_blue_tribe
+#264 => calculate_tribe_proportions
