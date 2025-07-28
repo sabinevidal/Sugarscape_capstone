@@ -1,5 +1,0 @@
-architecture,final_value
-bigfive,"Dict(""blue_proportion"" => 0.46, ""red_proportion"" => 0.54)"
-llm,"Dict(""blue_proportion"" => 0.62, ""red_proportion"" => 0.38)"
-rule,"Dict(""blue_proportion"" => 0.4, ""red_proportion"" => 0.6)"
-schwartz,"Dict(""blue_proportion"" => 0.6, ""red_proportion"" => 0.4)"

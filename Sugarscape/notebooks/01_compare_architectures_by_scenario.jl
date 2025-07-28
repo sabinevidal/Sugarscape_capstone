@@ -98,17 +98,23 @@ begin
         if length(parts) >= 4
           if contains(file, "metrics")
             file_type = "metrics"
-            # Pattern: movement_scenario_architecture_metrics_runid
-            if length(parts) >= 5
-              architecture = parts[3]
-              run_id = parts[5]
+            # Find the position of "metrics" in the parts array
+            metrics_idx = findfirst(p -> p == "metrics", parts)
+            if !isnothing(metrics_idx) && metrics_idx >= 2 && length(parts) >= metrics_idx + 1
+              # Architecture is the part before "metrics"
+              architecture = parts[metrics_idx - 1]
+              # Run ID is the part after "metrics"
+              run_id = parts[metrics_idx + 1]
             end
           elseif contains(file, "agents")
             file_type = "agents"
-            # Pattern: movement_scenario_architecture_agents_runid
-            if length(parts) >= 5
-              architecture = parts[3]
-              run_id = parts[5]
+            # Find the position of "agents" in the parts array
+            agents_idx = findfirst(p -> p == "agents", parts)
+            if !isnothing(agents_idx) && agents_idx >= 2 && length(parts) >= agents_idx + 1
+              # Architecture is the part before "agents"
+              architecture = parts[agents_idx - 1]
+              # Run ID is the part after "agents"
+              run_id = parts[agents_idx + 1]
             end
           end
         end
@@ -429,15 +435,17 @@ begin
     # Calculate summary statistics
     summary_stats = combine(groupby(final_values, :architecture)) do df
       vals = df.final_value
+      # Handle missing values properly
+      non_missing_vals = collect(skipmissing(vals))
       (
-        n_runs=length(vals),
-        mean=mean(vals),
-        std=std(vals),
-        min=minimum(vals),
-        max=maximum(vals),
-        median=median(vals),
-        q25=quantile(vals, 0.25),
-        q75=quantile(vals, 0.75)
+        n_runs=length(non_missing_vals),
+        mean=length(non_missing_vals) > 0 ? mean(non_missing_vals) : missing,
+        std=length(non_missing_vals) > 1 ? std(non_missing_vals) : missing,
+        min=length(non_missing_vals) > 0 ? minimum(non_missing_vals) : missing,
+        max=length(non_missing_vals) > 0 ? maximum(non_missing_vals) : missing,
+        median=length(non_missing_vals) > 0 ? median(non_missing_vals) : missing,
+        q25=length(non_missing_vals) > 0 ? quantile(non_missing_vals, 0.25) : missing,
+        q75=length(non_missing_vals) > 0 ? quantile(non_missing_vals, 0.75) : missing
       )
     end
 
@@ -445,13 +453,13 @@ begin
     summary_display = DataFrame(
       Architecture=summary_stats.architecture,
       N_Runs=summary_stats.n_runs,
-      Mean=[@sprintf("%.3f", x) for x in summary_stats.mean],
-      Std=[@sprintf("%.3f", x) for x in summary_stats.std],
-      Min=[@sprintf("%.3f", x) for x in summary_stats.min],
-      Max=[@sprintf("%.3f", x) for x in summary_stats.max],
-      Median=[@sprintf("%.3f", x) for x in summary_stats.median],
-      Q25=[@sprintf("%.3f", x) for x in summary_stats.q25],
-      Q75=[@sprintf("%.3f", x) for x in summary_stats.q75]
+      Mean=[ismissing(x) ? "N/A" : @sprintf("%.3f", x) for x in summary_stats.mean],
+      Std=[ismissing(x) ? "N/A" : @sprintf("%.3f", x) for x in summary_stats.std],
+      Min=[ismissing(x) ? "N/A" : @sprintf("%.3f", x) for x in summary_stats.min],
+      Max=[ismissing(x) ? "N/A" : @sprintf("%.3f", x) for x in summary_stats.max],
+      Median=[ismissing(x) ? "N/A" : @sprintf("%.3f", x) for x in summary_stats.median],
+      Q25=[ismissing(x) ? "N/A" : @sprintf("%.3f", x) for x in summary_stats.q25],
+      Q75=[ismissing(x) ? "N/A" : @sprintf("%.3f", x) for x in summary_stats.q75]
     )
 
     summary_display
@@ -550,10 +558,12 @@ begin
         # Group by time and calculate mean and std
         time_stats = combine(groupby(arch_data, :time)) do df
           metric_vals = df[!, selected_metric]
+          # Handle missing values properly
+          non_missing_vals = collect(skipmissing(metric_vals))
           (
-            mean_val=mean(metric_vals),
-            std_val=std(metric_vals),
-            n_runs=length(metric_vals)
+            mean_val=length(non_missing_vals) > 0 ? mean(non_missing_vals) : 0.0,
+            std_val=length(non_missing_vals) > 1 ? std(non_missing_vals) : 0.0,
+            n_runs=length(non_missing_vals)
           )
         end
 
@@ -795,6 +805,29 @@ begin
       ts_filename = joinpath(results_dir, "timeseries_$(selected_scenario)_$(selected_metric)_$(timestamp).png")
       savefig(time_series_plot, ts_filename)
       println("📈 Time series plot exported to: $(ts_filename)")
+
+      # Export the aggregated time-series data as CSV
+      ts_data = mapreduce(vcat, scenario_architectures) do arch
+        arch_data = filter(row -> row.architecture == arch, scenario_data)
+        isempty(arch_data) && return DataFrame()
+        
+        combine(groupby(arch_data, :time)) do df
+          vals = collect(skipmissing(df[!, selected_metric]))
+          (
+            time = first(df.time),
+            mean_val = isempty(vals) ? missing : mean(vals),
+            std_val = isempty(vals) ? missing : std(vals),
+            n_runs = length(vals),
+            architecture = arch
+          )
+        end
+      end
+      
+      if !isempty(ts_data)
+        ts_csv = joinpath(results_dir, "timeseries_data_$(selected_scenario)_$(selected_metric)_$(timestamp).csv")
+        CSV.write(ts_csv, ts_data)
+        println("📊 Time-series data exported to: $(ts_csv)")
+      end
     end
 
     # 2. Export bar chart
