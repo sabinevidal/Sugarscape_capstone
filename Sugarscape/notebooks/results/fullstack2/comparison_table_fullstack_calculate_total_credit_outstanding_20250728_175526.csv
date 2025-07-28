@@ -1,0 +1,5 @@
+Architecture,Value,Relative_to_Best,Relative_to_Worst
+rule,4097.790711621355,Best (0.0%),+Inf%
+bigfive,0.0,-100.0%,Worst (0.0%)
+llm,0.0,-100.0%,Worst (0.0%)
+schwartz,0.0,-100.0%,Worst (0.0%)

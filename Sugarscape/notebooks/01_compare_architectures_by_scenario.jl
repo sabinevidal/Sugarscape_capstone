@@ -100,29 +100,35 @@ begin
             file_type = "metrics"
             # Find the position of "metrics" in the parts array
             metrics_idx = findfirst(p -> p == "metrics", parts)
-            if !isnothing(metrics_idx) && metrics_idx >= 2 && length(parts) >= metrics_idx + 1
-              # Architecture is the part before "metrics"
-              architecture = parts[metrics_idx - 1]
+            if !isnothing(metrics_idx) && metrics_idx >= 3 && length(parts) >= metrics_idx + 1
+              # For pattern: fullstack_ARCHITECTURE_metrics_RUNID
+              # Architecture is the part before "metrics" (index metrics_idx-1)
+              architecture = parts[metrics_idx-1]
               # Run ID is the part after "metrics"
-              run_id = parts[metrics_idx + 1]
+              run_id = parts[metrics_idx+1]
             end
           elseif contains(file, "agents")
             file_type = "agents"
             # Find the position of "agents" in the parts array
             agents_idx = findfirst(p -> p == "agents", parts)
-            if !isnothing(agents_idx) && agents_idx >= 2 && length(parts) >= agents_idx + 1
-              # Architecture is the part before "agents"
-              architecture = parts[agents_idx - 1]
+            if !isnothing(agents_idx) && agents_idx >= 3 && length(parts) >= agents_idx + 1
+              # For pattern: fullstack_ARCHITECTURE_agents_RUNID
+              # Architecture is the part before "agents" (index agents_idx-1)
+              architecture = parts[agents_idx-1]
               # Run ID is the part after "agents"
-              run_id = parts[agents_idx + 1]
+              run_id = parts[agents_idx+1]
             end
           end
         end
 
         # Skip if we couldn't parse the filename properly
         if isempty(architecture) || isempty(run_id)
+          println("⚠️ Skipping file $(file): couldn't parse architecture or run_id")
+          println("   Parts: $(parts)")
           continue
         end
+
+        println("✅ Processing: $(file) -> scenario=$(scenario), architecture=$(architecture), run_id=$(run_id)")
 
         try
           # Read CSV file
@@ -251,6 +257,27 @@ begin
     if !isempty(all_model_dfs)
       model_metrics_df = vcat(all_model_dfs..., cols=:union)
       println("📈 Model metrics loaded: $(nrow(model_metrics_df)) rows, $(ncol(model_metrics_df)) columns")
+
+      # Validate data for plotting
+      println("🔍 Data validation:")
+      println("   Unique scenarios: $(unique(model_metrics_df.scenario))")
+      println("   Unique architectures: $(unique(model_metrics_df.architecture))")
+      println("   Unique run_ids: $(unique(model_metrics_df.run_id))")
+
+      # Check for numeric columns that might cause plotting issues
+      numeric_cols = [col for col in names(model_metrics_df) if eltype(model_metrics_df[!, col]) <: Union{Missing,Number}]
+      println("   Numeric columns: $(length(numeric_cols))")
+
+      # Check for columns with all missing/NaN values
+      problematic_cols = String[]
+      for col in numeric_cols
+        if all(ismissing.(model_metrics_df[!, col])) || all(isnan.(coalesce.(model_metrics_df[!, col], NaN)))
+          push!(problematic_cols, col)
+        end
+      end
+      if !isempty(problematic_cols)
+        println("   ⚠️ Columns with all missing/NaN values: $(problematic_cols)")
+      end
     else
       println("⚠️ No model metrics files found")
     end
@@ -547,40 +574,39 @@ begin
       size=(1000, 500)
     )
 
-    # Plot each architecture with custom colors
+    # Plot each architecture with individual runs as separate lines
     for arch in scenario_architectures
       arch_data = filter(row -> row.architecture == arch, scenario_data)
 
       if nrow(arch_data) > 0
         # Get custom color for this architecture
         arch_color = get_arch_color(arch)
-
-        # Group by time and calculate mean and std
-        time_stats = combine(groupby(arch_data, :time)) do df
-          metric_vals = df[!, selected_metric]
-          # Handle missing values properly
-          non_missing_vals = collect(skipmissing(metric_vals))
-          (
-            mean_val=length(non_missing_vals) > 0 ? mean(non_missing_vals) : 0.0,
-            std_val=length(non_missing_vals) > 1 ? std(non_missing_vals) : 0.0,
-            n_runs=length(non_missing_vals)
-          )
-        end
-
-        # Sort by time
-        sort!(time_stats, :time)
-
-        # Plot mean line with custom color
-        plot!(time_series_plot, time_stats.time, time_stats.mean_val,
-          label="$(arch) (mean)", linewidth=2, alpha=0.8, color=arch_color)
-
-        # Add std shading if we have multiple runs
-        if any(time_stats.n_runs .> 1)
-          upper = time_stats.mean_val .+ time_stats.std_val
-          lower = time_stats.mean_val .- time_stats.std_val
-
-          plot!(time_series_plot, time_stats.time, upper,
-            fillto=lower, alpha=0.3, label="$(arch) (±1σ)", color=arch_color)
+        
+        # Get unique run_ids for this architecture
+        unique_runs = unique(arch_data.run_id)
+        
+        # Plot each run as a separate line
+        for (i, run_id) in enumerate(unique_runs)
+          run_data = filter(row -> row.run_id == run_id, arch_data)
+          
+          if nrow(run_data) > 0
+            # Sort by time
+            sort!(run_data, :time)
+            
+            # Extract metric values, handling missing values
+            metric_vals = collect(skipmissing(run_data[!, selected_metric]))
+            time_vals = run_data.time[.!ismissing.(run_data[!, selected_metric])]
+            
+            if length(metric_vals) > 0
+              # Create label for this specific run
+              run_label = "$(arch) - Run $(run_id)"
+              
+              # Plot this individual run
+              plot!(time_series_plot, time_vals, metric_vals,
+                label=run_label, linewidth=2, alpha=0.8, color=arch_color,
+                linestyle=i > 1 ? :dash : :solid)  # Use different line styles for multiple runs
+            end
+          end
         end
       end
     end
@@ -810,19 +836,19 @@ begin
       ts_data = mapreduce(vcat, scenario_architectures) do arch
         arch_data = filter(row -> row.architecture == arch, scenario_data)
         isempty(arch_data) && return DataFrame()
-        
+
         combine(groupby(arch_data, :time)) do df
           vals = collect(skipmissing(df[!, selected_metric]))
           (
-            time = first(df.time),
-            mean_val = isempty(vals) ? missing : mean(vals),
-            std_val = isempty(vals) ? missing : std(vals),
-            n_runs = length(vals),
-            architecture = arch
+            time=first(df.time),
+            mean_val=isempty(vals) ? missing : mean(vals),
+            std_val=isempty(vals) ? missing : std(vals),
+            n_runs=length(vals),
+            architecture=arch
           )
         end
       end
-      
+
       if !isempty(ts_data)
         ts_csv = joinpath(results_dir, "timeseries_data_$(selected_scenario)_$(selected_metric)_$(timestamp).csv")
         CSV.write(ts_csv, ts_data)
