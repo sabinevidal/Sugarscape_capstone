@@ -2,21 +2,20 @@
 
 """
 run_sugarscape_simulation.jl
-========================
+============================
 
-Simple command-line utility to run a Sugarscape simulation for a given number
-of steps and export the collected agent- and model-level data (`adata`, `mdata`)
-to CSV files.
+Command-line utility to run a Sugarscape simulation with different agent
+behaviour models.  The script runs a fixed-length simulation and exports the
+collected agent- and model-level data (`adata`, `mdata`) to CSV files.
 
 Usage
 -----
-    julia run_sugarscape_simulation.jl [N_STEPS] [OUTPUT_PREFIX]
+    julia run_sugarscape_simulation.jl [MODE]
 
 Arguments
 ---------
-* `N_STEPS`        – (optional, default = 1000) Number of steps to simulate.
-* `OUTPUT_PREFIX`  – (optional, default = "sugarscape") Prefix that will be used
-                     for the generated `*-adata.csv` and `*-mdata.csv` files.
+* `MODE` – Type of model to run. One of `rules`, `llm`, `bigfive` or `schwartz`.
+           This also determines the output file prefix.
 
 Dependencies
 ------------
@@ -41,22 +40,29 @@ using DotEnv
 using Sugarscape
 
 DotEnv.load!()
+
+const N_STEPS = 1_000
+
 function main()
     # ---------------------------------------------------------------------
-    # Parse command-line arguments
+    # Parse command-line argument
     # ---------------------------------------------------------------------
-    n_steps = length(ARGS) ≥ 1 ? parse(Int, ARGS[1]) : 1
-    output_prefix = length(ARGS) ≥ 2 ? ARGS[2] : "sugarscape"
+    mode = length(ARGS) ≥ 1 ? lowercase(ARGS[1]) : "rules"
 
-    println("🔧 Running Sugarscape for $n_steps steps …")
+    valid_modes = ["rules", "llm", "bigfive", "schwartz"]
+    if !(mode in valid_modes)
+        println("❌ Invalid mode. Choose from: rules, llm, bigfive, schwartz")
+        return
+    end
+
+    output_prefix = mode
+
+    println("🔧 Running Sugarscape ($mode) for $(N_STEPS) steps …")
 
     # ---------------------------------------------------------------------
-    # Initialise model (pure rule-based by default)
+    # Initialise model based on selected mode
     # ---------------------------------------------------------------------
-    model = Sugarscape.sugarscape_llm_bigfive(
-        use_llm_decisions=true,
-        llm_temperature=0.4,
-        use_big_five=true,
+    base_kwargs = (
         N=4,
         enable_reproduction=false,
         enable_culture=false,
@@ -65,8 +71,18 @@ function main()
         sugar_peaks=((10, 40), (40, 10)),
         max_sugar=5,
         fertility_age_range=(15, 55),
-        llm_metadata=Dict{String,Any}("output_prefix" => "$(output_prefix)")
+        llm_metadata=Dict{String,Any}("output_prefix" => output_prefix)
     )
+
+    model = if mode == "rules"
+        Sugarscape.sugarscape(; base_kwargs..., use_llm_decisions=false)
+    elseif mode == "llm"
+        Sugarscape.sugarscape(; base_kwargs..., use_llm_decisions=true, llm_temperature=0.4)
+    elseif mode == "bigfive"
+        Sugarscape.sugarscape_llm_bigfive(; base_kwargs..., llm_temperature=0.4)
+    else  # schwartz
+        Sugarscape.sugarscape_llm_schwartz(; base_kwargs..., llm_temperature=0.4)
+    end
 
     # ---------------------------------------------------------------------
     # Define data to collect
@@ -90,7 +106,7 @@ function main()
     # ---------------------------------------------------------------------
     # Execute simulation and collect data
     # ---------------------------------------------------------------------
-    adf, mdf = run!(model, n_steps; adata=adata, mdata=mdata)
+    adf, mdf = run!(model, N_STEPS; adata=adata, mdata=mdata)
 
     # ---------------------------------------------------------------------
     # Create results directory if it doesn't exist
